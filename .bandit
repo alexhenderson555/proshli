@@ -1,0 +1,5 @@
+exclude_dirs:
+  - .venv
+  - backend/tests
+skips:
+  - B101

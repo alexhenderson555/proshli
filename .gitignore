@@ -1,0 +1,19 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+jobskout.db
+.pytest_cache/
+.ruff_cache/
+
+# Env and local DB
+.env
+.env.*
+*.db
+
+# Next.js (also see web/.gitignore)
+web/node_modules/
+web/.next/
+frontend/node_modules/
+frontend/dist/

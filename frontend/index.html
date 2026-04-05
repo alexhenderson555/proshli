@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>JobSkout | MVP Console</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="container">
+      <section class="card">
+        <h1>JobSkout</h1>
+        <p class="muted">MVP console: регистрация, вход, поиск вакансий, AI, дайджесты.</p>
+      </section>
+
+      <section class="grid">
+        <article class="card">
+          <h2>Регистрация</h2>
+          <label>Email <input id="regEmail" type="email" placeholder="you@mail.com" /></label>
+          <label>Пароль <input id="regPassword" type="password" placeholder="min 8 chars" /></label>
+          <label>Роль
+            <select id="regRole">
+              <option value="seeker">Соискатель</option>
+              <option value="employer">Работодатель</option>
+            </select>
+          </label>
+          <button id="registerBtn">Создать аккаунт</button>
+        </article>
+
+        <article class="card">
+          <h2>Вход</h2>
+          <label>Email <input id="loginEmail" type="email" /></label>
+          <label>Пароль <input id="loginPassword" type="password" /></label>
+          <button id="loginBtn">Войти</button>
+          <p class="muted small">JWT сохраняется в localStorage.</p>
+        </article>
+
+        <article class="card">
+          <h2>Telegram привязка</h2>
+          <p class="muted small">Войди как соискатель, затем сгенерируй код и отправь в боте: <code>/link CODE</code>.</p>
+          <button id="tgLinkCodeBtn">Сгенерировать код привязки Telegram</button>
+          <pre id="tgLinkCodeResult"></pre>
+        </article>
+      </section>
+
+      <section class="grid">
+        <article class="card">
+          <h2>Ingestion</h2>
+          <label>Источник
+            <select id="ingestSource">
+              <option value="hh">hh (demo)</option>
+              <option value="company_sites">company_sites (demo)</option>
+              <option value="rss">rss (env URLs)</option>
+            </select>
+          </label>
+          <button id="ingestBtn">Запустить ingestion</button>
+          <label>Scheduler frequency
+            <select id="schedulerFrequency">
+              <option value="daily">daily</option>
+              <option value="weekly">weekly</option>
+            </select>
+          </label>
+          <button id="schedulerBtn">Запустить scheduler</button>
+          <button id="digestPreviewBtn">Показать digest preview</button>
+          <pre id="digestPreview"></pre>
+        </article>
+
+        <article class="card">
+          <h2>AI Фильтры</h2>
+          <textarea id="aiMessage" rows="4" placeholder="Ищу middle python удаленно, от 250к"></textarea>
+          <button id="aiBtn">Разобрать запрос</button>
+          <pre id="aiResult"></pre>
+        </article>
+
+        <article class="card">
+          <h2>Дайджест</h2>
+          <label>Частота
+            <select id="digestFrequency">
+              <option value="daily">daily</option>
+              <option value="weekly">weekly</option>
+            </select>
+          </label>
+          <label><input id="digestTg" type="checkbox" checked /> Telegram</label>
+          <label><input id="digestEmail" type="checkbox" /> Email</label>
+          <label>Telegram chat id <input id="tgChatId" type="text" placeholder="123456789" /></label>
+          <button id="digestBtn">Сохранить</button>
+        </article>
+
+        <article class="card">
+          <h2>Резюме (PDF/TXT)</h2>
+          <label>Название резюме <input id="resumeName" type="text" placeholder="Backend Resume 2026" /></label>
+          <label>Файл <input id="resumeFile" type="file" accept=".pdf,.txt,.md,.docx" /></label>
+          <button id="resumeUploadBtn">Загрузить резюме</button>
+          <label>Версия резюме (JSON) <textarea id="resumeVersionJson" rows="4" placeholder='{"experience":["Company A"],"skills":["python","sql"]}'></textarea></label>
+          <input id="resumeVersionName" type="text" placeholder="Backend CV v1" />
+          <input id="resumeVersionRole" type="text" placeholder="Python Backend Engineer" />
+          <button id="resumeVersionCreateBtn">Создать версию резюме</button>
+          <pre id="resumeResult"></pre>
+        </article>
+      </section>
+
+      <section class="grid">
+        <article class="card">
+          <h2>Профиль соискателя</h2>
+          <input id="seekerFullName" type="text" placeholder="Имя" />
+          <input id="seekerTargetRole" type="text" placeholder="Целевая роль" />
+          <input id="seekerLocation" type="text" placeholder="Локация" />
+          <input id="seekerSkills" type="text" placeholder="Навыки через запятую" />
+          <textarea id="seekerAbout" rows="3" placeholder="О себе"></textarea>
+          <button id="saveSeekerProfileBtn">Сохранить профиль соискателя</button>
+        </article>
+
+        <article class="card">
+          <h2>Профиль работодателя</h2>
+          <input id="employerCompanyName" type="text" placeholder="Название компании" />
+          <input id="employerWebsite" type="text" placeholder="https://example.com" />
+          <textarea id="employerDescription" rows="3" placeholder="Описание компании"></textarea>
+          <button id="saveEmployerProfileBtn">Сохранить профиль работодателя</button>
+        </article>
+      </section>
+
+      <section class="card">
+        <h2>Вакансии</h2>
+        <div class="row">
+          <input id="filterLocation" placeholder="Локация (например, Remote)" />
+          <input id="filterStack" placeholder="Стек (python/react/...)" />
+          <button id="searchBtn">Найти</button>
+        </div>
+        <ul id="vacancies"></ul>
+      </section>
+
+      <section class="card">
+        <h2>Кабинет работодателя: мои вакансии</h2>
+        <div class="grid">
+          <article>
+            <label>Title <input id="myVacTitle" type="text" placeholder="Python Backend Developer" /></label>
+            <label>Company <input id="myVacCompany" type="text" placeholder="JobSkout" /></label>
+            <label>Location <input id="myVacLocation" type="text" placeholder="Remote" /></label>
+            <label>Description <textarea id="myVacDescription" rows="3" placeholder="FastAPI, PostgreSQL"></textarea></label>
+            <button id="createMyVacancyBtn">Создать мою вакансию</button>
+          </article>
+          <article>
+            <button id="loadMyVacanciesBtn">Обновить список моих вакансий</button>
+            <label>Status
+              <select id="myVacStatusFilter">
+                <option value="all">all</option>
+                <option value="active">active</option>
+                <option value="archived">archived</option>
+              </select>
+            </label>
+            <label>Sort by
+              <select id="myVacSortBy">
+                <option value="published_at">published_at</option>
+                <option value="applications_count">applications_count</option>
+                <option value="title">title</option>
+              </select>
+            </label>
+            <label>Order
+              <select id="myVacSortOrder">
+                <option value="desc">desc</option>
+                <option value="asc">asc</option>
+              </select>
+            </label>
+            <label>Action filter
+              <select id="myVacActionFilter">
+                <option value="">all actions</option>
+                <option value="vacancy_created">vacancy_created</option>
+                <option value="vacancy_updated">vacancy_updated</option>
+                <option value="vacancy_archived">vacancy_archived</option>
+                <option value="vacancy_published">vacancy_published</option>
+                <option value="vacancy_soft_deleted">vacancy_soft_deleted</option>
+              </select>
+            </label>
+            <label>Actions from <input id="myVacActionsFrom" type="datetime-local" /></label>
+            <label>Actions to <input id="myVacActionsTo" type="datetime-local" /></label>
+            <button id="myVacancyAnalyticsBtn">Показать аналитику</button>
+            <button id="myVacancyActionsBtn">Показать действия</button>
+            <button id="myVacancyActionsExportBtn">Экспорт CSV действий</button>
+            <pre id="myVacancyAnalytics"></pre>
+            <pre id="myVacancyActions"></pre>
+            <div>
+              <button id="myVacPrevPageBtn">Prev page</button>
+              <span id="myVacPageInfo">page 1</span>
+              <button id="myVacNextPageBtn">Next page</button>
+            </div>
+            <ul id="myVacancies"></ul>
+          </article>
+          <article>
+            <h3>Редактор вакансии</h3>
+            <label>ID <input id="editVacancyId" type="number" readonly /></label>
+            <label>Title <input id="editVacancyTitle" type="text" /></label>
+            <label>Location <input id="editVacancyLocation" type="text" /></label>
+            <label>Applications count <input id="editVacancyApplications" type="number" min="0" /></label>
+            <label>Description <textarea id="editVacancyDescription" rows="4"></textarea></label>
+            <button id="saveVacancyEditBtn">Сохранить изменения</button>
+          </article>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Лог</h2>
+        <pre id="log"></pre>
+      </section>
+    </main>
+
+    <script src="./main.js"></script>
+  </body>
+</html>

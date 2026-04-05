@@ -1,0 +1,17 @@
+fastapi
+uvicorn
+sqlalchemy
+pydantic[email]
+passlib
+python-jose[cryptography]
+python-multipart
+pypdf
+aiogram
+httpx
+pytest
+alembic
+psycopg2-binary
+ruff
+bandit
+pytest-cov
+feedparser
