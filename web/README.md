@@ -1,36 +1,42 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# JobSkout Web (Next.js)
 
-## Getting Started
+## Что делает продукт
 
-First, run the development server:
+Основной **веб-интерфейс** монорепозитория JobSkout: вакансии, профили, сценарии соискателя/работодателя. Собран на **Next.js** (см. также корневой `README.md` проекта).
+
+## Преимущества
+
+- App Router, быстрый dev-цикл, общий API с бэкендом FastAPI.
+
+## Установка
+
+```bash
+cd web
+npm install
+```
+
+Создайте окружение (минимум):
+
+```bash
+NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
+```
+
+Запуск:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Откройте [http://localhost:3000](http://localhost:3000) (типичный путь к вакансиям: `/vacancies` — см. корневой README).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Дополнительно: `npm run lint`, `npm run build`, `npm run test:e2e`.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Траблшутинг
 
-## Learn More
+| Проблема | Что проверить |
+|----------|----------------|
+| Нет данных /404 на API | Запущен ли бэкенд, верный ли `NEXT_PUBLIC_API_URL`. |
+| CORS / сетевые ошибки | URL схема http/https, файрвол. |
+| Сборка падает | Версия Node, `npm ci` vs `npm install`, логи `npm run build`. |
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Шаблон create-next-app и документация Next.js: [nextjs.org/docs](https://nextjs.org/docs).

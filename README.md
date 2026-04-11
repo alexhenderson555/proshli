@@ -1,16 +1,27 @@
 # JobSkout
 
-Production-minded MVP scaffold for a job aggregation platform (web + Telegram bot) with:
+## Что делает продукт
 
-- role-based auth (`seeker`, `employer`)
-- vacancy search with advanced filters
-- resume upload and PDF text extraction
-- AI assistant restricted to career topics
-- daily/weekly personalized digest preferences
-- multi-source ingestion scaffold with deduplication
-- automated API tests + CI pipeline
-- PostgreSQL-ready config + Alembic migrations
-- scheduler worker for recurring ingest and digest dispatch
+Production-minded **MVP** платформы вакансий: **веб (Next.js)** + **Telegram-бот**, роли соискатель/работодатель, поиск вакансий с фильтрами, резюме и извлечение текста из PDF, **ИИ-помощник** (только карьерная тематика), дайджесты, ingestion из нескольких источников, **PostgreSQL** + Alembic, планировщик, тесты и CI.
+
+## Преимущества
+
+- Монорепо: API, современный веб, бот, Docker для прода.
+- Контроль стоимости ИИ (лимиты), безопасные режимы доставки дайджестов без секретов.
+
+## Установка (кратко)
+
+См. детальные блоки ниже в этом README: **Quick Start (Backend)**, **PostgreSQL + Migrations**, **Quick Start (Next.js Web)**, **Telegram Bot**, **Production Deployment (Docker)**. Общий шаг: скопировать **`backend/.env.example`** → **`backend/.env`**.
+
+## Траблшутинг
+
+| Проблема | Что проверить |
+|----------|----------------|
+| API не стартует | venv, `pip install -r backend/requirements.txt`, `DATABASE_URL`, миграции Alembic. |
+| 401 / 403 на API | JWT, заголовки, `BOT_SERVICE_KEY` для бота. |
+| Бот не линкуется с сайтом | Код `/link`, `JOBSKOUT_API_URL`, одинаковый `BOT_SERVICE_KEY` с бэкендом. |
+| Дайджест не уходит | `TELEGRAM_BOT_TOKEN`, SMTP vars; без них — dry-run (см. раздел Digest). |
+| Docker prod | `docker-compose.prod.yml`, миграции внутри контейнера, бэкапы из `ops/`. |
 
 ## Structure
 
@@ -19,6 +30,11 @@ Production-minded MVP scaffold for a job aggregation platform (web + Telegram bo
 - `frontend/` - lightweight web MVP console
 - `bot/` - Telegram bot scaffold
 - `docs/` - architecture and product notes
+
+## Environment
+
+- Copy **`backend/.env.example`** → **`backend/.env`** (or use root **`.env.example`** as a reminder).
+- Production-style vars: see **`.env.prod.example`**.
 
 ## Quick Start (Backend)
 

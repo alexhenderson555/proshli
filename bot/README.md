@@ -1,23 +1,42 @@
-# JobSkout Telegram Bot (Scaffold)
+# JobSkout Telegram Bot (scaffold)
 
-This bot is a starter for:
+## Что делает продукт
 
-- onboarding users from Telegram
-- setting digest frequency (`daily` / `weekly`)
-- connecting Telegram chat ID to digest preferences in API
+Стартовый **Telegram-бот** для JobSkout: онбординг, настройка периодичности дайджеста (`daily` / `weekly`), привязка **Telegram chat ID** к настройкам в API (см. корневой `README` — поток `/link`).
 
-## Run
+## Преимущества
 
-1. Install deps (shared from backend):
-   - `pip install -r ../backend/requirements.txt`
-2. Set env vars:
-   - `TELEGRAM_BOT_TOKEN`
-   - `JOBSKOUT_API_URL` (default: `http://127.0.0.1:8000`)
-   - `JOBSKOUT_USER_TOKEN` (JWT of user for API calls)
-3. Run:
-   - `python main.py`
+- Общие зависимости с бэкендом; простой запуск для локальной отладки.
 
-## Notes
+## Установка
 
-- Current scaffold uses one JWT token from env for simplicity.
-- Next iteration should map each Telegram user to a JobSkout user account.
+1. Установить зависимости (как у API):
+
+```bash
+pip install -r ../backend/requirements.txt
+```
+
+2. Переменные окружения:
+
+| Переменная | Назначение |
+|------------|------------|
+| `TELEGRAM_BOT_TOKEN` | Токен от BotFather |
+| `JOBSKOUT_API_URL` | По умолчанию `http://127.0.0.1:8000` |
+| `JOBSKOUT_USER_TOKEN` | JWT для вызовов API (scaffold) |
+| `BOT_SERVICE_KEY` и др. | См. корневой **README** для прод-потока |
+
+3. Запуск из папки `bot/`:
+
+```bash
+python main.py
+```
+
+## Траблшутинг
+
+| Проблема | Что проверить |
+|----------|----------------|
+| Нет ответа бота | Токен, сеть до `api.telegram.org`, прокси при необходимости. |
+| API401 | `JOBSKOUT_USER_TOKEN` / `BOT_SERVICE_KEY` и соответствие бэкенду. |
+| Линк не срабатывает | Поток кодов из веба, `JOBSKOUT_API_URL`, логи бэкенда. |
+
+**Заметка:** текущий scaffold использует один JWT из env; следующий шаг — маппинг каждого Telegram-пользователя на учётную запись JobSkout.
