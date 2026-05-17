@@ -11,9 +11,35 @@ jobskout.db
 .env
 .env.*
 *.db
+.env.local
+.env.*.local
+!.env.example
 
 # Next.js (also see web/.gitignore)
 web/node_modules/
 web/.next/
 frontend/node_modules/
 frontend/dist/
+
+# Turborepo
+.turbo
+
+# pnpm
+node_modules/
+.pnpm-store/
+
+# Python coverage
+coverage/
+htmlcov/
+.coverage
+.python-version
+
+# IDE
+.vscode/
+.idea/
+
+# Storybook
+storybook-static/
+
+# Yandex Cloud
+yc-sa-key.json
