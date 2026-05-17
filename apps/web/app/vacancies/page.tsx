@@ -80,7 +80,7 @@ export default function VacanciesPage() {
         <Card>
           <h1 className="text-xl font-extrabold">Лента вакансий</h1>
           <p className="mt-1 text-sm text-[var(--text-muted)]">
-            HH-паттерн поиска + кастомная JobSkout-фишка: AI-композер фильтров и приоритет промо-вакансий.
+            HH-паттерн поиска + кастомная Otklik-фишка: AI-композер фильтров и приоритет промо-вакансий.
           </p>
           <div className="mt-3 grid gap-2">
             <Input value={location} onChange={setLocation} placeholder="Локация: Москва / Remote" />

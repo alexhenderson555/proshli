@@ -1,4 +1,4 @@
-# JobSkout Architecture (MVP)
+# Otklik.ai Architecture (MVP)
 
 ## Domains
 

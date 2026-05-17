@@ -36,7 +36,7 @@ export default function AuthPage() {
   return (
     <div className="grid gap-4 md:grid-cols-[1.2fr_1fr]">
       <Card>
-        <h1 className="text-2xl font-extrabold">Onboarding JobSkout</h1>
+        <h1 className="text-2xl font-extrabold">Onboarding Otklik.ai</h1>
         <p className="mt-2 text-sm text-[var(--text-muted)]">
           HH-похожий входной поток, но с AI-first идентичностью: создаешь аккаунт и сразу переходишь к фильтрам и
           персональному матчингу.
@@ -72,7 +72,7 @@ export default function AuthPage() {
         <h2 className="text-lg font-bold">Состояние</h2>
         <p className="mt-2 rounded-xl bg-[var(--surface-alt)] p-3 text-sm text-[var(--text-muted)]">{status}</p>
         <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-[var(--text-muted)]">
-          <li>JWT хранится в localStorage как `jobskout_web_token`.</li>
+          <li>JWT хранится в localStorage как `otklik_web_token`.</li>
           <li>Дальше переходи в разделы `Вакансии` или `Соискатель`.</li>
           <li>Для employer-flow открой страницу `Работодатель`.</li>
         </ul>

@@ -19,7 +19,7 @@ export default function EmployerPage() {
   const [uiStatus, setUiStatus] = useState("Готово");
 
   const [title, setTitle] = useState("");
-  const [company, setCompany] = useState("JobSkout");
+  const [company, setCompany] = useState("Otklik");
   const [location, setLocation] = useState("Remote");
   const [description, setDescription] = useState("");
 
@@ -144,7 +144,7 @@ export default function EmployerPage() {
         <Card>
           <h1 className="text-xl font-extrabold">Кабинет работодателя</h1>
           <p className="mt-1 text-sm text-[var(--text-muted)]">
-            Управляй вакансиями, архивом и продвижением. Поток знаком HH, монетизация и аналитика — JobSkout-style.
+            Управляй вакансиями, архивом и продвижением. Поток знаком HH, монетизация и аналитика — Otklik-style.
           </p>
           <div className="mt-3 grid gap-2">
             <Input value={title} onChange={setTitle} placeholder="Title вакансии" />

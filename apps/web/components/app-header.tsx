@@ -33,7 +33,11 @@ function subscribeToToken(cb: () => void) {
 function getTokenSnapshot() {
   if (typeof window === "undefined") return null;
   try {
-    return window.localStorage.getItem("otklik.token");
+    // Keep in sync with `lib/session.ts` `TOKEN_KEY`.
+    return (
+      window.localStorage.getItem("otklik_web_token") ??
+      window.localStorage.getItem("jobskout_web_token")
+    );
   } catch {
     return null;
   }

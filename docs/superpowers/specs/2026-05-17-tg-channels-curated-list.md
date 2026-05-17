@@ -1,6 +1,6 @@
 # Curated Telegram Channels for IT Job Aggregation (RU/CIS)
 
-Reference doc for the JobSkout parser. Compiled 2026-05-17 from aggregator articles (huntflow.media, potok.io, vc.ru, geekjob.ru), TGStat / Telemetr.io listings, and category-specific roundups (skillfactory, habr, partnerkin). Linked from `2026-05-17-jobskout-v2-platform-design.md`.
+Reference doc for the Otklik.ai ingestion parser. Compiled 2026-05-17 from aggregator articles (huntflow.media, potok.io, vc.ru, geekjob.ru), TGStat / Telemetr.io listings, and category-specific roundups (skillfactory, habr, partnerkin).
 
 ## Caveats and operational notes
 

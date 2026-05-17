@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 test("auth page renders onboarding copy", async ({ page }) => {
   await page.goto("/auth");
-  await expect(page.getByRole("heading", { name: "Onboarding JobSkout" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Onboarding Otklik.ai" })).toBeVisible();
 });
 
 test("vacancies page renders search panel", async ({ page }) => {

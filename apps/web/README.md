@@ -1,42 +1,55 @@
-# JobSkout Web (Next.js)
+# Otklik.ai Web (Next.js)
 
-## Что делает продукт
+## Что делает
 
-Основной **веб-интерфейс** монорепозитория JobSkout: вакансии, профили, сценарии соискателя/работодателя. Собран на **Next.js** (см. также корневой `README.md` проекта).
-
-## Преимущества
-
-- App Router, быстрый dev-цикл, общий API с бэкендом FastAPI.
+Веб-интерфейс монорепы Otklik.ai: лендинг, поиск вакансий, профили
+соискателя/работодателя, AI-чат. Next.js App Router, Tailwind v4,
+shadcn-tokenизированная дизайн-система.
 
 ## Установка
 
 ```bash
-cd web
-npm install
+cd apps/web
+pnpm install
 ```
 
-Создайте окружение (минимум):
+Минимум переменных окружения (`.env.local`):
 
 ```bash
 NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
 
-Запуск:
+См. полный список в `apps/web/.env.example`. Валидация — через
+`@t3-oss/env-nextjs` (`apps/web/lib/env.ts`): отсутствие или неверный
+формат значения роняет билд громко, а не превращается в `undefined`
+во время рантайма.
+
+## Команды
 
 ```bash
-npm run dev
+pnpm dev          # next dev на :3000
+pnpm build        # next build (standalone output для Docker)
+pnpm lint         # eslint
+pnpm type-check   # tsc --noEmit
+pnpm test         # playwright e2e
 ```
 
-Откройте [http://localhost:3000](http://localhost:3000) (типичный путь к вакансиям: `/vacancies` — см. корневой README).
+## Структура
 
-Дополнительно: `npm run lint`, `npm run build`, `npm run test:e2e`.
+| Путь | Назначение |
+|------|------------|
+| `app/` | App Router — страницы и layout |
+| `components/` | Локальные UI-примитивы (Button/Card/Badge/…) |
+| `features/` | Feature-папки (`ai-chat/` со streaming SSE-клиентом) |
+| `lib/` | `api.ts`, `env.ts`, `cn.ts`, `session.ts` |
 
 ## Траблшутинг
 
 | Проблема | Что проверить |
 |----------|----------------|
-| Нет данных /404 на API | Запущен ли бэкенд, верный ли `NEXT_PUBLIC_API_URL`. |
-| CORS / сетевые ошибки | URL схема http/https, файрвол. |
-| Сборка падает | Версия Node, `npm ci` vs `npm install`, логи `npm run build`. |
+| Нет данных / 404 от API | Бэкенд запущен, верный `NEXT_PUBLIC_API_URL` |
+| CORS | API настроен с `cors_allow_origins`, схема http/https совпадает |
+| Сборка падает | Node 20+, чистая установка через `pnpm install --frozen-lockfile` |
 
-Шаблон create-next-app и документация Next.js: [nextjs.org/docs](https://nextjs.org/docs).
+Документация Next.js: [nextjs.org/docs](https://nextjs.org/docs).

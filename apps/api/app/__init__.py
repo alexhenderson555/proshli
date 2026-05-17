@@ -1,1 +1,1 @@
-# JobSkout backend package
+# Otklik.ai backend package

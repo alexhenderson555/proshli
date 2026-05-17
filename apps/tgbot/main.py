@@ -9,7 +9,9 @@ from aiogram.filters import Command, CommandStart
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
-API_URL = os.getenv("JOBSKOUT_API_URL", "http://127.0.0.1:8000")
+# `OTKLIK_API_URL` is the canonical name post-rebrand; `JOBSKOUT_API_URL`
+# is still honoured as a fallback so older deployments don't break.
+API_URL = os.getenv("OTKLIK_API_URL") or os.getenv("JOBSKOUT_API_URL", "http://127.0.0.1:8000")
 BOT_SERVICE_KEY = os.getenv("BOT_SERVICE_KEY", "change-me-bot-service-key")
 REQUIRE_CHANNEL_SUBSCRIPTION = os.getenv("REQUIRE_CHANNEL_SUBSCRIPTION", "true").lower() == "true"
 REQUIRED_CHANNEL_USERNAME = os.getenv("REQUIRED_CHANNEL_USERNAME", "@iischnaya").strip()
@@ -227,7 +229,7 @@ async def start(message: Message) -> None:
     if is_subscription_guard_enabled():
         subscription_hint = f"\nДоступ к функциям открыт после подписки на {REQUIRED_CHANNEL_USERNAME}."
     await message.answer(
-        "Привет! Я JobSkout-бот.\n"
+        "Привет! Я Otklik.ai-бот.\n"
         "Я ищу вакансии, сохраняю фильтры, помогаю AI и настраиваю дайджест.\n"
         "Чтобы привязать аккаунт: сгенерируй код на сайте и отправь /link КОД.\n"
         f"Используй кнопки ниже.{subscription_hint}",
@@ -324,7 +326,7 @@ async def link_help(query: CallbackQuery) -> None:
     if query.message:
         await query.message.answer(
             "Как привязать аккаунт:\n"
-            "1) Войди на сайт JobSkout под своим аккаунтом соискателя\n"
+            "1) Войди на сайт Otklik.ai под своим аккаунтом соискателя\n"
             "2) Нажми кнопку генерации кода Telegram\n"
             "3) Отправь в боте: /link КОД",
             reply_markup=main_menu_keyboard(),
