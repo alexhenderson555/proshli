@@ -194,3 +194,71 @@ async def test_invalid_work_mode_returns_400(client: AsyncClient) -> None:
         params={"work_mode": "underwater", "include_live_hh": "false"},
     )
     assert resp.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_vacancy_detail_endpoint(client: AsyncClient) -> None:
+    """``GET /vacancies/{id}`` returns the record directly (no list scan)."""
+    _, token, cleanup = await register_test_user(client, role="employer")
+    headers = auth_headers(token)
+    try:
+        created = await client.post(
+            "/vacancies",
+            json={
+                "source": "manual",
+                "external_id": "wave6-detail",
+                "title": "Senior Backend",
+                "company": "Otklik",
+                "location": "Moscow",
+            },
+            headers=headers,
+        )
+        assert created.status_code == 201
+        vid = created.json()["id"]
+
+        # Anonymous GET works (public read).
+        detail = await client.get(f"/vacancies/{vid}")
+        assert detail.status_code == 200
+        assert detail.json()["title"] == "Senior Backend"
+        assert detail.json()["id"] == vid
+
+        # Missing id → 404 (no leak).
+        missing = await client.get("/vacancies/99999999")
+        assert missing.status_code == 404
+    finally:
+        await cleanup()
+
+
+@pytest.mark.asyncio
+async def test_delete_missing_vacancy_returns_404(client: AsyncClient) -> None:
+    """Deleting a vacancy that's already gone must 404, not silently succeed.
+
+    Reproduces the Wave-6 bug where ``require_employer_ownership`` passed (the
+    join row still existed) but the underlying vacancy had been soft-deleted —
+    the route would write a phantom audit-log entry and return success.
+    """
+    _, token, cleanup = await register_test_user(client, role="employer")
+    headers = auth_headers(token)
+    try:
+        created = await client.post(
+            "/vacancies",
+            json={
+                "source": "manual",
+                "external_id": "wave6-doubledelete",
+                "title": "Temp Vacancy",
+                "company": "Otklik",
+                "location": "Remote",
+            },
+            headers=headers,
+        )
+        assert created.status_code == 201
+        vid = created.json()["id"]
+
+        first = await client.delete(f"/vacancies/{vid}", headers=headers)
+        assert first.status_code == 200
+
+        # Second delete: ownership join still exists, but the vacancy is gone.
+        second = await client.delete(f"/vacancies/{vid}", headers=headers)
+        assert second.status_code == 404
+    finally:
+        await cleanup()

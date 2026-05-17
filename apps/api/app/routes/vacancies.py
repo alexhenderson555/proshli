@@ -373,6 +373,23 @@ async def export_my_vacancy_actions_csv(
     )
 
 
+@router.get("/{vacancy_id}", response_model=VacancyOut)
+async def get_vacancy(
+    vacancy_id: int,
+    db: DbSession,
+) -> Vacancy:
+    """Public detail endpoint — replaces the client-side list-scan workaround.
+
+    Returns 404 for missing/soft-deleted rows. Live hh.ru records aren't
+    represented here (they're synthesised in :func:`list_vacancies`); IDs from
+    that path won't resolve, which is the correct behaviour.
+    """
+    vacancy = await db.get(Vacancy, vacancy_id)
+    if vacancy is None or vacancy.is_deleted:
+        raise HTTPException(status_code=404, detail="Vacancy not found")
+    return vacancy
+
+
 @router.put("/{vacancy_id}", response_model=VacancyOut)
 async def update_my_vacancy(
     vacancy_id: int,
@@ -419,15 +436,20 @@ async def delete_my_vacancy(
     await require_employer_ownership(db, current_user.id, vacancy_id)
 
     vacancy = await db.get(Vacancy, vacancy_id)
-    if vacancy:
-        vacancy.is_deleted = True
-        vacancy.is_active = False
-        vacancy.deleted_at = now_utc()
+    if vacancy is None or vacancy.is_deleted:
+        # ``require_employer_ownership`` passed (the join row exists), but the
+        # vacancy itself is gone or already soft-deleted.  Surface a clean 404
+        # rather than silently writing a phantom audit log row.
+        raise HTTPException(status_code=404, detail="Vacancy not found")
+
+    vacancy.is_deleted = True
+    vacancy.is_active = False
+    vacancy.deleted_at = now_utc()
     await db.commit()
     await log_employer_action(
         db=db,
         user_id=current_user.id,
-        vacancy_id=vacancy_id,
+        vacancy_id=vacancy.id,
         action="vacancy_soft_deleted",
         meta={},
     )

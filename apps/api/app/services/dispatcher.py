@@ -4,13 +4,12 @@ from __future__ import annotations
 
 from datetime import timedelta
 
-from sqlalchemy import desc, select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.models import DigestDispatchEvent, DigestPreference, User
 from app.services.delivery import send_email_digest, send_telegram_digest
 from app.services.digest import digest_channels, rank_for_user
 from app.time_utils import now_utc
+from sqlalchemy import desc, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 def should_dispatch(pref: DigestPreference, frequency: str) -> bool:

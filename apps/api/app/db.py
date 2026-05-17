@@ -1,8 +1,8 @@
 """Async SQLAlchemy infrastructure.
 
-Single source of truth for the engine, session factory, and declarative ``Base``.
-The legacy sync ``app.database`` module re-exports from here during the
-migration period and will be removed once all callers are async.
+Single source of truth for the engine, session factory, and declarative
+``Base``. The Wave 4–6 migration replaced every sync caller; the legacy
+``app.database`` shim was deleted in Wave 6.
 """
 
 from collections.abc import AsyncIterator

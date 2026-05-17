@@ -9,10 +9,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from app.models import DigestPreference, Resume, User, Vacancy
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.models import DigestPreference, Resume, User, Vacancy
 
 
 @dataclass

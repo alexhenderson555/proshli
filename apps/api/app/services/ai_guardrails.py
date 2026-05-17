@@ -9,12 +9,11 @@ from __future__ import annotations
 
 from datetime import date
 
-from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.config import settings
 from app.models import AiUsageEvent, User
 from app.time_utils import now_utc
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 CAREER_KEYWORDS = {
     "работа",

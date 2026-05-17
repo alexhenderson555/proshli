@@ -41,10 +41,13 @@ class Settings(BaseSettings):
     # ------------------------------------------------------------------ auth
     jwt_secret: str = Field(default="change-me-in-prod-please")
     jwt_algorithm: str = Field(default="HS256")
-    jwt_access_token_ttl_minutes: int = Field(default=60)
-    # Legacy alias for callers that still reference the old name; kept
-    # in-sync via a computed property below.
-    access_token_expire_minutes: int = Field(default=1440)
+    # Single source of truth for the access-token TTL.  The previous duplicate
+    # field ``jwt_access_token_ttl_minutes`` (60) silently lost to its sibling
+    # ``access_token_expire_minutes`` (1440) — tokens lived 24× longer than the
+    # documented TTL.  Wave 6 fixes that.  Sessions extend transparently via
+    # the refresh-token flow introduced in Wave 7.
+    access_token_expire_minutes: int = Field(default=60)
+    refresh_token_expire_minutes: int = Field(default=60 * 24 * 14)  # 14 days
 
     # ------------------------------------------------------------------ bot
     bot_service_key: str = Field(default="change-me-bot-service-key")

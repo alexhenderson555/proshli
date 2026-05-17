@@ -4,11 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.connectors.registry import build_connectors
 from app.services.dispatcher import dispatch_all
 from app.services.ingestion import run_ingestion
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 @dataclass

@@ -72,6 +72,9 @@ export const api = {
   vacancies(query: RequestOptions["query"]) {
     return request<Vacancy[]>("/vacancies", { query });
   },
+  vacancy(id: number) {
+    return request<Vacancy>(`/vacancies/${id}`);
+  },
   seekerProfile(token: string) {
     return request<SeekerProfileOut>("/profiles/seeker", { token });
   },

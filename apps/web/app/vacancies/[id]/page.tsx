@@ -20,26 +20,41 @@ export default function VacancyDetailsPage() {
     async function load() {
       setLoading(true);
       setError("");
+      const idNum = Number(params.id);
+      if (!Number.isFinite(idNum) || idNum <= 0) {
+        setError("Некорректный идентификатор вакансии");
+        setVacancy(null);
+        setRelated([]);
+        setLoading(false);
+        return;
+      }
       try {
-        const all = await api.vacancies({});
-        const idNum = Number(params.id);
-        const current = all.find((item) => item.id === idNum) ?? null;
-        if (!current) {
-          setError("Вакансия не найдена");
-          setVacancy(null);
-          setRelated([]);
-          return;
-        }
+        // Detail first — one O(1) lookup instead of fetching the full list.
+        const current = await api.vacancy(idNum);
         setVacancy(current);
+        // "Similar" still pulls the list, but only because there is no
+        // /vacancies/{id}/similar endpoint yet. When that lands we'll switch.
+        const all = await api.vacancies({}).catch(() => [] as Vacancy[]);
         setRelated(
           all
             .filter((item) => item.id !== current.id)
-            .filter((item) => item.experience_level === current.experience_level || item.location === current.location)
+            .filter(
+              (item) =>
+                item.experience_level === current.experience_level ||
+                item.location === current.location,
+            )
             .slice(0, 3),
         );
       } catch (err) {
         const message = err instanceof Error ? err.message : "Ошибка загрузки";
-        setError(message);
+        // 404 from the API arrives as a thrown Error with the FastAPI detail.
+        if (message.toLowerCase().includes("not found") || message.includes("404")) {
+          setError("Вакансия не найдена");
+        } else {
+          setError(message);
+        }
+        setVacancy(null);
+        setRelated([]);
       } finally {
         setLoading(false);
       }

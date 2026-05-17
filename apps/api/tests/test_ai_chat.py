@@ -11,12 +11,11 @@ The endpoint is a gate, not a model call.  These tests cover:
 from __future__ import annotations
 
 import pytest
-from httpx import AsyncClient
-
 from app.config import settings
 from app.db import async_session_factory
 from app.models import AiUsageEvent
 from app.time_utils import now_utc
+from httpx import AsyncClient
 from tests.helpers import auth_headers, register_test_user
 
 
@@ -62,9 +61,8 @@ async def test_daily_limit_enforced(client: AsyncClient) -> None:
     try:
         # Pre-fill the per-day budget directly in the DB.
         async with async_session_factory() as session:
-            from sqlalchemy import select
-
             from app.models import User
+            from sqlalchemy import select
 
             user_id = (
                 await session.execute(select(User.id).where(User.email == email))

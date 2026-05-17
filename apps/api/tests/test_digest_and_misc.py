@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import pytest
 from httpx import AsyncClient
-
 from tests.helpers import auth_headers, register_test_user
 
 
