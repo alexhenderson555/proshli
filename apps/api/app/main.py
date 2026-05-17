@@ -19,6 +19,7 @@ from app.config import settings
 from app.routes import auth as auth_routes
 from app.routes import health as health_routes
 from app.routes import users as users_routes
+from app.routes import vacancies as vacancies_routes
 
 
 def create_app() -> FastAPI:
@@ -34,6 +35,7 @@ def create_app() -> FastAPI:
     app.include_router(health_routes.router)
     app.include_router(auth_routes.router)
     app.include_router(users_routes.router)
+    app.include_router(vacancies_routes.router)
 
     return app
 

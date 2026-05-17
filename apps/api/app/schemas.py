@@ -191,7 +191,7 @@ class EmployerActionLogOut(BaseModel):
     id: int
     vacancy_id: int | None
     action: str
-    meta: dict
+    meta: dict[str, object]
     created_at: datetime
 
 
@@ -236,12 +236,12 @@ class EmployerProfileOut(BaseModel):
 class ResumeVersionCreate(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     target_role: str = ""
-    content: dict
+    content: dict[str, object]
 
 
 class ResumeVersionOut(BaseModel):
     id: int
     name: str
     target_role: str
-    content: dict
+    content: dict[str, object]
     created_at: datetime
