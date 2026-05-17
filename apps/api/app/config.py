@@ -22,6 +22,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 _SECRET_DEFAULTS: dict[str, str] = {
     "jwt_secret": "change-me-in-prod-please",
     "bot_service_key": "change-me-bot-service-key",
+    # Wave 2: ЮKassa shop secret must be set for any non-dev environment that
+    # exposes /billing/* routes. Empty string is the dev-friendly default —
+    # the guard rejects it once app_env leaves dev/test.
+    "yookassa_secret_key": "",
 }
 
 

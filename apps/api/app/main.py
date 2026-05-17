@@ -30,6 +30,7 @@ from app.routes import (
     admin,
     ai,
     auth,
+    billing,
     digest,
     health,
     ingest,
@@ -37,6 +38,7 @@ from app.routes import (
     resumes,
     users,
     vacancies,
+    webhooks,
 )
 from app.sentry import init_sentry
 
@@ -93,6 +95,8 @@ def create_app() -> FastAPI:
     app.include_router(digest.router)
     app.include_router(ai.router)
     app.include_router(admin.router)
+    app.include_router(billing.router)
+    app.include_router(webhooks.router)
 
     return app
 

@@ -24,12 +24,14 @@ celery_app = Celery(
     include=[
         "workers.tasks.ingest",
         "workers.tasks.digest",
+        "workers.tasks.billing",
     ],
 )
 
 # Eagerly import task modules so they register on the canonical app object.
 # ``include=`` lazy-imports them only when the worker boots; for tests +
 # importers of ``celery_app`` we want the side-effect now.
+import workers.tasks.billing  # noqa: E402
 import workers.tasks.digest  # noqa: E402
 import workers.tasks.ingest  # noqa: E402, F401
 
@@ -61,6 +63,12 @@ celery_app.conf.update(
             "task": "workers.tasks.digest.send_digests",
             "schedule": crontab(hour=9, minute=15, day_of_week="mon"),
             "kwargs": {"frequency": "weekly"},
+        },
+        # Wave 2: hourly autopayment renewal. Skewed off the :00 mark so we
+        # don't pile onto ЮKassa's own minute-zero spike.
+        "renew-subscriptions-hourly": {
+            "task": "workers.tasks.billing.renew_expiring_subscriptions",
+            "schedule": crontab(minute=7),
         },
     },
 )

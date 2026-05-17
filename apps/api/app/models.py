@@ -27,6 +27,74 @@ class User(Base):
     resume_versions: Mapped[list["ResumeVersion"]] = relationship(back_populates="owner")
     employer_vacancies: Mapped[list["EmployerVacancy"]] = relationship(back_populates="owner")
     employer_actions: Mapped[list["EmployerActionLog"]] = relationship(back_populates="owner")
+    subscription: Mapped["Subscription | None"] = relationship(
+        back_populates="owner", uselist=False
+    )
+
+
+class Plan(Base):
+    """Billing tier definition.
+
+    Wave 2 seeds three rows via the alembic migration:
+
+    * ``free``     — 0 ₽ / mo, AI 5/day, no semantic search
+    * ``pro``      — 490 ₽ / mo, AI 50/day, semantic search on, daily digest
+    * ``employer`` — 2490 ₽ / mo, AI 100/day, semantic search on, daily digest
+
+    The row is intentionally lightweight: pricing + feature flags only. Per-user
+    state (renewal time, payment-method handle) lives on ``Subscription``.
+    """
+
+    __tablename__ = "plans"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    slug: Mapped[str] = mapped_column(String(32), unique=True, index=True)
+    name_ru: Mapped[str] = mapped_column(String(120))
+    price_rub: Mapped[int] = mapped_column(Integer, default=0)
+    ai_daily_limit: Mapped[int] = mapped_column(Integer, default=5)
+    semantic_search: Mapped[bool] = mapped_column(Boolean, default=False)
+    digest_frequency: Mapped[str] = mapped_column(String(20), default="weekly")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now_utc)
+
+
+class Subscription(Base):
+    """A user's current billing state.
+
+    1-to-1 with ``User``. ``yookassa_payment_method_id`` holds the saved
+    payment-method handle from the initial checkout (``save_payment_method=True``);
+    the hourly Celery beat task uses it to charge recurring renewals without
+    user interaction.
+
+    ``status`` transitions:
+
+    * ``pending``   — checkout created, awaiting ``payment.succeeded`` webhook
+    * ``active``    — paid, ``current_period_end`` in the future
+    * ``past_due``  — renewal charge failed, grace period before downgrade
+    * ``canceled``  — user opted out; access keeps until ``current_period_end``
+    """
+
+    __tablename__ = "subscriptions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id"), unique=True, index=True
+    )
+    plan_id: Mapped[int] = mapped_column(ForeignKey("plans.id"), index=True)
+    yookassa_payment_method_id: Mapped[str | None] = mapped_column(
+        String(128), nullable=True
+    )
+    status: Mapped[str] = mapped_column(String(20), default="pending", index=True)
+    current_period_end: Mapped[datetime | None] = mapped_column(
+        DateTime, nullable=True, index=True
+    )
+    last_payment_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now_utc)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=now_utc, index=True
+    )
+
+    owner: Mapped[User] = relationship(back_populates="subscription")
+    plan: Mapped[Plan] = relationship()
 
 
 class Vacancy(Base):

@@ -245,3 +245,43 @@ class ResumeVersionOut(BaseModel):
     target_role: str
     content: dict[str, object]
     created_at: datetime
+
+
+# --------------------------------------------------------------------- billing
+
+
+class PlanOut(BaseModel):
+    """Public plan info — exposed via ``GET /billing/plans``."""
+
+    slug: str
+    name_ru: str
+    price_rub: int
+    ai_daily_limit: int
+    semantic_search: bool
+    digest_frequency: str
+
+    model_config = {"from_attributes": True}
+
+
+class SubscriptionOut(BaseModel):
+    """Current subscription state of the authenticated user."""
+
+    plan: PlanOut
+    status: str
+    current_period_end: datetime | None
+    cancel_at_period_end: bool = False
+
+    model_config = {"from_attributes": True}
+
+
+class CheckoutRequest(BaseModel):
+    """Body for ``POST /billing/checkout`` — pick the target plan by slug."""
+
+    plan_slug: str = Field(min_length=1, max_length=32)
+    return_url: str | None = Field(default=None, max_length=512)
+
+
+class CheckoutResponse(BaseModel):
+    confirmation_url: str
+    payment_id: str
+    status: str
