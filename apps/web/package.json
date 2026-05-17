@@ -1,12 +1,14 @@
 {
-  "name": "web",
+  "name": "@otklik/web",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --port 3000",
     "build": "next build",
-    "start": "next start",
+    "start": "next start --port 3000",
     "lint": "eslint",
+    "type-check": "tsc --noEmit",
+    "test": "playwright test",
     "test:e2e": "playwright test"
   },
   "dependencies": {
