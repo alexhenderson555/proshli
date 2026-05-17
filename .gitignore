@@ -13,12 +13,13 @@ otklik.db
 jobskout.db
 *.db
 
-# Env files (keep `.env.example`)
+# Env files (keep `.env.example` and `.env.prod.example` templates)
 .env
 .env.*
 .env.local
 .env.*.local
 !.env.example
+!.env.prod.example
 
 # Next.js
 .next/

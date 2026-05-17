@@ -66,6 +66,24 @@ class Settings(BaseSettings):
     # ------------------------------------------------------------------ ai
     ai_daily_request_limit: int = Field(default=25)
     ai_max_input_chars: int = Field(default=1000)
+    # Anthropic Claude — wave 3 replaces the rule-based extractor with the
+    # real model. Empty key keeps dev startup happy; the LLM service short
+    # circuits to the legacy extractor when unset.
+    anthropic_api_key: str = Field(default="")
+    anthropic_model: str = Field(default="claude-sonnet-4-5-20250929")
+    anthropic_max_tokens: int = Field(default=1024)
+
+    # ------------------------------------------------------------------ billing (ЮKassa)
+    # Wave 2 wires ЮKassa billing for the free / pro / employer tiers
+    # (РФ-focused product). Recurring billing is implemented via
+    # ``save_payment_method`` → autopayments — the first checkout asks the
+    # user to authorise card-on-file, subsequent renewals use the saved
+    # ``payment_method_id``.
+    yookassa_shop_id: str = Field(default="")
+    yookassa_secret_key: str = Field(default="")
+    # Used to build return_url for checkout and to craft Telegram deep-links
+    # from server-side notifications.
+    app_base_url: str = Field(default="http://localhost:3000")
 
     # ------------------------------------------------------------------ ingestion sources
     rss_source_urls: str = Field(default="")
