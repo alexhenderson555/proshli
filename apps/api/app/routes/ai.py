@@ -1,15 +1,18 @@
 """AI chat guardrail + streaming endpoint.
 
 The legacy ``POST /ai/chat`` returns a single JSON envelope and stays for
-backward-compatibility with existing FE code and tests. Wave 11 adds
+backward-compatibility with existing FE code and tests. Wave 11 added
 ``POST /ai/chat/stream`` — a Server-Sent Events surface that emits typed
-``data-*`` chunks the FE can render incrementally.
+``data-*`` chunks the FE can render incrementally. Wave 3 wires the streaming
+path through a real LLM (Anthropic Claude) and makes filters arrive *from*
+the model via tool use, rather than from a keyword-only extractor.
 
 Stream event shape (one JSON object per SSE ``data:`` line, plus the SSE
 event name for routing on the client):
 
 * ``data-status``      → ``{"phase": "gating"|"extracting"|"composing"|"done", "message": str}``
 * ``data-filter``      → ``{"key": str, "value": str}``   (one per filter)
+* ``data-content``     → ``{"text": str}``                 (assistant reply tokens)
 * ``data-suggestion``  → ``{"text": str}``                 (search-query hints)
 * ``data-error``       → ``{"code": str, "message": str}``
 * ``data-usage``       → ``{"used_today": int, "limit": int}``
@@ -41,13 +44,15 @@ from app.services.ai_guardrails import (
     is_career_related,
     store_ai_usage,
 )
+from app.services.llm import LLMService, get_llm_service
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 log = structlog.get_logger(__name__)
 
 
 # Search-query suggestions keyed off extracted stack — keeps the demo
-# feeling alive even before a real LLM is wired in.
+# feeling alive. The LLM also produces a natural-language reply via
+# ``data-content``; these hints are complementary chips, not a substitute.
 _SUGGESTIONS_BY_STACK: dict[str, list[str]] = {
     "python": [
         "FastAPI · Django · asyncio",
@@ -100,7 +105,7 @@ async def ai_chat(
             extracted_filters=None,
         )
 
-    allowed, used_today = await can_use_ai_today(db, current_user)
+    allowed, used_today, limit = await can_use_ai_today(db, current_user)
     if not allowed:
         return AiChatResponse(
             accepted=False,
@@ -116,26 +121,30 @@ async def ai_chat(
     return AiChatResponse(
         accepted=True,
         message=(
-            f"Запрос принят. Использовано сегодня: {used_today + 1}/"
-            f"{settings.ai_daily_request_limit}. Фильтры извлечены."
+            f"Запрос принят. Использовано сегодня: {used_today + 1}/{limit}. "
+            "Фильтры извлечены."
         ),
         extracted_filters=extracted_filters,
     )
 
 
 # ---------------------------------------------------------------------------
-# Streaming endpoint (Wave 11)
+# Streaming endpoint (Wave 11; Wave 3 wires real LLM in)
 # ---------------------------------------------------------------------------
 
 
 async def _stream_chat(
-    db: DbSession, user: User, message: str
+    db: DbSession,
+    user: User,
+    message: str,
+    llm: LLMService,
 ) -> AsyncIterator[bytes]:
     """Yield SSE frames for a single chat turn.
 
     We commit to the contract of "always emit ``data-done`` last, even on
     error" so the EventSource on the client doesn't have to handle EOF
-    differently from a clean shutdown.
+    differently from a clean shutdown. ``llm`` is injected so tests can swap
+    in a deterministic fake without monkey-patching module globals.
     """
 
     # 1) Input length gate — emit a typed error and close.
@@ -164,45 +173,82 @@ async def _stream_chat(
         yield _sse("data-done", {})
         return
 
-    # 3) Per-day budget.
-    allowed, used_today = await can_use_ai_today(db, user)
+    # 3) Per-day budget — now tier-aware (free=5, pro=50, employer=100 by default).
+    allowed, used_today, limit = await can_use_ai_today(db, user)
     if not allowed:
         yield _sse(
             "data-error",
             {
                 "code": "daily_limit_reached",
-                "message": "Достигнут дневной лимит AI-запросов. Попробуйте позже.",
+                "message": (
+                    f"Достигнут дневной лимит AI-запросов ({limit}). "
+                    "Попробуй позже или оформи подписку."
+                ),
             },
         )
         yield _sse(
             "data-usage",
-            {"used_today": used_today, "limit": settings.ai_daily_request_limit},
+            {"used_today": used_today, "limit": limit},
         )
         yield _sse("data-done", {})
         return
 
-    # 4) Filter extraction — emit one frame per filter so the FE can chip them
-    #    in as soon as each one resolves.
+    # 4) Hand off to the LLM service — it streams ``filter`` and ``content``
+    #    tuples. We mirror them onto the SSE surface so the FE can render
+    #    filter chips and the assistant reply in parallel.
     yield _sse(
         "data-status",
         {"phase": "extracting", "message": "Извлекаю фильтры…"},
     )
-    await asyncio.sleep(0.05)
-    extracted = extract_basic_filters(message)
-    for key, value in extracted.items():
-        yield _sse("data-filter", {"key": key, "value": value})
-        await asyncio.sleep(0.03)
 
-    # 5) Suggestions — small static set today, becomes LLM-driven later.
-    stack = extracted.get("stack")
-    if stack and stack in _SUGGESTIONS_BY_STACK:
+    extracted_keys: set[str] = set()
+    saw_content = False
+    try:
+        async for kind, payload in llm.stream_chat(message):
+            if kind == "filter":
+                key = str(payload.get("key", ""))
+                value = str(payload.get("value", ""))
+                if key and value:
+                    extracted_keys.add(key)
+                    yield _sse("data-filter", {"key": key, "value": value})
+            elif kind == "content":
+                if not saw_content:
+                    yield _sse(
+                        "data-status",
+                        {"phase": "composing", "message": "Готовлю ответ…"},
+                    )
+                    saw_content = True
+                # ``payload`` is a plain str chunk from the LLM stream.
+                yield _sse("data-content", {"text": str(payload)})
+            elif kind == "usage":
+                # Reserved for cost telemetry; we don't surface model usage
+                # over the wire (could leak pricing internals) but logging
+                # here keeps cost-per-turn observable in dev.
+                log.info(
+                    "ai_chat.llm_usage",
+                    user_id=user.id,
+                    backend=llm.name,
+                    **payload,
+                )
+    except Exception as exc:  # pragma: no cover — defensive: LLM service handles its own errors
+        log.warning("ai_chat.llm_unexpected_error", error=str(exc))
         yield _sse(
-            "data-status",
-            {"phase": "composing", "message": "Предлагаю похожие запросы…"},
+            "data-error",
+            {"code": "llm_error", "message": "Ошибка модели. Попробуй ещё раз."},
         )
-        for hint in _SUGGESTIONS_BY_STACK[stack]:
+
+    # 5) Suggestions — small static set, complementary to the LLM reply.
+    stack_value: str | None = None
+    if "stack" in extracted_keys:
+        # Re-parse via the legacy extractor to know which stack we surfaced;
+        # we don't keep the raw values in the route, only the keys. This is
+        # cheap and avoids stashing per-turn state on the request.
+        local = extract_basic_filters(message)
+        stack_value = local.get("stack")
+    if stack_value and stack_value in _SUGGESTIONS_BY_STACK:
+        for hint in _SUGGESTIONS_BY_STACK[stack_value]:
             yield _sse("data-suggestion", {"text": hint})
-            await asyncio.sleep(0.03)
+            await asyncio.sleep(0.02)
 
     # 6) Record usage and emit a final status + usage frame.
     try:
@@ -219,10 +265,7 @@ async def _stream_chat(
 
     yield _sse(
         "data-usage",
-        {
-            "used_today": used_today + 1,
-            "limit": settings.ai_daily_request_limit,
-        },
+        {"used_today": used_today + 1, "limit": limit},
     )
     yield _sse(
         "data-status",
@@ -245,9 +288,10 @@ async def ai_chat_stream(
     db: DbSession,
     current_user: User = Depends(get_current_user),
 ) -> StreamingResponse:
-    """Stream the AI gate decision + filter extraction over SSE."""
+    """Stream the AI gate decision + LLM-driven filters + assistant reply over SSE."""
+    llm = get_llm_service()
     return StreamingResponse(
-        _stream_chat(db, current_user, payload.message),
+        _stream_chat(db, current_user, payload.message, llm),
         media_type="text/event-stream",
         headers={
             # Disable proxy buffering — important for Nginx / Cloudflare which

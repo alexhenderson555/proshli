@@ -20,6 +20,7 @@ from app.models import (
     Resume,
     ResumeVersion,
     SeekerProfile,
+    Subscription,
     TelegramAccountLink,
     TelegramLinkCode,
     User,
@@ -82,6 +83,9 @@ async def register_test_user(
             )
             await session.execute(
                 delete(AiUsageEvent).where(AiUsageEvent.user_id == user_id)
+            )
+            await session.execute(
+                delete(Subscription).where(Subscription.user_id == user_id)
             )
             await session.execute(
                 delete(Resume).where(Resume.user_id == user_id)
