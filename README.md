@@ -1,4 +1,6 @@
-# JobSkout
+# Otklik.ai (codename: jobskout)
+
+> **Бренд:** продукт ребрендируется в **Otklik.ai**. Кодовое имя репо `jobskout` сохраняется до Sprint 2 ради стабильности Sprint 1 разработки.
 
 ## Что делает продукт
 
