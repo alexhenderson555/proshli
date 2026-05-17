@@ -16,6 +16,7 @@ from sqlalchemy import select
 from app.auth import create_access_token, get_current_user, hash_password, verify_password
 from app.config import settings
 from app.deps import DbSession
+from app.middleware.rate_limit import RateLimit
 from app.models import (
     DigestPreference,
     TelegramAccountLink,
@@ -44,7 +45,14 @@ async def _require_bot_service_key(
         raise HTTPException(status_code=401, detail="Invalid bot service key")
 
 
-@router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register",
+    response_model=TokenResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[
+        Depends(RateLimit("auth-register", limit=5, window_seconds=60)),
+    ],
+)
 async def register(payload: RegisterRequest, db: DbSession) -> TokenResponse:
     existing = await db.scalar(select(User).where(User.email == payload.email))
     if existing:
@@ -73,7 +81,13 @@ async def register(payload: RegisterRequest, db: DbSession) -> TokenResponse:
     return TokenResponse(access_token=create_access_token(str(user.id)))
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post(
+    "/login",
+    response_model=TokenResponse,
+    dependencies=[
+        Depends(RateLimit("auth-login", limit=10, window_seconds=60)),
+    ],
+)
 async def login(payload: LoginRequest, db: DbSession) -> TokenResponse:
     user = await db.scalar(select(User).where(User.email == payload.email))
     if not user or not verify_password(payload.password, user.password_hash):

@@ -11,9 +11,18 @@ unused fields will be retired.
 """
 
 from functools import lru_cache
+from typing import Self
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Secrets we refuse to keep at their development defaults outside of dev/test.
+# Adding a value here is the single point where you opt a new secret into the
+# guard.
+_SECRET_DEFAULTS: dict[str, str] = {
+    "jwt_secret": "change-me-in-prod-please",
+    "bot_service_key": "change-me-bot-service-key",
+}
 
 
 class Settings(BaseSettings):
@@ -96,6 +105,29 @@ class Settings(BaseSettings):
     @property
     def rss_source_urls_list(self) -> list[str]:
         return [u.strip() for u in self.rss_source_urls.split(",") if u.strip()]
+
+    @model_validator(mode="after")
+    def _enforce_non_default_secrets(self) -> Self:
+        """Fail-fast in staging/production if a secret is still at its dev default.
+
+        Mirrors the pattern from the tiangolo full-stack template
+        (``_enforce_non_default_secrets``). Local ``development`` and ``test``
+        runs are unaffected so contributors don't need to invent secrets.
+        """
+        if self.app_env in {"development", "test"}:
+            return self
+        offenders = [
+            name
+            for name, default in _SECRET_DEFAULTS.items()
+            if getattr(self, name, None) == default
+        ]
+        if offenders:
+            joined = ", ".join(offenders)
+            raise ValueError(
+                f"Refusing to start with default secret(s) in {self.app_env}: {joined}. "
+                "Set proper values in the environment."
+            )
+        return self
 
 
 @lru_cache

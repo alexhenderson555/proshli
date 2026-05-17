@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.auth import get_current_user
 from app.config import settings
 from app.deps import DbSession
+from app.middleware.rate_limit import RateLimit
 from app.models import User
 from app.schemas import AiChatRequest, AiChatResponse
 from app.services.ai_guardrails import (
@@ -24,7 +25,16 @@ from app.services.ai_guardrails import (
 router = APIRouter(prefix="/ai", tags=["ai"])
 
 
-@router.post("/chat", response_model=AiChatResponse)
+@router.post(
+    "/chat",
+    response_model=AiChatResponse,
+    dependencies=[
+        # Per-IP cap on top of the per-user-daily budget enforced inside the
+        # handler. Prevents one user from burning their budget in a burst that
+        # also overloads the gateway.
+        Depends(RateLimit("ai-chat", limit=20, window_seconds=60)),
+    ],
+)
 async def ai_chat(
     payload: AiChatRequest,
     db: DbSession,
