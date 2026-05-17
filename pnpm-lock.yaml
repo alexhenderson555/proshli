@@ -87,6 +87,9 @@ importers:
 
   packages/eslint-config:
     dependencies:
+      '@eslint/js':
+        specifier: ^9.39.0
+        version: 9.39.4
       '@typescript-eslint/eslint-plugin':
         specifier: ^8.15.0
         version: 8.59.3(@typescript-eslint/parser@8.59.3(eslint@9.39.4(jiti@2.7.0))(typescript@5.9.3))(eslint@9.39.4(jiti@2.7.0))(typescript@5.9.3)
@@ -141,6 +144,9 @@ importers:
         specifier: ^2.5.4
         version: 2.6.1
     devDependencies:
+      '@otklik/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@otklik/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
@@ -150,6 +156,9 @@ importers:
       '@types/react-dom':
         specifier: ^19
         version: 19.2.3(@types/react@19.2.14)
+      eslint:
+        specifier: ^9
+        version: 9.39.4(jiti@2.7.0)
       react:
         specifier: ^19
         version: 19.2.4
