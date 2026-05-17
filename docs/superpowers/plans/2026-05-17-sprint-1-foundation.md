@@ -6,7 +6,7 @@
 
 **Architecture:** Turborepo monorepo с `apps/{web,api,workers,tgbot}` и `packages/{ui,shared-types,config}`. FastAPI на SQLAlchemy 2 async + asyncpg + pgvector. Next.js 16 (App Router) + Tailwind 4 + shadcn/ui + next-themes (4 темы) + next-intl (RU/EN) + Framer Motion. Деплой через Docker + GitHub Actions в Yandex Cloud Serverless Containers. Observability: Sentry + self-hosted Plausible.
 
-**Tech Stack:** TypeScript 5, Python 3.12, Next.js 16, React 19, FastAPI, SQLAlchemy 2 async, asyncpg, Postgres 16 + pgvector, Redis 7, Celery, Tailwind 4, shadcn/ui, next-themes, next-intl, Framer Motion, Storybook 8, Sentry, Plausible, pnpm 9, uv 0.4, GitHub Actions, Yandex Cloud, Turborepo 2.
+**Tech Stack:** TypeScript 5, Python 3.12, Next.js 16, React 19, FastAPI, SQLAlchemy 2 async, asyncpg, Postgres 16 + pgvector, Redis 7, Celery, Tailwind 4, shadcn/ui, next-themes, next-intl, Framer Motion, Storybook 8, Sentry, Plausible, pnpm 11, uv 0.4, GitHub Actions, Yandex Cloud, Turborepo 2.
 
 **Working directory:** `C:/Users/Alex/Cursor/jobskout/` (будет переименован в Sprint 1 Task 0)
 
@@ -153,8 +153,8 @@ git commit -m "docs: signal upcoming rebrand to Otklik.ai"
 - [ ] **Step 1: Установить pnpm и turbo глобально**
 
 ```bash
-npm install -g pnpm@9 turbo@latest
-pnpm --version  # ожидается 9.x
+npm install -g pnpm@11 turbo@latest
+pnpm --version  # ожидается 11.x
 turbo --version  # ожидается 2.x
 ```
 
@@ -165,7 +165,7 @@ turbo --version  # ожидается 2.x
   "name": "otklik-monorepo",
   "version": "0.0.0",
   "private": true,
-  "packageManager": "pnpm@9.12.0",
+  "packageManager": "pnpm@11.1.2",
   "scripts": {
     "build": "turbo build",
     "dev": "turbo dev",
@@ -279,7 +279,7 @@ Expected: `node_modules/` создан, turbo доступен.
 
 ```bash
 git add package.json pnpm-workspace.yaml turbo.json .npmrc .gitignore pnpm-lock.yaml
-git commit -m "feat(repo): initialize Turborepo monorepo with pnpm 9"
+git commit -m "feat(repo): initialize Turborepo monorepo with pnpm 11"
 ```
 
 ---
@@ -2504,7 +2504,7 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 ```dockerfile
 FROM node:20-alpine AS base
-RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
+RUN corepack enable && corepack prepare pnpm@11.1.2 --activate
 
 WORKDIR /app
 
