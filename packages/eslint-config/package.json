@@ -1,0 +1,21 @@
+{
+  "name": "@otklik/eslint-config",
+  "version": "0.0.0",
+  "private": true,
+  "license": "UNLICENSED",
+  "type": "module",
+  "main": "./index.mjs",
+  "files": ["index.mjs", "next.mjs"],
+  "peerDependencies": {
+    "eslint": "^9"
+  },
+  "dependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.15.0",
+    "@typescript-eslint/parser": "^8.15.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-simple-import-sort": "^12.1.1",
+    "eslint-plugin-unused-imports": "^4.1.4",
+    "typescript-eslint": "^8.15.0"
+  }
+}

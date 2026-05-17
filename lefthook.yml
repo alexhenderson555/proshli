@@ -1,0 +1,29 @@
+# Lefthook configuration.
+#
+# Install: `pnpm add -D lefthook && pnpm exec lefthook install`.
+# These hooks stay fast — anything > 2s belongs in CI.
+
+pre-commit:
+  parallel: true
+  commands:
+    ruff:
+      glob: "apps/{api,workers}/**/*.py"
+      run: |
+        cd apps/api && uv run ruff check --fix {staged_files} && uv run ruff format {staged_files}
+      stage_fixed: true
+    prettier:
+      glob: "*.{ts,tsx,md,json,yml,mjs}"
+      run: pnpm exec prettier --write {staged_files}
+      stage_fixed: true
+    eslint:
+      glob: "apps/web/**/*.{ts,tsx}"
+      run: pnpm -F @otklik/web lint --max-warnings=0
+
+commit-msg:
+  commands:
+    conventional:
+      run: |
+        if ! grep -qE '^(feat|fix|chore|refactor|docs|test|ci|build|perf|style)(\(.+\))?!?: ' {1}; then
+          echo "Commit message must follow Conventional Commits (feat:, fix:, refactor:, ...)" >&2
+          exit 1
+        fi

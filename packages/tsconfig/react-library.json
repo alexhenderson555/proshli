@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "display": "Otklik / React library",
+  "extends": "./base.json",
+  "compilerOptions": {
+    "lib": ["DOM", "DOM.Iterable", "ES2023"],
+    "jsx": "react-jsx",
+    "declaration": true,
+    "declarationMap": true,
+    "noEmit": false,
+    "outDir": "dist"
+  }
+}

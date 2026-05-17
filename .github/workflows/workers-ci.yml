@@ -1,0 +1,47 @@
+name: workers-ci
+
+on:
+  push:
+    paths:
+      - "apps/workers/**"
+      - "apps/api/app/**"
+      - ".github/workflows/workers-ci.yml"
+  pull_request:
+    paths:
+      - "apps/workers/**"
+      - "apps/api/app/**"
+      - ".github/workflows/workers-ci.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: apps/workers
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "0.4.x"
+
+      - name: Setup Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync --all-groups
+
+      - name: Ruff lint
+        run: uv run ruff check workers tests
+
+      - name: Mypy
+        run: uv run mypy workers
+
+      - name: Smoke tests
+        # The smoke tests touch ``settings.redis_url`` (default
+        # ``redis://localhost:6379/0``) which is fine — they don't actually
+        # connect, they just inspect the Celery app object.
+        run: uv run pytest -q

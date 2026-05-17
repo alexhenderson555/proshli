@@ -1,0 +1,121 @@
+# Local dev stack: `docker compose up` brings the full system up on
+# localhost. Healthchecks gate the dependency edges so the api/worker
+# don't start before Postgres+Redis are actually accepting connections.
+#
+# Image names use the `otklik-*` prefix so they don't collide with whatever
+# else you have running locally.
+
+name: otklik
+
+services:
+  pg:
+    image: pgvector/pgvector:pg16
+    container_name: otklik-pg
+    environment:
+      POSTGRES_USER: otklik
+      POSTGRES_PASSWORD: otklik
+      POSTGRES_DB: otklik
+    volumes:
+      - otklik-pg-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U otklik -d otklik"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: otklik-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: ./apps/api
+    container_name: otklik-api
+    environment:
+      APP_ENV: development
+      DATABASE_URL: postgresql+asyncpg://otklik:otklik@pg:5432/otklik
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-prod-please}
+      BOT_SERVICE_KEY: ${BOT_SERVICE_KEY:-change-me-bot-service-key}
+      CORS_ALLOWED_ORIGINS: http://localhost:3000
+    ports:
+      - "8000:8000"
+    depends_on:
+      pg:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status==200 else 1)\""]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+
+  worker:
+    build:
+      context: .
+      dockerfile: ./apps/workers/Dockerfile
+    container_name: otklik-worker
+    command: ["celery", "-A", "workers.celery_app", "worker", "--loglevel=INFO", "--concurrency=2"]
+    environment:
+      APP_ENV: development
+      DATABASE_URL: postgresql+asyncpg://otklik:otklik@pg:5432/otklik
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-prod-please}
+      BOT_SERVICE_KEY: ${BOT_SERVICE_KEY:-change-me-bot-service-key}
+    depends_on:
+      pg:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  beat:
+    build:
+      context: .
+      dockerfile: ./apps/workers/Dockerfile
+    container_name: otklik-beat
+    command: ["celery", "-A", "workers.celery_app", "beat", "--loglevel=INFO"]
+    environment:
+      APP_ENV: development
+      DATABASE_URL: postgresql+asyncpg://otklik:otklik@pg:5432/otklik
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-prod-please}
+      BOT_SERVICE_KEY: ${BOT_SERVICE_KEY:-change-me-bot-service-key}
+    depends_on:
+      pg:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: ./apps/web/Dockerfile
+    container_name: otklik-web
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  otklik-pg-data:
