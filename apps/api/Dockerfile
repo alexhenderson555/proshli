@@ -1,16 +1,25 @@
-FROM python:3.12-slim
+FROM python:3.12-slim AS base
 
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    UV_SYSTEM_PYTHON=1
 
 WORKDIR /app
 
-COPY backend/requirements.txt /app/backend/requirements.txt
-RUN pip install --no-cache-dir -r /app/backend/requirements.txt
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:0.4 /uv /usr/local/bin/uv
 
-COPY backend /app/backend
+# Cache layer: deps only
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev --no-install-project
 
-ENV PYTHONPATH=/app/backend
+# App code
+COPY app ./app
+COPY alembic ./alembic
+COPY alembic.ini ./alembic.ini
+
+ENV PATH="/app/.venv/bin:$PATH"
 EXPOSE 8000
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
