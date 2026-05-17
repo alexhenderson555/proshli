@@ -1,7 +1,7 @@
 import hashlib
 from datetime import timedelta
 
-import feedparser
+import feedparser  # type: ignore[import-untyped]
 import httpx
 
 from app.config import settings
@@ -21,10 +21,11 @@ class RssConnector(SourceConnector):
         items: list[VacancyPayload] = []
         for source_url in settings.rss_source_urls_list:
             parsed = None
+            response: httpx.Response | None = None
             try:
                 with httpx.Client(timeout=10.0) as client:
                     response = client.get(source_url)
-                if response.status_code >= 400:
+                if response is not None and response.status_code >= 400:
                     response = None
                 if response is not None:
                     parsed = feedparser.parse(response.text)

@@ -121,6 +121,20 @@ class Settings(BaseSettings):
         default="http://localhost:3000,http://127.0.0.1:3000"
     )
 
+    # ------------------------------------------------------------------ proxies
+    # Comma-separated list of CIDR ranges (or bare IPs) that we trust to set
+    # ``X-Forwarded-For``. Empty default means: do NOT trust XFF, fall back to
+    # ``request.client.host``. This is the safe posture for any host directly
+    # reachable from the internet — otherwise anybody can spoof their source
+    # IP by sending ``X-Forwarded-For: 185.71.76.0`` and walk past the ЮKassa
+    # IP allow-list. Set to your reverse-proxy/CDN CIDR(s) in production
+    # (e.g. ``10.0.0.0/8`` for an internal LB, or the Fly.io edge ranges).
+    trusted_proxies: str = Field(default="")
+
+    @property
+    def trusted_proxies_list(self) -> list[str]:
+        return [p.strip() for p in self.trusted_proxies.split(",") if p.strip()]
+
     @property
     def cors_origins_list(self) -> list[str]:
         """Parsed list form of CORS_ALLOWED_ORIGINS."""

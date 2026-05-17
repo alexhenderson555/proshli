@@ -8,22 +8,35 @@ The ЮKassa receiver uses the official source-IP allowlist (the provider does
 not sign payloads, so we treat the network origin as the trust anchor). The
 list is encoded in ``services/yookassa.py``.
 
-We honour the standard reverse-proxy convention of trusting the *first* entry
-of ``X-Forwarded-For`` when present — Fly.io, Vercel, and nginx all populate
-it. Direct connections fall back to ``request.client.host``.
+XFF is only honoured when the *immediate* peer (``request.client.host``) sits
+inside ``settings.trusted_proxies``. Otherwise the request reaches us
+directly and anybody can spoof their source IP by adding their own
+``X-Forwarded-For`` header — which would walk straight past the ЮKassa
+IP allow-list. Default config keeps the safe posture (no trusted proxies →
+always use ``request.client.host``).
+
+Replay protection lives in ``processed_webhook_events`` (migration 0013): we
+INSERT ``(source, event_id)`` *before* dispatching to a handler, and rely on
+the unique index to surface duplicates as ``IntegrityError``. On a duplicate
+we log + return 200 so ЮKassa stops retrying. Without this guard a single
+replayed ``payment.succeeded`` extended the period by another 30 days every
+delivery (free month per replay).
 """
 
 from __future__ import annotations
 
+import ipaddress
 import logging
 from datetime import timedelta
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
+from app.config import settings
 from app.deps import DbSession
-from app.models import Plan, Subscription, User
+from app.models import Plan, ProcessedWebhookEvent, Subscription, User
 from app.services.yookassa import verify_webhook_ip
 from app.time_utils import now_utc
 
@@ -34,18 +47,49 @@ log = logging.getLogger(__name__)
 _PERIOD_DAYS = 30
 
 
+def _peer_is_trusted_proxy(peer_ip: str) -> bool:
+    """Return True iff the immediate peer is in ``settings.trusted_proxies``.
+
+    Accepts bare IPs and CIDR ranges in the setting; anything that fails to
+    parse is dropped silently (mis-configuration is logged once at startup
+    elsewhere — we don't want a typo here to take the webhook offline).
+    """
+    if not peer_ip:
+        return False
+    try:
+        peer = ipaddress.ip_address(peer_ip)
+    except ValueError:
+        return False
+    for entry in settings.trusted_proxies_list:
+        try:
+            net = ipaddress.ip_network(entry, strict=False)
+        except ValueError:
+            continue
+        if peer in net:
+            return True
+    return False
+
+
 def _client_ip(request: Request) -> str:
     """Pick the most-trustworthy source IP from the request.
 
-    The first XFF hop is the client (subsequent hops are proxies we control);
-    falling through to ``request.client.host`` covers the no-proxy dev case.
+    Only trusts ``X-Forwarded-For`` when the immediate peer is in
+    ``settings.trusted_proxies``. Otherwise returns ``request.client.host``
+    directly — which is the only IP we can actually verify ourselves.
     """
-    xff = request.headers.get("x-forwarded-for")
-    if xff:
-        first = xff.split(",")[0].strip()
-        if first:
-            return first
-    return request.client.host if request.client else ""
+    peer = request.client.host if request.client else ""
+    if _peer_is_trusted_proxy(peer):
+        xff = request.headers.get("x-forwarded-for")
+        if xff:
+            # The left-most non-trusted entry is the client; walk right-to-
+            # left across trusted proxies to find it. For a single-hop edge
+            # (most setups) the first entry is the client and we stop there.
+            hops = [h.strip() for h in xff.split(",") if h.strip()]
+            for hop in hops:
+                if not _peer_is_trusted_proxy(hop):
+                    return hop
+            # Entire chain is trusted proxies — fall through to peer.
+    return peer
 
 
 @router.post("/yookassa", status_code=status.HTTP_200_OK)
@@ -79,7 +123,38 @@ async def yookassa_webhook(request: Request, db: DbSession) -> dict[str, Any]:
 
     event = str(body.get("event", ""))
     obj = body.get("object") or {}
-    log.info("billing.webhook.received", extra={"event": event, "ip": ip})
+    event_id = str(body.get("event_id") or "")
+    object_id = str(obj.get("id") or "") or None
+    log.info(
+        "billing.webhook.received",
+        extra={"event": event, "event_id": event_id, "ip": ip},
+    )
+
+    # Replay-protection hinge — INSERT before dispatch. The unique index on
+    # (source, event_id) makes this atomic: duplicate delivery raises
+    # IntegrityError and we short-circuit with 200 so ЮKassa stops retrying.
+    # We fall back to "<event>:<object_id>" when the payload has no event_id
+    # so older envelopes (or tests) still get guarded; this is what keeps
+    # the "free month per replay" bug from biting on legacy webhooks.
+    dedupe_key = event_id or (f"{event}:{object_id}" if object_id else "")
+    if dedupe_key:
+        marker = ProcessedWebhookEvent(
+            source="yookassa",
+            event_id=dedupe_key,
+            event_type=event,
+            object_id=object_id,
+            processed_at=now_utc(),
+        )
+        db.add(marker)
+        try:
+            await db.flush()
+        except IntegrityError:
+            await db.rollback()
+            log.info(
+                "billing.webhook.replay_ignored",
+                extra={"event": event, "event_id": dedupe_key},
+            )
+            return {"ok": True, "replay": True}
 
     if event == "payment.succeeded":
         await _handle_payment_succeeded(db, obj)
@@ -91,10 +166,26 @@ async def yookassa_webhook(request: Request, db: DbSession) -> dict[str, Any]:
         # Don't reject — ЮKassa will retry forever otherwise.
         log.info("billing.webhook.ignored_event", extra={"event": event})
 
+    # Commit the marker row + any handler-side mutations in one transaction.
+    await db.commit()
     return {"ok": True}
 
 
 async def _handle_payment_succeeded(db: DbSession, obj: dict[str, Any]) -> None:
+    """Mark the subscription active and extend ``current_period_end``.
+
+    *Requires* an existing ``Subscription`` row — we never mint one from the
+    webhook payload because the metadata is attacker-supplied (anyone who can
+    reach the webhook endpoint with a spoofable IP could otherwise grant
+    themselves Pro by inventing a ``user_email``/``plan_slug`` pair). The
+    legitimate creation point is the checkout flow in
+    ``services/yookassa.py``, which writes the pending row server-side
+    before redirecting the user to the payment page.
+
+    Uses ``SELECT … FOR UPDATE`` to serialise concurrent webhook deliveries
+    for the same subscription; without it two replays racing past the
+    INSERT-side guard could both extend the period.
+    """
     metadata = obj.get("metadata") or {}
     plan_slug = str(metadata.get("plan_slug") or "")
     user_email = str(metadata.get("user_email") or "")
@@ -103,7 +194,7 @@ async def _handle_payment_succeeded(db: DbSession, obj: dict[str, Any]) -> None:
     pm_id = str(payment_method.get("id") or "") or None
     recurring = bool(metadata.get("recurring"))
 
-    if not user_email or (not plan_slug and not recurring):
+    if not user_email:
         log.warning(
             "billing.webhook.payment_succeeded.missing_metadata",
             extra={"payment_id": payment_id, "metadata": metadata},
@@ -119,29 +210,23 @@ async def _handle_payment_succeeded(db: DbSession, obj: dict[str, Any]) -> None:
         return
 
     sub = await db.scalar(
-        select(Subscription).where(Subscription.user_id == user.id)
+        select(Subscription)
+        .where(Subscription.user_id == user.id)
+        .with_for_update()
     )
-    now = now_utc()
-
     if sub is None:
-        # Pure recurring path can't reach here (subscription must already exist
-        # to have a saved payment method), so this is an initial-checkout edge:
-        # the user finished payment but the row was never created. Fall back
-        # to building it from metadata.
-        if not plan_slug:
-            return
-        plan = await db.scalar(select(Plan).where(Plan.slug == plan_slug))
-        if plan is None:
-            return
-        sub = Subscription(
-            user_id=user.id,
-            plan_id=plan.id,
-            status="active",
-            created_at=now,
-            updated_at=now,
+        # The checkout flow is responsible for creating the pending row. If
+        # we get here without one the webhook is either replayed from before
+        # the row existed (already idempotently handled by the dedupe table)
+        # or forged. Either way: refuse to mint a subscription.
+        log.warning(
+            "billing.webhook.payment_succeeded.no_subscription",
+            extra={"email": user_email, "payment_id": payment_id},
         )
-        db.add(sub)
-    elif plan_slug:
+        return
+
+    now = now_utc()
+    if plan_slug:
         plan = await db.scalar(select(Plan).where(Plan.slug == plan_slug))
         if plan is not None:
             sub.plan_id = plan.id
@@ -153,25 +238,27 @@ async def _handle_payment_succeeded(db: DbSession, obj: dict[str, Any]) -> None:
     base = sub.current_period_end if recurring and sub.current_period_end else now
     sub.current_period_end = base + timedelta(days=_PERIOD_DAYS)
     sub.updated_at = now
-    await db.commit()
 
 
 async def _handle_payment_canceled(db: DbSession, obj: dict[str, Any]) -> None:
     payment_id = str(obj.get("id") or "")
     sub = await db.scalar(
-        select(Subscription).where(Subscription.last_payment_id == payment_id)
+        select(Subscription)
+        .where(Subscription.last_payment_id == payment_id)
+        .with_for_update()
     )
     if sub is None:
         return
     sub.status = "canceled"
     sub.updated_at = now_utc()
-    await db.commit()
 
 
 async def _handle_refund_succeeded(db: DbSession, obj: dict[str, Any]) -> None:
     payment_id = str(obj.get("payment_id") or "")
     sub = await db.scalar(
-        select(Subscription).where(Subscription.last_payment_id == payment_id)
+        select(Subscription)
+        .where(Subscription.last_payment_id == payment_id)
+        .with_for_update()
     )
     if sub is None:
         return
@@ -182,4 +269,3 @@ async def _handle_refund_succeeded(db: DbSession, obj: dict[str, Any]) -> None:
     sub.current_period_end = None
     sub.yookassa_payment_method_id = None
     sub.updated_at = now_utc()
-    await db.commit()

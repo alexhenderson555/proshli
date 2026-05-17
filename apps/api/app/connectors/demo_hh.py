@@ -12,10 +12,12 @@ class DemoHhConnector(SourceConnector):
     source_name = "hh"
 
     def _fetch_live(self) -> list[VacancyPayload]:
-        params = {
+        # httpx wants ``Mapping[str, str | int | ...]``; stringify the
+        # int-valued params up front so mypy sees a homogeneous type.
+        params: dict[str, str] = {
             "text": settings.hh_search_text,
             "area": settings.hh_region,
-            "per_page": settings.hh_per_page,
+            "per_page": str(settings.hh_per_page),
             "only_with_salary": "false",
             "order_by": "publication_time",
             "search_field": "name",

@@ -23,12 +23,34 @@ official IP allowlist. ``verify_webhook_ip`` enforces it.
 
 from __future__ import annotations
 
+import hashlib
 import ipaddress
 import logging
 import uuid
 from dataclasses import dataclass
 
 from app.config import settings
+
+
+def _stable_idempotence_key(*parts: str) -> str:
+    """Build a deterministic ЮKassa idempotence key from request fingerprint.
+
+    ЮKassa treats the ``Idempotence-Key`` header as the de-duplication anchor
+    for the *outbound* POST — same key + same payload returns the original
+    response instead of charging the card a second time. Using
+    ``uuid.uuid4()`` on every call defeats this: a retry (network blip,
+    Celery re-queue, manual click) starts a fresh transaction and the user
+    is double-charged.
+
+    A SHA-256 over the operation's natural identifiers gives us a stable
+    key without forcing callers to invent one. The key is 36 chars (the
+    spec allows up to 64) and the namespace prefix makes it easy to grep
+    in support tickets.
+    """
+    digest = hashlib.sha256("|".join(parts).encode("utf-8")).hexdigest()
+    # Trim to keep readable in logs; 24 hex chars = 96 bits of entropy, still
+    # collision-safe inside our own namespace.
+    return f"otklik-{digest[:24]}"
 
 log = logging.getLogger(__name__)
 
@@ -82,7 +104,7 @@ def _configure_sdk() -> None:
     cheap, and tolerant of mid-process settings reloads.
     """
     _ensure_configured()
-    from yookassa import Configuration
+    from yookassa import Configuration  # type: ignore[import-untyped]
 
     Configuration.account_id = settings.yookassa_shop_id
     Configuration.secret_key = settings.yookassa_secret_key
@@ -96,12 +118,21 @@ def create_payment(
     description: str,
     save_payment_method: bool = True,
     return_url: str | None = None,
+    idempotency_seed: str | None = None,
 ) -> CheckoutResult:
     """Create an initial checkout payment with save-payment-method = True.
 
     Returns the ``confirmation_url`` the frontend must redirect the user to.
     The webhook handler resolves the user / plan link from ``metadata`` once
     the payment succeeds.
+
+    ``idempotency_seed`` is hashed into the ``Idempotence-Key`` header so a
+    retried POST (network glitch, FE double-click) reaches the same ЮKassa
+    payment object instead of opening a second one. Pass the
+    ``Subscription.id`` or a UUID kept on the pending row — anything stable
+    across retries of the same logical checkout. ``None`` falls back to
+    ``uuid.uuid4()`` for callers that haven't been migrated yet, but a
+    DeprecationWarning is logged so the gap is visible.
     """
     _configure_sdk()
     from yookassa import Payment
@@ -136,7 +167,16 @@ def create_payment(
             ],
         },
     }
-    idempotence_key = str(uuid.uuid4())
+    if idempotency_seed:
+        idempotence_key = _stable_idempotence_key(
+            "checkout", plan_slug, user_email, idempotency_seed
+        )
+    else:
+        log.warning(
+            "billing.create_payment.random_idempotence_key",
+            extra={"plan": plan_slug, "email": user_email},
+        )
+        idempotence_key = str(uuid.uuid4())
     payment = Payment.create(payload, idempotence_key)
     return CheckoutResult(
         payment_id=str(payment.id),
@@ -151,11 +191,19 @@ def charge_recurring(
     price_rub: int,
     user_email: str,
     description: str,
+    idempotency_seed: str | None = None,
 ) -> CheckoutResult:
     """Charge a saved payment-method handle without user interaction.
 
     Per ЮKassa autopayments docs, supplying ``payment_method_id`` and omitting
     ``confirmation`` triggers an off-session charge.
+
+    Callers (Celery ``charge_recurring`` beat task) MUST pass a stable
+    ``idempotency_seed`` — typically ``f"{subscription_id}:{period_index}"``
+    or ``current_period_end.isoformat()`` — so a re-run of the same beat
+    tick doesn't double-charge the card. The legacy random-uuid path is
+    still here for un-migrated callers, but emits a warning so we can find
+    them in logs.
     """
     _configure_sdk()
     from yookassa import Payment
@@ -181,7 +229,16 @@ def charge_recurring(
             ],
         },
     }
-    idempotence_key = str(uuid.uuid4())
+    if idempotency_seed:
+        idempotence_key = _stable_idempotence_key(
+            "recurring", payment_method_id, idempotency_seed
+        )
+    else:
+        log.warning(
+            "billing.charge_recurring.random_idempotence_key",
+            extra={"payment_method": payment_method_id, "email": user_email},
+        )
+        idempotence_key = str(uuid.uuid4())
     payment = Payment.create(payload, idempotence_key)
     # Recurring charges don't need a confirmation URL, so we return an empty
     # string rather than tightening the dataclass with Optional everywhere.

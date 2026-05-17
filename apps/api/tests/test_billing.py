@@ -12,16 +12,18 @@ to assert SQL state transitions.
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from datetime import timedelta
 from types import SimpleNamespace
 from typing import Any
 
 import pytest
+import pytest_asyncio
 from app.db import async_session_factory
-from app.models import Plan, Subscription, User
+from app.models import Plan, ProcessedWebhookEvent, Subscription, User
 from app.services import yookassa as yk_service
 from app.time_utils import now_utc
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy import delete, select
 from tests.helpers import auth_headers, register_test_user
 
@@ -63,6 +65,25 @@ async def _seed_plans() -> None:
         semantic_search=True,
         digest_frequency="daily",
     )
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def _purge_processed_webhook_events() -> AsyncIterator[None]:
+    """Wipe the dedupe table around each test.
+
+    ``processed_webhook_events`` is intentionally append-only in production —
+    it's the atomicity hinge for replay protection. That's the opposite of
+    what we want in tests, where each function uses fixed ``event_id`` values
+    and the next run would see them as already-processed replays. We purge
+    on both sides so any cross-test residue is cleared.
+    """
+    async with async_session_factory() as session:
+        await session.execute(delete(ProcessedWebhookEvent))
+        await session.commit()
+    yield
+    async with async_session_factory() as session:
+        await session.execute(delete(ProcessedWebhookEvent))
+        await session.commit()
 
 
 async def _drop_subscription_for_email(email: str) -> None:
@@ -245,9 +266,31 @@ async def test_cancel_active_subscription(client: AsyncClient) -> None:
 # ----------------------------------------------------------------- webhook
 
 
+@pytest_asyncio.fixture
+async def webhook_client(
+    monkeypatch: pytest.MonkeyPatch,
+) -> AsyncIterator[AsyncClient]:
+    """Async client that satisfies the F5 trusted-proxy check.
+
+    ``ASGITransport`` defaults ``request.client`` to ``("testclient", 50000)``
+    which fails ``ipaddress.ip_address`` and never reaches the XFF parse.
+    Here we build a transport with ``client=("127.0.0.1", 50000)`` and add
+    that loopback to ``settings.trusted_proxies`` so the forged XFF header
+    is honoured. Tests that don't exercise the IP-allowlist branch keep
+    using the default ``client`` fixture in conftest.
+    """
+    from app.config import settings
+    from app.main import app
+
+    monkeypatch.setattr(settings, "trusted_proxies", "127.0.0.1/32")
+    transport = ASGITransport(app=app, client=("127.0.0.1", 50000))
+    async with AsyncClient(transport=transport, base_url="http://testserver") as ac:
+        yield ac
+
+
 @pytest.mark.asyncio
-async def test_webhook_rejects_unknown_ip(client: AsyncClient) -> None:
-    resp = await client.post(
+async def test_webhook_rejects_unknown_ip(webhook_client: AsyncClient) -> None:
+    resp = await webhook_client.post(
         "/webhooks/yookassa",
         json={"event": "payment.succeeded", "object": {}},
         headers={"X-Forwarded-For": "203.0.113.5"},  # TEST-NET-3
@@ -256,8 +299,32 @@ async def test_webhook_rejects_unknown_ip(client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
+async def test_webhook_ignores_xff_when_peer_not_trusted(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A forged XFF must NOT bypass the IP check when the peer is direct.
+
+    F5 regression. Uses the default ``client`` fixture (peer == 'testclient',
+    which fails ``ipaddress.ip_address`` and is therefore never trusted) and
+    keeps ``trusted_proxies`` empty. A forged ``X-Forwarded-For`` matching
+    the ЮKassa allow-list must NOT bypass the network check.
+    """
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "trusted_proxies", "")
+    resp = await client.post(
+        "/webhooks/yookassa",
+        json={"event": "payment.succeeded", "object": {}},
+        # Forged: looks like ЮKassa but the actual peer (ASGI testclient)
+        # isn't in trusted_proxies, so the handler must ignore the header.
+        headers={"X-Forwarded-For": "185.71.76.5"},
+    )
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
 async def test_webhook_accepts_allowed_ip_and_activates(
-    client: AsyncClient,
+    client: AsyncClient, webhook_client: AsyncClient
 ) -> None:
     email, _token, cleanup = await register_test_user(client, role="seeker")
     try:
@@ -282,6 +349,7 @@ async def test_webhook_accepts_allowed_ip_and_activates(
 
         body = {
             "event": "payment.succeeded",
+            "event_id": "evt-webhook-1",
             "object": {
                 "id": "pay-evt-1",
                 "status": "succeeded",
@@ -289,7 +357,7 @@ async def test_webhook_accepts_allowed_ip_and_activates(
                 "payment_method": {"id": "pm-evt-1", "type": "bank_card"},
             },
         }
-        resp = await client.post(
+        resp = await webhook_client.post(
             "/webhooks/yookassa",
             json=body,
             # 185.71.76.5 is inside the 185.71.76.0/27 allowlist range.
@@ -309,6 +377,130 @@ async def test_webhook_accepts_allowed_ip_and_activates(
             assert sub.current_period_end is not None
     finally:
         await _drop_subscription_for_email(email)
+        await cleanup()
+
+
+@pytest.mark.asyncio
+async def test_webhook_replay_does_not_extend_period(
+    client: AsyncClient, webhook_client: AsyncClient
+) -> None:
+    """F1 regression: a replayed payment.succeeded must NOT extend the period.
+
+    Without the ``processed_webhook_events`` dedupe table, a single replay
+    used to add another 30 days to ``current_period_end`` every time ЮKassa
+    re-delivered the event — effectively a free month per replay.
+    """
+    email, _token, cleanup = await register_test_user(client, role="seeker")
+    try:
+        async with async_session_factory() as session:
+            user = await session.scalar(select(User).where(User.email == email))
+            assert user is not None
+            pro = await session.scalar(select(Plan).where(Plan.slug == "pro"))
+            assert pro is not None
+            now = now_utc()
+            session.add(
+                Subscription(
+                    user_id=user.id,
+                    plan_id=pro.id,
+                    status="pending",
+                    last_payment_id="pay-replay-1",
+                    created_at=now,
+                    updated_at=now,
+                )
+            )
+            await session.commit()
+
+        body = {
+            "event": "payment.succeeded",
+            "event_id": "evt-replay-1",
+            "object": {
+                "id": "pay-replay-1",
+                "status": "succeeded",
+                "metadata": {
+                    "plan_slug": "pro",
+                    "user_email": email,
+                    "recurring": True,
+                },
+                "payment_method": {"id": "pm-replay-1", "type": "bank_card"},
+            },
+        }
+        headers = {"X-Forwarded-For": "185.71.76.5"}
+
+        # First delivery — should activate + set period_end.
+        first = await webhook_client.post(
+            "/webhooks/yookassa", json=body, headers=headers
+        )
+        assert first.status_code == 200
+        assert first.json().get("replay") is not True
+
+        async with async_session_factory() as session:
+            user = await session.scalar(select(User).where(User.email == email))
+            assert user is not None
+            sub = await session.scalar(
+                select(Subscription).where(Subscription.user_id == user.id)
+            )
+            assert sub is not None and sub.current_period_end is not None
+            period_after_first = sub.current_period_end
+
+        # Replay — same event_id. Must return 200 with replay flag and must
+        # NOT advance the period a second time.
+        second = await webhook_client.post(
+            "/webhooks/yookassa", json=body, headers=headers
+        )
+        assert second.status_code == 200
+        assert second.json().get("replay") is True
+
+        async with async_session_factory() as session:
+            user = await session.scalar(select(User).where(User.email == email))
+            assert user is not None
+            sub = await session.scalar(
+                select(Subscription).where(Subscription.user_id == user.id)
+            )
+            assert sub is not None
+            # Equal to the millisecond — replay did NOT extend the period.
+            assert sub.current_period_end == period_after_first
+    finally:
+        await _drop_subscription_for_email(email)
+        await cleanup()
+
+
+@pytest.mark.asyncio
+async def test_webhook_refuses_to_mint_subscription_from_metadata(
+    client: AsyncClient, webhook_client: AsyncClient
+) -> None:
+    """F3 regression: a payment.succeeded for a user with NO subscription
+    must NOT mint one from the (attacker-supplied) metadata fields."""
+    email, _token, cleanup = await register_test_user(client, role="seeker")
+    try:
+        # Deliberately do NOT seed a Subscription. A spoofed webhook should
+        # be a no-op, not a free upgrade.
+        body = {
+            "event": "payment.succeeded",
+            "event_id": "evt-forged-1",
+            "object": {
+                "id": "pay-forged-1",
+                "status": "succeeded",
+                "metadata": {"plan_slug": "pro", "user_email": email},
+                "payment_method": {"id": "pm-forged-1", "type": "bank_card"},
+            },
+        }
+        resp = await webhook_client.post(
+            "/webhooks/yookassa",
+            json=body,
+            headers={"X-Forwarded-For": "185.71.76.5"},
+        )
+        # We still ack 200 so ЮKassa stops retrying — but the DB row must
+        # remain absent.
+        assert resp.status_code == 200
+
+        async with async_session_factory() as session:
+            user = await session.scalar(select(User).where(User.email == email))
+            assert user is not None
+            sub = await session.scalar(
+                select(Subscription).where(Subscription.user_id == user.id)
+            )
+            assert sub is None, "webhook minted a subscription from metadata"
+    finally:
         await cleanup()
 
 

@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pgvector.sqlalchemy import Vector
+from pgvector.sqlalchemy import Vector  # type: ignore[import-untyped]
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -286,6 +286,38 @@ class TelegramLinkCode(Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime, index=True)
     used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=now_utc, index=True)
+
+
+class ProcessedWebhookEvent(Base):
+    """Replay-protection for external webhooks.
+
+    A row exists per ``(source, event_id)`` we've already processed. Webhook
+    handlers must ``INSERT`` here *before* touching billing state — the
+    unique-index violation on the second delivery short-circuits the rest
+    of the handler so re-deliveries from the provider (network blips,
+    retries, replay attacks) can't extend a subscription twice or grant
+    two refunds for the same payment.
+
+    Why ``object_id`` is captured too:
+
+    * For ЮKassa, ``event.object.id`` is the payment / refund identifier.
+      Logging it next to the event id makes audits cheap when investigating
+      a customer dispute.
+
+    The table is append-only — old rows can be pruned by ops at any time
+    (the uniqueness window only matters for the provider's retry horizon,
+    typically ≤24h), but pruning is intentionally not automated here so
+    a misconfigured cron can't accidentally enable replays.
+    """
+
+    __tablename__ = "processed_webhook_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    source: Mapped[str] = mapped_column(String(32), index=True)
+    event_id: Mapped[str] = mapped_column(String(128), index=True)
+    event_type: Mapped[str] = mapped_column(String(64))
+    object_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    processed_at: Mapped[datetime] = mapped_column(DateTime, default=now_utc, index=True)
 
 
 class TelegramAccountLink(Base):

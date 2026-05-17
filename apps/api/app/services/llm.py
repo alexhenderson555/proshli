@@ -28,7 +28,7 @@ import json
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from functools import lru_cache
-from typing import Any, Protocol
+from typing import Any, Protocol, cast
 
 import structlog
 from app.config import settings
@@ -109,11 +109,20 @@ class LLMResult:
 
 
 class LLMService(Protocol):
-    """Protocol implemented by both the real and fallback services."""
+    """Protocol implemented by both the real and fallback services.
+
+    ``stream_chat`` is intentionally a *plain* ``def`` returning an
+    ``AsyncIterator``, not ``async def`` — both implementations are async
+    generator functions (use ``yield``), and calling them returns the
+    iterator synchronously (no ``await``). Typing it as ``async def`` would
+    say "this returns a coroutine that resolves to an iterator", which is
+    the Anthropic-SDK shape, not ours. mypy with strict settings flags the
+    mismatch.
+    """
 
     name: str
 
-    async def stream_chat(self, message: str) -> AsyncIterator[tuple[str, Any]]:
+    def stream_chat(self, message: str) -> AsyncIterator[tuple[str, Any]]:
         """Yield ``(event_kind, payload)`` tuples.
 
         ``event_kind`` ∈ {``"filter"``, ``"content"``, ``"usage"``}.
@@ -197,18 +206,23 @@ class AnthropicLLMService:
             {"role": "user", "content": message},
         ]
 
+        # The Anthropic SDK's stream() signature uses TypedDict shapes for
+        # ``system``, ``tools``, and ``messages``. Our runtime dicts conform
+        # structurally but mypy can't prove it without a verbose TypedDict
+        # ladder; cast through Any for the call site. The SDK still
+        # validates at runtime.
         try:
             async with self._client.messages.stream(
                 model=self._model,
                 max_tokens=self._max_tokens,
-                system=system_blocks,
-                tools=[_EXTRACT_FILTERS_TOOL],
+                system=cast(Any, system_blocks),
+                tools=cast(Any, [_EXTRACT_FILTERS_TOOL]),
                 # ``tool_choice=any`` would force a tool call every turn,
                 # which is exactly what we want — every user message in this
                 # endpoint is a search query, so filters should always be
                 # produced even if some fields end up empty.
-                tool_choice={"type": "any"},
-                messages=messages,
+                tool_choice=cast(Any, {"type": "any"}),
+                messages=cast(Any, messages),
             ) as stream:
                 async for event in stream:
                     # The SDK yields typed events; we only care about two:
@@ -216,7 +230,7 @@ class AnthropicLLMService:
                     # JSON deltas (which we accumulate and parse at end).
                     et = getattr(event, "type", "")
                     if et == "content_block_delta":
-                        delta = event.delta
+                        delta = getattr(event, "delta", None)
                         dtype = getattr(delta, "type", "")
                         if dtype == "text_delta":
                             text = getattr(delta, "text", "")

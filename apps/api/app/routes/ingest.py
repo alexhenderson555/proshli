@@ -36,7 +36,12 @@ async def ingest_source(
         raise HTTPException(status_code=404, detail="Unknown source")
 
     payloads = connector.fetch()
-    return await run_ingestion(db, source_name=source_name, payloads=payloads)
+    run = await run_ingestion(db, source_name=source_name, payloads=payloads)
+    # FastAPI/pydantic will adapt the ORM instance via ``from_attributes`` on
+    # the response model, but mypy sees ``run_ingestion``'s declared return
+    # type (the ORM ``IngestRun``) and not the Pydantic schema. Validate
+    # explicitly so the type checker and the runtime agree.
+    return IngestRunOut.model_validate(run, from_attributes=True)
 
 
 @router.get("/sources", response_model=list[SourceConnectorOut])

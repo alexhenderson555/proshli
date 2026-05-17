@@ -105,12 +105,23 @@ async def _renew(db: AsyncSession) -> dict[str, Any]:
             skipped += 1
             continue
 
+        # Idempotency seed = (sub.id, period_end). If beat fires twice in
+        # the same hour, or autoretry kicks in mid-charge, the second POST
+        # collides with the first on the ЮKassa side and returns the
+        # original payment — no double-charge. The period end is enough to
+        # rotate the seed once the subscription is extended.
+        period_end_iso = (
+            sub.current_period_end.isoformat()
+            if sub.current_period_end
+            else "no-end"
+        )
         try:
             result = yk.charge_recurring(
                 payment_method_id=sub.yookassa_payment_method_id,
                 price_rub=plan.price_rub,
                 user_email=user.email,
                 description=f"Otklik.ai — продление тарифа {plan.name_ru}",
+                idempotency_seed=f"{sub.id}:{period_end_iso}",
             )
         except RuntimeError:
             # Missing credentials in dev — quietly skip without escalation.

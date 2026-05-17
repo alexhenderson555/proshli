@@ -63,8 +63,12 @@ jobs:
       - name: Ruff lint
         run: uv run ruff check app tests
 
-      - name: Mypy (new code only — pre-existing connector errors tolerated)
-        run: uv run mypy app || true
+      - name: Mypy
+        # All pre-existing connector + LLM-SDK errors were resolved in
+        # Sprint 2; we now fail the build on any new type error so the next
+        # accidental regression is caught at PR time instead of three waves
+        # later.
+        run: uv run mypy app
 
       - name: Bandit security scan
         run: uv run bandit -r app -ll

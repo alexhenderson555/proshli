@@ -114,6 +114,10 @@ async def create_checkout(
         )
 
     try:
+        # Idempotency seed = (user, plan). A retried POST from the same user
+        # to the same plan hits the same ЮKassa payment object instead of
+        # opening a parallel one, so a double-click on "Pay" can't double
+        # charge.
         checkout = yk.create_payment(
             plan_slug=plan.slug,
             price_rub=plan.price_rub,
@@ -121,6 +125,7 @@ async def create_checkout(
             description=f"Otklik.ai — тариф {plan.name_ru}",
             save_payment_method=True,
             return_url=payload.return_url,
+            idempotency_seed=f"{current_user.id}:{plan.id}",
         )
     except RuntimeError as exc:
         # Missing creds — surface as 503 so the frontend can show a banner
