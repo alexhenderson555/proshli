@@ -1,0 +1,19 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": [".env", ".env.local"],
+  "globalEnv": ["NODE_ENV", "SENTRY_DSN"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "!.next/cache/**", "dist/**", "storybook-static/**"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "lint": { "outputs": [] },
+    "type-check": { "outputs": [], "dependsOn": ["^build"] },
+    "test": { "outputs": ["coverage/**"], "dependsOn": ["^build"] },
+    "clean": { "cache": false }
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "name": "otklik-monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@11.1.2",
+  "scripts": {
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "lint": "turbo lint",
+    "test": "turbo test",
+    "type-check": "turbo type-check",
+    "format": "prettier --write \"**/*.{ts,tsx,md,json,yml}\"",
+    "gen-types": "pnpm -F @otklik/shared-types gen",
+    "clean": "turbo clean && rm -rf node_modules"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.0",
+    "prettier": "^3.3.3",
+    "prettier-plugin-tailwindcss": "^0.6.8"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "sharp",
+      "unrs-resolver",
+      "esbuild",
+      "@tailwindcss/oxide",
+      "@swc/core",
+      "@parcel/watcher"
+    ]
+  }
+}

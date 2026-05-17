@@ -1,0 +1,71 @@
+name: web-ci
+
+on:
+  push:
+    paths:
+      - "apps/web/**"
+      - "packages/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - ".github/workflows/web-ci.yml"
+  pull_request:
+    paths:
+      - "apps/web/**"
+      - "packages/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - ".github/workflows/web-ci.yml"
+
+jobs:
+  lint-build-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install
+        # `--ignore-scripts` skips postinstall for native deps (sharp,
+        # unrs-resolver). pnpm 11 otherwise errors with
+        # ERR_PNPM_IGNORED_BUILDS even when onlyBuiltDependencies is
+        # declared. CI build steps (tsc, lint, next build, Playwright
+        # under chromium-only) don't need the native binaries here.
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Type-check (workspace)
+        run: pnpm -r --parallel run type-check
+
+      - name: Lint
+        run: pnpm -F @otklik/web lint
+
+      - name: Build
+        run: pnpm -F @otklik/web build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8000
+
+      - name: Install Playwright browsers
+        run: pnpm -F @otklik/web exec playwright install --with-deps chromium
+
+      - name: Playwright tests
+        run: pnpm -F @otklik/web test
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8000
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report/
+          retention-days: 7

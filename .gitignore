@@ -1,19 +1,53 @@
+# Python
 .venv/
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-jobskout.db
 .pytest_cache/
 .ruff_cache/
+.python-version
 
-# Env and local DB
-.env
-.env.*
+# Local DBs
+otklik.db
+jobskout.db
 *.db
 
-# Next.js (also see web/.gitignore)
-web/node_modules/
-web/.next/
-frontend/node_modules/
-frontend/dist/
+# Env files (keep `.env.example`)
+.env
+.env.*
+.env.local
+.env.*.local
+!.env.example
+
+# Next.js
+.next/
+
+# Turborepo
+.turbo
+
+# TypeScript incremental build cache
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
+# pnpm
+node_modules/
+.pnpm-store/
+
+# Python coverage
+coverage/
+htmlcov/
+.coverage
+
+# IDE
+.vscode/
+.idea/
+
+# Storybook
+storybook-static/
+
+# Yandex Cloud
+yc-sa-key.json
+
+# Postgres backups (created by ops/backup-db.ps1)
+backups/

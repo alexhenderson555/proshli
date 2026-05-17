@@ -1,1 +1,0 @@
-# JobSkout backend package
