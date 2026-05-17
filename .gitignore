@@ -24,6 +24,10 @@ frontend/dist/
 # Turborepo
 .turbo
 
+# TypeScript incremental build cache
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
 # pnpm
 node_modules/
 .pnpm-store/
