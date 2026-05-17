@@ -17,5 +17,15 @@
     "turbo": "^2.5.0",
     "prettier": "^3.3.3",
     "prettier-plugin-tailwindcss": "^0.6.8"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "sharp",
+      "unrs-resolver",
+      "esbuild",
+      "@tailwindcss/oxide",
+      "@swc/core",
+      "@parcel/watcher"
+    ]
   }
 }
