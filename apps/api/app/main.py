@@ -18,6 +18,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.routes import auth as auth_routes
 from app.routes import health as health_routes
+from app.routes import profiles as profiles_routes
+from app.routes import resumes as resumes_routes
 from app.routes import users as users_routes
 from app.routes import vacancies as vacancies_routes
 
@@ -36,6 +38,8 @@ def create_app() -> FastAPI:
     app.include_router(auth_routes.router)
     app.include_router(users_routes.router)
     app.include_router(vacancies_routes.router)
+    app.include_router(resumes_routes.router)
+    app.include_router(profiles_routes.router)
 
     return app
 

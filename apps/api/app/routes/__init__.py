@@ -5,6 +5,6 @@ composition layer.  Order of inclusion in ``main.py`` controls OpenAPI tag
 ordering.
 """
 
-from app.routes import auth, health, users, vacancies
+from app.routes import auth, health, profiles, resumes, users, vacancies
 
-__all__ = ["auth", "health", "users", "vacancies"]
+__all__ = ["auth", "health", "profiles", "resumes", "users", "vacancies"]
