@@ -1,13 +1,23 @@
-from datetime import datetime, timedelta, timezone
+"""Authentication primitives: password hashing, JWT issuance, and the
+``get_current_user`` dependency.
+
+The dependency is async (uses :class:`AsyncSession`) so that it composes with
+the rest of the FastAPI app — which is being migrated to fully async I/O in
+Sprint 1.  Password hashing stays synchronous because passlib's CPU work is
+trivial relative to a DB round-trip and not worth threadpool overhead.
+"""
+
+from __future__ import annotations
+
+from datetime import UTC, datetime, timedelta
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.database import get_db
+from app.deps import DbSession
 from app.models import User
 
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
@@ -24,14 +34,14 @@ def verify_password(password: str, password_hash: str) -> bool:
 
 def create_access_token(subject: str) -> str:
     expires_delta = timedelta(minutes=settings.access_token_expire_minutes)
-    expire = datetime.now(timezone.utc) + expires_delta
+    expire = datetime.now(UTC) + expires_delta
     payload = {"sub": subject, "exp": expire}
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
 
-def get_current_user(
+async def get_current_user(
+    db: DbSession,
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
-    db: Session = Depends(get_db),
 ) -> User:
     token = credentials.credentials
     try:
@@ -40,13 +50,13 @@ def get_current_user(
         if not user_id_str:
             raise ValueError("Missing sub")
         user_id = int(user_id_str)
-    except (JWTError, ValueError):
+    except (JWTError, ValueError) as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication token",
-        )
+        ) from exc
 
-    user = db.get(User, user_id)
+    user = await db.get(User, user_id)
     if not user or not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

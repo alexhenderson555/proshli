@@ -5,9 +5,8 @@ in DATABASE_URL (see apps/api/.env / .env.example).
 """
 
 import pytest
-from sqlalchemy import text
-
 from app.db import async_session_factory
+from sqlalchemy import text
 
 
 @pytest.mark.asyncio

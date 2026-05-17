@@ -40,7 +40,7 @@ class RssConnector(SourceConnector):
                 link = (entry.get("link") or "").strip()
                 company = (entry.get("author") or entry.get("source", {}).get("title") or "Unknown").strip()
 
-                external_id = hashlib.sha256(f"{source_url}|{link}|{title}".encode("utf-8")).hexdigest()[:24]
+                external_id = hashlib.sha256(f"{source_url}|{link}|{title}".encode()).hexdigest()[:24]
                 items.append(
                     VacancyPayload(
                         source=self.source_name,
