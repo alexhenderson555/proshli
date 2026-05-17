@@ -44,8 +44,8 @@ line-length = 100
 target-version = "py312"
 src = ["app"]
 extend-exclude = [
-    "app/main_legacy.py.bak",
     "alembic/versions",
+    "scripts/legacy",
 ]
 
 [tool.ruff.lint]

@@ -1,9 +1,14 @@
+"""One-shot scheduler entrypoint used by the admin route + Celery beat."""
+
+from __future__ import annotations
+
 from dataclasses import dataclass
+
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.connectors.registry import build_connectors
 from app.services.dispatcher import dispatch_all
 from app.services.ingestion import run_ingestion
-from sqlalchemy.orm import Session
 
 
 @dataclass
@@ -16,19 +21,19 @@ class SchedulerRunResult:
     digests_failed: int
 
 
-def run_once(db: Session, digest_frequency: str) -> SchedulerRunResult:
+async def run_once(db: AsyncSession, digest_frequency: str) -> SchedulerRunResult:
     connectors = build_connectors()
     ingestion_runs = 0
     inserted_total = 0
     deduped_total = 0
 
     for connector in connectors:
-        run = run_ingestion(db, connector.source_name, connector.fetch())
+        run = await run_ingestion(db, connector.source_name, connector.fetch())
         ingestion_runs += 1
         inserted_total += run.inserted_count
         deduped_total += run.deduped_count
 
-    events = dispatch_all(db, digest_frequency)
+    events = await dispatch_all(db, digest_frequency)
     sent = len([event for event in events if event.status == "sent"])
     skipped = len([event for event in events if event.status == "skipped"])
     failed = len([event for event in events if event.status == "failed"])

@@ -1,10 +1,20 @@
+"""AI usage guardrails: keyword gating + per-day request budget.
+
+The budget cap is enforced per-user via ``AiUsageEvent`` row counts for the
+current calendar date.  The gate is intentionally loose (keyword match) —
+it filters out obvious off-topic prompts before they reach the model.
+"""
+
+from __future__ import annotations
+
 from datetime import date
+
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.models import AiUsageEvent, User
 from app.time_utils import now_utc
-from sqlalchemy import func, select
-from sqlalchemy.orm import Session
 
 CAREER_KEYWORDS = {
     "работа",
@@ -30,21 +40,25 @@ def is_career_related(text: str) -> bool:
     return any(keyword in lowered for keyword in CAREER_KEYWORDS)
 
 
-def can_use_ai_today(db: Session, user: User) -> tuple[bool, int]:
+async def can_use_ai_today(db: AsyncSession, user: User) -> tuple[bool, int]:
     today = date.today()
-    count_stmt = (
-        select(func.count(AiUsageEvent.id))
-        .where(AiUsageEvent.user_id == user.id)
-        .where(func.date(AiUsageEvent.created_at) == today.isoformat())
+    used_today = (
+        await db.scalar(
+            select(func.count(AiUsageEvent.id))
+            .where(AiUsageEvent.user_id == user.id)
+            .where(func.date(AiUsageEvent.created_at) == today)
+        )
+        or 0
     )
-    used_today = db.scalar(count_stmt) or 0
     return used_today < settings.ai_daily_request_limit, used_today
 
 
-def store_ai_usage(db: Session, user: User, prompt_chars: int) -> None:
-    event = AiUsageEvent(user_id=user.id, prompt_chars=prompt_chars, created_at=now_utc())
+async def store_ai_usage(db: AsyncSession, user: User, prompt_chars: int) -> None:
+    event = AiUsageEvent(
+        user_id=user.id, prompt_chars=prompt_chars, created_at=now_utc()
+    )
     db.add(event)
-    db.commit()
+    await db.commit()
 
 
 def extract_basic_filters(text: str) -> dict[str, str]:

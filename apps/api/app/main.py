@@ -1,13 +1,8 @@
 """FastAPI application factory.
 
-Sprint 1 wave-2 status: only the **health + auth + users** domains are live.
-The remaining 28 routes from the legacy monolithic main are preserved in
-``app/main_legacy.py.bak`` and will be ported into ``app/routes/`` in
-subsequent waves (vacancies, resumes, profiles, ai, digest, ingest, admin).
-
-Until those waves land, the runtime app intentionally exposes a narrower
-surface — that's the price of switching cleanly from sync to async without
-running two database sessions in parallel.
+Sprint 1 wave-5: full router surface is live on the async stack. All routes
+from the legacy monolithic main.py have been extracted into
+``app/routes/`` and converted to ``AsyncSession``.
 """
 
 from __future__ import annotations
@@ -16,12 +11,18 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routes import auth as auth_routes
-from app.routes import health as health_routes
-from app.routes import profiles as profiles_routes
-from app.routes import resumes as resumes_routes
-from app.routes import users as users_routes
-from app.routes import vacancies as vacancies_routes
+from app.routes import (
+    admin,
+    ai,
+    auth,
+    digest,
+    health,
+    ingest,
+    profiles,
+    resumes,
+    users,
+    vacancies,
+)
 
 
 def create_app() -> FastAPI:
@@ -34,12 +35,17 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    app.include_router(health_routes.router)
-    app.include_router(auth_routes.router)
-    app.include_router(users_routes.router)
-    app.include_router(vacancies_routes.router)
-    app.include_router(resumes_routes.router)
-    app.include_router(profiles_routes.router)
+    # Order controls OpenAPI tag ordering and route resolution priority.
+    app.include_router(health.router)
+    app.include_router(auth.router)
+    app.include_router(users.router)
+    app.include_router(profiles.router)
+    app.include_router(resumes.router)
+    app.include_router(vacancies.router)
+    app.include_router(ingest.router)
+    app.include_router(digest.router)
+    app.include_router(ai.router)
+    app.include_router(admin.router)
 
     return app
 
