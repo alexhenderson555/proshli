@@ -51,6 +51,14 @@ def run_migrations_offline() -> None:
 
 
 def _do_run_migrations(connection: Connection) -> None:
+    # Pre-create alembic_version with a wider column than the default
+    # VARCHAR(32) — our revision ids include descriptive suffixes such as
+    # "0002_profiles_and_resume_versions" that would otherwise truncate.
+    connection.exec_driver_sql(
+        "CREATE TABLE IF NOT EXISTS alembic_version ("
+        "version_num VARCHAR(255) NOT NULL, "
+        "CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num))"
+    )
     context.configure(
         connection=connection,
         target_metadata=target_metadata,

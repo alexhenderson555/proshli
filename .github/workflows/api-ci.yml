@@ -49,12 +49,16 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-extras
 
-      - name: Enable pgvector extension
+      - name: Enable pgvector extension and prep alembic_version
         env:
           PGPASSWORD: otklik
         run: |
           sudo apt-get update && sudo apt-get install -y postgresql-client
           psql -h localhost -U otklik -d otklik -c "CREATE EXTENSION IF NOT EXISTS vector;"
+          # Our revision ids are long (e.g. "0002_profiles_and_resume_versions").
+          # Alembic's default varchar(32) truncates them, so pre-create the
+          # table with a wider column.
+          psql -h localhost -U otklik -d otklik -c "CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(255) NOT NULL, CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num));"
 
       - name: Ruff lint
         run: uv run ruff check app tests
