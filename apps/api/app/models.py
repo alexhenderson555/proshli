@@ -1,10 +1,15 @@
 from datetime import datetime
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
 from app.time_utils import now_utc
+
+# Mirrors ``app.services.embeddings.EMBEDDING_DIM``. Inlined here to avoid a
+# circular import (models is loaded before services in alembic's env.py).
+_EMBEDDING_DIM = 1024
 
 
 class User(Base):
@@ -120,6 +125,15 @@ class Vacancy(Base):
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     is_promoted: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     promotion_expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Wave 4: semantic search. Nullable because old rows haven't been
+    # backfilled yet and the rule-based fallback intentionally leaves
+    # vectors blank (no semantic value). Indexed via IVFFLAT cosine ops
+    # in migration 0012; the index is declared at DDL level rather than
+    # via ORM hints so the build parameters (``lists = 100``) stay in
+    # one place.
+    embedding: Mapped[list[float] | None] = mapped_column(
+        Vector(_EMBEDDING_DIM), nullable=True
+    )
     employer_links: Mapped[list["EmployerVacancy"]] = relationship(back_populates="vacancy")
 
 

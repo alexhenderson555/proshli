@@ -77,6 +77,13 @@ class Settings(BaseSettings):
     anthropic_model: str = Field(default="claude-sonnet-4-5-20250929")
     anthropic_max_tokens: int = Field(default=1024)
 
+    # Wave 4: Voyage AI for vacancy/query embeddings (semantic search).
+    # Empty key → :class:`RuleBasedEmbeddingService` fallback, same pattern
+    # as the LLM service. ``voyage-3`` is 1024-d and the column type in
+    # migration 0012 must match.
+    voyage_api_key: str = Field(default="")
+    voyage_model: str = Field(default="voyage-3")
+
     # ------------------------------------------------------------------ billing (ЮKassa)
     # Wave 2 wires ЮKassa billing for the free / pro / employer tiers
     # (РФ-focused product). Recurring billing is implemented via
