@@ -7,8 +7,6 @@ it filters out obvious off-topic prompts before they reach the model.
 
 from __future__ import annotations
 
-from datetime import date
-
 from app.config import settings
 from app.models import AiUsageEvent, User
 from app.time_utils import now_utc
@@ -40,12 +38,17 @@ def is_career_related(text: str) -> bool:
 
 
 async def can_use_ai_today(db: AsyncSession, user: User) -> tuple[bool, int]:
-    today = date.today()
+    # We store ``AiUsageEvent.created_at`` via :func:`now_utc` (UTC, naive),
+    # so the "today" we compare against must also be UTC. The previous
+    # ``date.today()`` returned the *local* date, which diverged by ±1 day
+    # whenever the host TZ wasn't UTC — silently undercounting events near
+    # the day boundary on developer machines and CI runners alike.
+    today_utc = now_utc().date()
     used_today = (
         await db.scalar(
             select(func.count(AiUsageEvent.id))
             .where(AiUsageEvent.user_id == user.id)
-            .where(func.date(AiUsageEvent.created_at) == today)
+            .where(func.date(AiUsageEvent.created_at) == today_utc)
         )
         or 0
     )
