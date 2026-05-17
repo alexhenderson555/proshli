@@ -36,7 +36,12 @@ jobs:
           cache: pnpm
 
       - name: Install
-        run: pnpm install --frozen-lockfile
+        # `--ignore-scripts` skips postinstall for native deps (sharp,
+        # unrs-resolver). pnpm 11 otherwise errors with
+        # ERR_PNPM_IGNORED_BUILDS even when onlyBuiltDependencies is
+        # declared. CI build steps (tsc, lint, next build, Playwright
+        # under chromium-only) don't need the native binaries here.
+        run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Type-check (workspace)
         run: pnpm -r --parallel run type-check
