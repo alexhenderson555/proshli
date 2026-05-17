@@ -46,6 +46,10 @@ export default function VacanciesPage() {
   }, [level, location, minSalary, source, stack, workMode]);
 
   useEffect(() => {
+    // Re-run search whenever filter inputs change. The transitive setState
+    // inside `search` is intentional — this is the "subscribe to filter
+    // state" use case the rule's docs explicitly carve out.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void search();
   }, [search]);
 

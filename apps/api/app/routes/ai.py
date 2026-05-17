@@ -1,13 +1,33 @@
-"""AI chat guardrail endpoint.
+"""AI chat guardrail + streaming endpoint.
 
-This is a *gate*, not the chat itself — the heavy LLM call lands in a later
-sprint.  Today the endpoint enforces the keyword filter + the per-day budget
-and returns extracted basic filters that the FE can wire into the search.
+The legacy ``POST /ai/chat`` returns a single JSON envelope and stays for
+backward-compatibility with existing FE code and tests. Wave 11 adds
+``POST /ai/chat/stream`` — a Server-Sent Events surface that emits typed
+``data-*`` chunks the FE can render incrementally.
+
+Stream event shape (one JSON object per SSE ``data:`` line, plus the SSE
+event name for routing on the client):
+
+* ``data-status``      → ``{"phase": "gating"|"extracting"|"composing"|"done", "message": str}``
+* ``data-filter``      → ``{"key": str, "value": str}``   (one per filter)
+* ``data-suggestion``  → ``{"text": str}``                 (search-query hints)
+* ``data-error``       → ``{"code": str, "message": str}``
+* ``data-usage``       → ``{"used_today": int, "limit": int}``
+
+The connection ends with a terminal SSE ``event: data-done`` frame so the
+client knows to close the EventSource (browsers auto-reconnect on raw EOF).
 """
 
 from __future__ import annotations
 
+import asyncio
+import json
+from collections.abc import AsyncIterator
+from typing import Any
+
+import structlog
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 
 from app.auth import get_current_user
 from app.config import settings
@@ -23,15 +43,45 @@ from app.services.ai_guardrails import (
 )
 
 router = APIRouter(prefix="/ai", tags=["ai"])
+log = structlog.get_logger(__name__)
+
+
+# Search-query suggestions keyed off extracted stack — keeps the demo
+# feeling alive even before a real LLM is wired in.
+_SUGGESTIONS_BY_STACK: dict[str, list[str]] = {
+    "python": [
+        "FastAPI · Django · asyncio",
+        "Senior Python с релокацией",
+        "Python + ML",
+    ],
+    "javascript": ["React + TS", "Node.js backend", "Full-stack JS"],
+    "typescript": ["Next.js 16", "React 19 + TS", "Backend на TS (NestJS)"],
+    "go": ["Go + Kubernetes", "Backend на Go", "Senior Go в финтехе"],
+    "java": ["Java + Spring", "Kotlin/Android", "Senior Java"],
+    "kotlin": ["Kotlin/Android", "Backend на Kotlin", "Server-side Kotlin"],
+    "c#": [".NET 8 backend", "Unity-разработчик", "Senior C#"],
+}
+
+
+def _sse(event: str, payload: dict[str, Any]) -> bytes:
+    """Encode a single Server-Sent Event frame.
+
+    Each frame is ``event: <name>\\ndata: <json>\\n\\n``. Newlines inside
+    the JSON are safe — we use ``json.dumps`` which escapes them.
+    """
+    body = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+    return f"event: {event}\ndata: {body}\n\n".encode()
+
+
+# ---------------------------------------------------------------------------
+# Legacy non-streaming endpoint (kept for FE compatibility and tests)
+# ---------------------------------------------------------------------------
 
 
 @router.post(
     "/chat",
     response_model=AiChatResponse,
     dependencies=[
-        # Per-IP cap on top of the per-user-daily budget enforced inside the
-        # handler. Prevents one user from burning their budget in a burst that
-        # also overloads the gateway.
         Depends(RateLimit("ai-chat", limit=20, window_seconds=60)),
     ],
 )
@@ -70,4 +120,140 @@ async def ai_chat(
             f"{settings.ai_daily_request_limit}. Фильтры извлечены."
         ),
         extracted_filters=extracted_filters,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Streaming endpoint (Wave 11)
+# ---------------------------------------------------------------------------
+
+
+async def _stream_chat(
+    db: DbSession, user: User, message: str
+) -> AsyncIterator[bytes]:
+    """Yield SSE frames for a single chat turn.
+
+    We commit to the contract of "always emit ``data-done`` last, even on
+    error" so the EventSource on the client doesn't have to handle EOF
+    differently from a clean shutdown.
+    """
+
+    # 1) Input length gate — emit a typed error and close.
+    if len(message) > settings.ai_max_input_chars:
+        yield _sse(
+            "data-error",
+            {"code": "input_too_long", "message": "Сообщение слишком длинное."},
+        )
+        yield _sse("data-done", {})
+        return
+
+    # 2) Career-keyword gate.
+    yield _sse("data-status", {"phase": "gating", "message": "Проверяю запрос…"})
+    # tiny pause so the FE actually paints the status; the cost is negligible.
+    await asyncio.sleep(0.05)
+    if not is_career_related(message):
+        yield _sse(
+            "data-error",
+            {
+                "code": "off_topic",
+                "message": (
+                    "Я помогаю только по вопросам работы, вакансий, резюме и карьеры."
+                ),
+            },
+        )
+        yield _sse("data-done", {})
+        return
+
+    # 3) Per-day budget.
+    allowed, used_today = await can_use_ai_today(db, user)
+    if not allowed:
+        yield _sse(
+            "data-error",
+            {
+                "code": "daily_limit_reached",
+                "message": "Достигнут дневной лимит AI-запросов. Попробуйте позже.",
+            },
+        )
+        yield _sse(
+            "data-usage",
+            {"used_today": used_today, "limit": settings.ai_daily_request_limit},
+        )
+        yield _sse("data-done", {})
+        return
+
+    # 4) Filter extraction — emit one frame per filter so the FE can chip them
+    #    in as soon as each one resolves.
+    yield _sse(
+        "data-status",
+        {"phase": "extracting", "message": "Извлекаю фильтры…"},
+    )
+    await asyncio.sleep(0.05)
+    extracted = extract_basic_filters(message)
+    for key, value in extracted.items():
+        yield _sse("data-filter", {"key": key, "value": value})
+        await asyncio.sleep(0.03)
+
+    # 5) Suggestions — small static set today, becomes LLM-driven later.
+    stack = extracted.get("stack")
+    if stack and stack in _SUGGESTIONS_BY_STACK:
+        yield _sse(
+            "data-status",
+            {"phase": "composing", "message": "Предлагаю похожие запросы…"},
+        )
+        for hint in _SUGGESTIONS_BY_STACK[stack]:
+            yield _sse("data-suggestion", {"text": hint})
+            await asyncio.sleep(0.03)
+
+    # 6) Record usage and emit a final status + usage frame.
+    try:
+        await store_ai_usage(db, user, prompt_chars=len(message))
+    except Exception as exc:  # pragma: no cover — DB outage is rare
+        log.warning("ai_chat.store_usage_failed", error=str(exc))
+        yield _sse(
+            "data-error",
+            {
+                "code": "usage_log_failed",
+                "message": "Запрос обработан, но журнал использования недоступен.",
+            },
+        )
+
+    yield _sse(
+        "data-usage",
+        {
+            "used_today": used_today + 1,
+            "limit": settings.ai_daily_request_limit,
+        },
+    )
+    yield _sse(
+        "data-status",
+        {
+            "phase": "done",
+            "message": "Готово. Фильтры применены к поиску.",
+        },
+    )
+    yield _sse("data-done", {})
+
+
+@router.post(
+    "/chat/stream",
+    dependencies=[
+        Depends(RateLimit("ai-chat-stream", limit=10, window_seconds=60)),
+    ],
+)
+async def ai_chat_stream(
+    payload: AiChatRequest,
+    db: DbSession,
+    current_user: User = Depends(get_current_user),
+) -> StreamingResponse:
+    """Stream the AI gate decision + filter extraction over SSE."""
+    return StreamingResponse(
+        _stream_chat(db, current_user, payload.message),
+        media_type="text/event-stream",
+        headers={
+            # Disable proxy buffering — important for Nginx / Cloudflare which
+            # otherwise wait for the full response before forwarding.
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
     )

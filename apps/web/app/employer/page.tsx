@@ -66,6 +66,11 @@ export default function EmployerPage() {
   }
 
   useEffect(() => {
+    // Load-on-mount + load-on-filter-change. This is the "subscribe to
+    // URL/filter state" pattern the React 19 rule's docs carve out as
+    // legitimate — the transitive setState happens inside the awaited
+    // async helpers, not synchronously in the effect body.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadVacancies(1);
     void loadInsights();
     // eslint-disable-next-line react-hooks/exhaustive-deps

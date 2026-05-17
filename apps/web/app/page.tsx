@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { ArrowRight, Bot, Filter, Sparkles, Zap } from "lucide-react";
 
+import { AiChatPanel } from "@/features/ai-chat/ai-chat-panel";
+
 const features = [
   {
     icon: Sparkles,
@@ -76,36 +78,7 @@ export default function Home() {
           </dl>
         </div>
 
-        <div className="panel relative overflow-hidden p-6 lg:p-8">
-          <div className="absolute inset-0 -z-10 bg-gradient-to-br from-[hsl(var(--primary)/0.08)] via-transparent to-[hsl(var(--accent)/0.08)]" />
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Bot className="h-4 w-4 text-accent" />
-            Otklik AI
-          </div>
-          <div className="mt-4 flex flex-col gap-4">
-            <div className="rounded-2xl bg-muted/60 px-4 py-3 text-sm text-foreground">
-              Хочу удалённую работу Python-разработчиком, FastAPI, от 250к, без созвонов раньше 11.
-            </div>
-            <div className="ml-auto max-w-[85%] rounded-2xl bg-primary px-4 py-3 text-sm text-primary-foreground">
-              Понял. Нашёл 14 вакансий: Python · FastAPI · remote · 250–400k ₽. Отправляю топ-3 в
-              Telegram.
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <span className="rounded-full border border-border bg-card px-2.5 py-1 text-xs">
-                Python
-              </span>
-              <span className="rounded-full border border-border bg-card px-2.5 py-1 text-xs">
-                FastAPI
-              </span>
-              <span className="rounded-full border border-border bg-card px-2.5 py-1 text-xs">
-                Remote
-              </span>
-              <span className="rounded-full border border-border bg-card px-2.5 py-1 text-xs">
-                250–400k ₽
-              </span>
-            </div>
-          </div>
-        </div>
+        <AiChatPanel />
       </section>
 
       {/* Features */}
