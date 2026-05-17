@@ -1,24 +1,26 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 
 import { Button, Card, Input, Textarea } from "@/components/ui";
 import { api } from "@/lib/api";
 import { getToken } from "@/lib/session";
 
 export default function SeekerPage() {
+  const t = useTranslations("seeker");
   const [fullName, setFullName] = useState("");
   const [targetRole, setTargetRole] = useState("");
   const [location, setLocation] = useState("");
   const [skills, setSkills] = useState("");
   const [about, setAbout] = useState("");
-  const [status, setStatus] = useState("Загружаю профиль...");
+  const [status, setStatus] = useState(t("statusLoading"));
 
   useEffect(() => {
     async function loadProfile() {
       const token = getToken();
       if (!token) {
-        setStatus("Нужна авторизация во вкладке Вход.");
+        setStatus(t("statusNeedsAuth"));
         return;
       }
       try {
@@ -28,19 +30,20 @@ export default function SeekerPage() {
         setLocation(profile.location);
         setSkills(profile.skills.join(", "));
         setAbout(profile.about);
-        setStatus("Профиль загружен.");
+        setStatus(t("statusLoaded"));
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Не удалось загрузить профиль";
+        const message = error instanceof Error ? error.message : t("errorLoad");
         setStatus(message);
       }
     }
     void loadProfile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function saveProfile() {
     const token = getToken();
     if (!token) {
-      setStatus("Нужна авторизация.");
+      setStatus(t("statusNeedsAuthShort"));
       return;
     }
     try {
@@ -54,9 +57,9 @@ export default function SeekerPage() {
           .map((item) => item.trim())
           .filter(Boolean),
       });
-      setStatus("Профиль сохранен.");
+      setStatus(t("statusSaved"));
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Ошибка сохранения";
+      const message = error instanceof Error ? error.message : t("errorSave");
       setStatus(message);
     }
   }
@@ -64,27 +67,24 @@ export default function SeekerPage() {
   return (
     <div className="grid gap-4 md:grid-cols-[1fr_340px]">
       <Card>
-        <h1 className="text-xl font-extrabold">Профиль соискателя</h1>
-        <p className="mt-1 text-sm text-[var(--text-muted)]">
-          Храни ключевые данные и управляй версиями резюме под разные роли.
-        </p>
+        <h1 className="text-xl font-extrabold">{t("title")}</h1>
+        <p className="mt-1 text-sm text-[var(--text-muted)]">{t("subtitle")}</p>
         <div className="mt-4 grid gap-2">
-          <Input value={fullName} onChange={setFullName} placeholder="ФИО" />
-          <Input value={targetRole} onChange={setTargetRole} placeholder="Целевая роль" />
-          <Input value={location} onChange={setLocation} placeholder="Локация" />
-          <Input value={skills} onChange={setSkills} placeholder="Навыки через запятую" />
-          <Textarea value={about} onChange={setAbout} placeholder="О себе" rows={6} />
+          <Input value={fullName} onChange={setFullName} placeholder={t("fullName")} />
+          <Input value={targetRole} onChange={setTargetRole} placeholder={t("targetRole")} />
+          <Input value={location} onChange={setLocation} placeholder={t("location")} />
+          <Input value={skills} onChange={setSkills} placeholder={t("skills")} />
+          <Textarea value={about} onChange={setAbout} placeholder={t("about")} rows={6} />
           <div>
-            <Button onClick={saveProfile}>Сохранить профиль</Button>
+            <Button onClick={saveProfile}>{t("buttonSave")}</Button>
           </div>
         </div>
       </Card>
       <Card>
-        <h2 className="text-lg font-bold">Статус</h2>
+        <h2 className="text-lg font-bold">{t("stateTitle")}</h2>
         <p className="mt-2 text-sm text-[var(--text-muted)]">{status}</p>
         <div className="mt-4 rounded-xl border border-[var(--line)] bg-[var(--surface-alt)] p-3 text-sm text-[var(--text-muted)]">
-          Раздел версии резюме уже поддерживается backend API и будет расширен отдельным конструктором в следующем
-          итерационном шаге.
+          {t("stateNote")}
         </div>
       </Card>
     </div>

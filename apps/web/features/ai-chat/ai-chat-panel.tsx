@@ -11,6 +11,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowRight, Bot, Loader2, Sparkles } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { Button, Textarea } from "@/components/ui";
 import { cn } from "@/lib/cn";
@@ -19,26 +20,27 @@ import { streamAiChat, type AiStreamEvent } from "@/features/ai-chat/ai-stream";
 
 type Filter = { key: string; value: string };
 
-const FILTER_LABEL: Record<string, string> = {
-  work_mode: "Формат",
-  level: "Уровень",
-  stack: "Стек",
-  location: "Локация",
-};
-
-function filterLabel(f: Filter): string {
-  return `${FILTER_LABEL[f.key] ?? f.key}: ${f.value}`;
-}
-
 export function AiChatPanel({
   className,
-  placeholder = "Например: ищу удалённого middle python разработчика от 250к",
+  placeholder,
 }: {
   className?: string;
   placeholder?: string;
 }) {
+  const t = useTranslations("aiChat");
+  const filterLabelMap: Record<string, string> = {
+    work_mode: t("filterWorkMode"),
+    level: t("filterLevel"),
+    stack: t("filterStack"),
+    location: t("filterLocation"),
+  };
+
+  function filterLabel(f: Filter): string {
+    return `${filterLabelMap[f.key] ?? f.key}: ${f.value}`;
+  }
+
   const [message, setMessage] = useState("");
-  const [status, setStatus] = useState<string>("Опишите идеальную вакансию своими словами.");
+  const [status, setStatus] = useState<string>(t("statusIdle"));
   const [phase, setPhase] = useState<"idle" | "streaming" | "done" | "error">("idle");
   const [filters, setFilters] = useState<Filter[]>([]);
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -82,12 +84,12 @@ export function AiChatPanel({
   async function submit() {
     const trimmed = message.trim();
     if (!trimmed) {
-      setStatus("Сначала опишите запрос — хотя бы пару слов.");
+      setStatus(t("statusNeedsQuery"));
       return;
     }
     const token = getToken();
     if (!token) {
-      setStatus("Войдите в аккаунт, чтобы запустить AI-поиск.");
+      setStatus(t("statusNeedsAuth"));
       setPhase("error");
       return;
     }
@@ -97,7 +99,7 @@ export function AiChatPanel({
 
     setFilters([]);
     setSuggestions([]);
-    setStatus("Подключаюсь к Otklik AI…");
+    setStatus(t("statusConnecting"));
     setPhase("streaming");
 
     try {
@@ -110,7 +112,7 @@ export function AiChatPanel({
       });
     } catch (error) {
       if (controller.signal.aborted) return;
-      setStatus(error instanceof Error ? error.message : "Не удалось получить ответ AI.");
+      setStatus(error instanceof Error ? error.message : t("statusFailure"));
       setPhase("error");
     }
   }
@@ -123,11 +125,11 @@ export function AiChatPanel({
       <header className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
           <Bot className="h-4 w-4 text-accent" aria-hidden="true" />
-          Otklik AI · попробовать
+          {t("kicker")}
         </div>
         {usage ? (
           <span className="text-xs text-muted-foreground">
-            {usage.used_today}/{usage.limit} в день
+            {usage.used_today}/{usage.limit} {t("usageSuffix")}
           </span>
         ) : null}
       </header>
@@ -136,21 +138,21 @@ export function AiChatPanel({
         <Textarea
           value={message}
           onChange={setMessage}
-          placeholder={placeholder}
+          placeholder={placeholder ?? t("placeholder")}
           rows={3}
-          aria-label="Запрос для Otklik AI"
+          aria-label={t("ariaLabel")}
         />
         <div className="flex items-center justify-between gap-3">
           <Button onClick={submit} disabled={streaming}>
             {streaming ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Стримлю…
+                {t("buttonStreaming")}
               </>
             ) : (
               <>
                 <Sparkles className="h-4 w-4" />
-                Найти с AI
+                {t("buttonSubmit")}
               </>
             )}
           </Button>
@@ -169,7 +171,7 @@ export function AiChatPanel({
       {filters.length > 0 ? (
         <div className="mt-5">
           <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Извлечённые фильтры
+            {t("filtersHeader")}
           </div>
           <div className="mt-2 flex flex-wrap gap-2">
             {filters.map((f) => (
@@ -187,7 +189,7 @@ export function AiChatPanel({
       {suggestions.length > 0 ? (
         <div className="mt-5">
           <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Похожие запросы
+            {t("suggestionsHeader")}
           </div>
           <ul className="mt-2 flex flex-col gap-1.5">
             {suggestions.map((hint) => (

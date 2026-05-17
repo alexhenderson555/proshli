@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 
 import { VacancyCard } from "@/components/vacancy-card";
 import { Button, Card, Input, Select, Textarea } from "@/components/ui";
@@ -9,6 +10,7 @@ import { getToken } from "@/lib/session";
 import type { Vacancy } from "@/lib/types";
 
 export default function VacanciesPage() {
+  const t = useTranslations("vacancies");
   const [location, setLocation] = useState("");
   const [stack, setStack] = useState("");
   const [level, setLevel] = useState("");
@@ -16,7 +18,7 @@ export default function VacanciesPage() {
   const [source, setSource] = useState("hh_live");
   const [minSalary, setMinSalary] = useState("");
   const [aiMessage, setAiMessage] = useState("");
-  const [aiStatus, setAiStatus] = useState("AI композер пока не использовался");
+  const [aiStatus, setAiStatus] = useState(t("aiStatusInitial"));
   const [loading, setLoading] = useState(false);
   const [vacancies, setVacancies] = useState<Vacancy[]>([]);
 
@@ -38,12 +40,12 @@ export default function VacanciesPage() {
       });
       setVacancies(data);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Ошибка поиска";
-      setAiStatus(`Ошибка поиска: ${message}`);
+      const message = error instanceof Error ? error.message : t("errorSearch");
+      setAiStatus(`${t("errorSearch")}: ${message}`);
     } finally {
       setLoading(false);
     }
-  }, [level, location, minSalary, source, stack, workMode]);
+  }, [level, location, minSalary, source, stack, workMode, t]);
 
   useEffect(() => {
     // Re-run search whenever filter inputs change. The transitive setState
@@ -56,7 +58,7 @@ export default function VacanciesPage() {
   async function runAiComposer() {
     const token = getToken();
     if (!token) {
-      setAiStatus("Сначала войди в аккаунт, чтобы использовать AI.");
+      setAiStatus(t("aiNeedsAuth"));
       return;
     }
     try {
@@ -69,7 +71,7 @@ export default function VacanciesPage() {
         setWorkMode(ai.extracted_filters.work_mode ?? workMode);
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : "AI ошибка";
+      const message = error instanceof Error ? error.message : t("errorAi");
       setAiStatus(message);
     }
   }
@@ -78,60 +80,58 @@ export default function VacanciesPage() {
     <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
       <div className="flex flex-col gap-4">
         <Card>
-          <h1 className="text-xl font-extrabold">Лента вакансий</h1>
-          <p className="mt-1 text-sm text-[var(--text-muted)]">
-            HH-паттерн поиска + кастомная Otklik-фишка: AI-композер фильтров и приоритет промо-вакансий.
-          </p>
+          <h1 className="text-xl font-extrabold">{t("feedTitle")}</h1>
+          <p className="mt-1 text-sm text-[var(--text-muted)]">{t("feedSubtitle")}</p>
           <div className="mt-3 grid gap-2">
-            <Input value={location} onChange={setLocation} placeholder="Локация: Москва / Remote" />
-            <Input value={stack} onChange={setStack} placeholder="Стек: Python, React, Data" />
+            <Input value={location} onChange={setLocation} placeholder={t("filterLocation")} />
+            <Input value={stack} onChange={setStack} placeholder={t("filterStack")} />
             <Select
               value={level}
               onChange={setLevel}
               options={[
-                { value: "", label: "Любой уровень" },
-                { value: "junior", label: "Junior" },
-                { value: "middle", label: "Middle" },
-                { value: "senior", label: "Senior" },
+                { value: "", label: t("filterLevelAny") },
+                { value: "junior", label: t("filterLevelJunior") },
+                { value: "middle", label: t("filterLevelMiddle") },
+                { value: "senior", label: t("filterLevelSenior") },
               ]}
             />
             <Select
               value={source}
               onChange={setSource}
               options={[
-                { value: "hh_live", label: "Только реальные HH" },
-                { value: "", label: "Все источники" },
-                { value: "hh", label: "HH (из базы)" },
-                { value: "manual", label: "Внутренние/ручные" },
+                { value: "hh_live", label: t("sourceHhLive") },
+                { value: "", label: t("sourceAll") },
+                { value: "hh", label: t("sourceHh") },
+                { value: "manual", label: t("sourceManual") },
               ]}
             />
             <Select
               value={workMode}
               onChange={setWorkMode}
               options={[
-                { value: "", label: "Любой формат" },
-                { value: "remote", label: "Remote" },
-                { value: "hybrid", label: "Hybrid" },
-                { value: "office", label: "Office" },
+                { value: "", label: t("workModeAny") },
+                { value: "remote", label: t("workModeRemote") },
+                { value: "hybrid", label: t("workModeHybrid") },
+                { value: "office", label: t("workModeOffice") },
               ]}
             />
-            <Input value={minSalary} onChange={setMinSalary} placeholder="Мин. зарплата" />
+            <Input value={minSalary} onChange={setMinSalary} placeholder={t("filterMinSalary")} />
             <Button onClick={search} disabled={loading}>
-              {loading ? "Ищу..." : "Найти вакансии"}
+              {loading ? t("buttonSearching") : t("buttonSearch")}
             </Button>
           </div>
         </Card>
 
         <Card>
-          <h2 className="text-lg font-bold">AI фильтры</h2>
+          <h2 className="text-lg font-bold">{t("aiCardTitle")}</h2>
           <Textarea
             value={aiMessage}
             onChange={setAiMessage}
-            placeholder="Например: Ищу middle python удаленно от 250к"
+            placeholder={t("aiPlaceholder")}
             rows={5}
           />
           <div className="mt-2">
-            <Button onClick={runAiComposer}>Разобрать запрос</Button>
+            <Button onClick={runAiComposer}>{t("aiButton")}</Button>
           </div>
           <p className="mt-3 text-sm text-[var(--text-muted)]">{aiStatus}</p>
         </Card>
@@ -139,9 +139,7 @@ export default function VacanciesPage() {
 
       <section className="flex flex-col gap-3">
         {orderedVacancies.length === 0 ? (
-          <Card className="text-sm text-[var(--text-muted)]">
-            Пусто. Нажми “Найти вакансии”, чтобы загрузить подборку.
-          </Card>
+          <Card className="text-sm text-[var(--text-muted)]">{t("emptyState")}</Card>
         ) : (
           orderedVacancies.map((vacancy) => <VacancyCard key={vacancy.id} vacancy={vacancy} />)
         )}

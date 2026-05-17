@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import createNextIntlPlugin from "next-intl/plugin";
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: ["127.0.0.1"],
@@ -9,4 +10,8 @@ const nextConfig: NextConfig = {
   transpilePackages: ["@otklik/ui", "@otklik/shared-types"],
 };
 
-export default nextConfig;
+// next-intl plugin: wires `i18n/request.ts` as the per-request config
+// source for server components (`getTranslations`, `getMessages`, ...).
+const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
+
+export default withNextIntl(nextConfig);
