@@ -12,6 +12,8 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@otklik/shared-types": "workspace:*",
+    "@otklik/ui": "workspace:*",
     "@t3-oss/env-nextjs": "^0.13.11",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -23,6 +25,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@otklik/tsconfig": "workspace:*",
     "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
