@@ -14,12 +14,12 @@ class RssConnector(SourceConnector):
     source_name = "rss"
 
     def fetch(self) -> list[VacancyPayload]:
-        if not settings.rss_source_urls:
+        if not settings.rss_source_urls_list:
             return []
 
         now = now_utc()
         items: list[VacancyPayload] = []
-        for source_url in settings.rss_source_urls:
+        for source_url in settings.rss_source_urls_list:
             parsed = None
             try:
                 with httpx.Client(timeout=10.0) as client:

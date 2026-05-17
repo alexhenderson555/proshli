@@ -1,41 +1,103 @@
-import os
+"""Typed application settings backed by pydantic-settings.
 
-from pydantic import BaseModel
+All values are sourced from the process environment, falling back to a local
+``.env`` file (see ``apps/api/.env.example``).  ``get_settings`` is cached so
+that one ``Settings`` instance is reused across the process.
 
+Note: many fields are carried over from the legacy ``BaseModel``-based settings
+to preserve behaviour for callers in services/, connectors/, and the
+not-yet-converted route handlers in ``main.py``.  As the migration progresses,
+unused fields will be retired.
+"""
 
-class Settings(BaseModel):
-    jwt_secret: str = os.getenv("JWT_SECRET", "change-me-in-prod")
-    jwt_algorithm: str = os.getenv("JWT_ALGORITHM", "HS256")
-    access_token_expire_minutes: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))
-    database_url: str = os.getenv("DATABASE_URL", "sqlite:///./jobskout.db")
-    auto_create_schema: bool = os.getenv("AUTO_CREATE_SCHEMA", "true").lower() == "true"
-    ai_daily_request_limit: int = int(os.getenv("AI_DAILY_REQUEST_LIMIT", "25"))
-    ai_max_input_chars: int = int(os.getenv("AI_MAX_INPUT_CHARS", "1000"))
-    telegram_bot_token: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
-    bot_service_key: str = os.getenv("BOT_SERVICE_KEY", "change-me-bot-service-key")
-    telegram_link_code_ttl_minutes: int = int(os.getenv("TELEGRAM_LINK_CODE_TTL_MINUTES", "15"))
-    smtp_host: str = os.getenv("SMTP_HOST", "")
-    smtp_port: int = int(os.getenv("SMTP_PORT", "587"))
-    smtp_user: str = os.getenv("SMTP_USER", "")
-    smtp_password: str = os.getenv("SMTP_PASSWORD", "")
-    smtp_from_email: str = os.getenv("SMTP_FROM_EMAIL", "noreply@jobskout.local")
-    rss_source_urls: list[str] = [
-        url.strip() for url in os.getenv("RSS_SOURCE_URLS", "").split(",") if url.strip()
-    ]
-    hh_base_url: str = os.getenv("HH_BASE_URL", "https://api.hh.ru")
-    hh_search_text: str = os.getenv("HH_SEARCH_TEXT", "python developer")
-    hh_region: str = os.getenv("HH_REGION", "113")  # 113 = Russia
-    hh_per_page: int = int(os.getenv("HH_PER_PAGE", "20"))
-    hh_live_enabled: bool = os.getenv("HH_LIVE_ENABLED", "true").lower() == "true"
-    hh_live_limit: int = int(os.getenv("HH_LIVE_LIMIT", "30"))
-    cors_allow_origins: list[str] = [
-        item.strip()
-        for item in os.getenv(
-            "CORS_ALLOW_ORIGINS",
-            "http://127.0.0.1:3000,http://localhost:3000,http://127.0.0.1:5500,http://localhost:5500",
-        ).split(",")
-        if item.strip()
-    ]
+from functools import lru_cache
+
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-settings = Settings()
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+        case_sensitive=False,
+    )
+
+    # ------------------------------------------------------------------ app
+    app_env: str = Field(default="development")
+    app_log_level: str = Field(default="INFO")
+
+    # ------------------------------------------------------------------ data
+    database_url: str = Field(
+        default="postgresql+asyncpg://otklik:otklik@localhost:5432/otklik"
+    )
+    auto_create_schema: bool = Field(default=False)
+
+    redis_url: str = Field(default="redis://localhost:6379/0")
+    celery_broker_url: str = Field(default="redis://localhost:6379/1")
+    celery_result_backend: str = Field(default="redis://localhost:6379/2")
+
+    # ------------------------------------------------------------------ auth
+    jwt_secret: str = Field(default="change-me-in-prod-please")
+    jwt_algorithm: str = Field(default="HS256")
+    jwt_access_token_ttl_minutes: int = Field(default=60)
+    # Legacy alias for callers that still reference the old name; kept
+    # in-sync via a computed property below.
+    access_token_expire_minutes: int = Field(default=1440)
+
+    # ------------------------------------------------------------------ bot
+    bot_service_key: str = Field(default="change-me-bot-service-key")
+    telegram_bot_token: str = Field(default="")
+    telegram_link_code_ttl_minutes: int = Field(default=15)
+
+    # ------------------------------------------------------------------ ai
+    ai_daily_request_limit: int = Field(default=25)
+    ai_max_input_chars: int = Field(default=1000)
+
+    # ------------------------------------------------------------------ ingestion sources
+    rss_source_urls: str = Field(default="")
+    hh_base_url: str = Field(default="https://api.hh.ru")
+    hh_search_text: str = Field(default="python developer")
+    hh_region: str = Field(default="113")  # 113 = Russia
+    hh_per_page: int = Field(default=20)
+    hh_live_enabled: bool = Field(default=True)
+    hh_live_limit: int = Field(default=30)
+
+    # ------------------------------------------------------------------ smtp
+    smtp_host: str = Field(default="")
+    smtp_port: int = Field(default=587)
+    smtp_user: str = Field(default="")
+    smtp_password: str = Field(default="")
+    smtp_from_email: str = Field(default="noreply@otklik.local")
+
+    # ------------------------------------------------------------------ observability
+    sentry_dsn: str | None = Field(default=None)
+    sentry_traces_sample_rate: float = Field(default=0.1)
+
+    # ------------------------------------------------------------------ cors
+    cors_allowed_origins: str = Field(
+        default="http://localhost:3000,http://127.0.0.1:3000"
+    )
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        """Parsed list form of CORS_ALLOWED_ORIGINS."""
+        return [o.strip() for o in self.cors_allowed_origins.split(",") if o.strip()]
+
+    @property
+    def cors_allow_origins(self) -> list[str]:
+        """Legacy alias kept for callers in ``main.py``."""
+        return self.cors_origins_list
+
+    @property
+    def rss_source_urls_list(self) -> list[str]:
+        return [u.strip() for u in self.rss_source_urls.split(",") if u.strip()]
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()
+
+
+settings = get_settings()

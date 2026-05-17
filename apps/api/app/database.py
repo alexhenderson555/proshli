@@ -1,21 +1,15 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import DeclarativeBase, sessionmaker
+"""Legacy sync-DB compatibility shim.
 
-from app.config import settings
+Re-exports the async ``Base`` from :mod:`app.db` so that ORM model imports keep
+working during the sync→async migration.  Sync ``engine`` / ``SessionLocal`` /
+``get_db`` from the pre-uv era are intentionally removed; the few remaining
+sync callers (scripts/, the legacy monolithic ``main.py``) are being rewritten
+in this same task.
 
+Once the migration completes, this module will be deleted in favour of direct
+imports from ``app.db`` and ``app.deps``.
+"""
 
-class Base(DeclarativeBase):
-    pass
+from app.db import Base
 
-
-connect_args = {"check_same_thread": False} if settings.database_url.startswith("sqlite") else {}
-engine = create_engine(settings.database_url, connect_args=connect_args)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+__all__ = ["Base"]
