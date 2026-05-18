@@ -22,6 +22,11 @@ dependencies = [
     "python-jose[cryptography]>=3.3.0",
     "yookassa>=3.5.0",
     "telethon>=1.36.0",
+    # The workers import ``app.services.skill_extractor`` (and friends),
+    # which in turn touch ``app.services.ai_metrics`` — the Prometheus
+    # counters. The dep is technically transitive but uv won't resolve
+    # it from /api/pyproject.toml since the workers compose its own venv.
+    "prometheus-client>=0.21.0",
 ]
 
 [dependency-groups]
