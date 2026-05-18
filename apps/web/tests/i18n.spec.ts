@@ -42,7 +42,12 @@ test("locale switcher swaps language and preserves pathname", async ({ page }) =
   const switcher = page.getByLabel("Переключить язык");
   await switcher.selectOption("en");
 
-  // Pathname preserved, EN copy now visible.
-  await expect(page).toHaveURL(/\/en\/vacancies/);
-  await expect(page.getByRole("heading", { name: "Vacancy feed" })).toBeVisible();
+  // `next dev` JIT-compiles the `/en/vacancies` route on the first
+  // hit. On a cold CI runner that can take 15-20 s, well past the
+  // default 5 s assertion timeout. Wait explicitly for the navigation
+  // and bump the visibility assertion timeout to match.
+  await page.waitForURL(/\/en\/vacancies/, { timeout: 30_000 });
+  await expect(
+    page.getByRole("heading", { name: "Vacancy feed" }),
+  ).toBeVisible({ timeout: 30_000 });
 });

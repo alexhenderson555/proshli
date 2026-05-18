@@ -14,6 +14,7 @@ already has the rows is a no-op.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from datetime import datetime, timezone
 
 import sqlalchemy as sa
 from alembic import op
@@ -148,8 +149,14 @@ def upgrade() -> None:
     existing_slugs = set(
         bind.execute(sa.text("SELECT slug FROM plans")).scalars().all()
     )
+    # Use a Python timestamp rather than ``sa.func.now()`` — asyncpg's
+    # ``executemany`` rejects SQL expressions as bound parameters with
+    # ``invalid input for query argument $N`` (only datetime instances
+    # are accepted positionally). The semantic is identical: the row's
+    # creation moment captured at migration time.
+    now = datetime.now(timezone.utc)
     to_insert = [
-        {**row, "created_at": sa.func.now()}
+        {**row, "created_at": now}
         for row in _PLAN_SEED
         if row["slug"] not in existing_slugs
     ]
