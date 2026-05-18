@@ -116,26 +116,52 @@ def get_topic(topic_id: int) -> Topic | None:
     return _TOPICS_BY_ID.get(topic_id)
 
 
+def _hint_matches(hint: str, haystack: str) -> bool:
+    """Return True iff ``hint`` is present in ``haystack`` as a token.
+
+    Short hints (≤3 non-space chars like ``"ml"``, ``"bi"``, ``"go"``,
+    ``"qa"``) get a word-boundary check so they don't false-positive on
+    substrings — ``"u**ml**"`` mustn't claim Системный аналитик for the
+    ML/AI topic, ``"observa**bi**lity"`` mustn't claim Аналитика данных
+    for the DevOps topic. Longer hints are substring-matched as before
+    because they're specific enough (``"python"``, ``"kubernetes"``,
+    ``"data analyst"``).
+    """
+    stripped = hint.strip()
+    if not stripped:
+        return False
+    if len(stripped) <= 3:
+        # ``\b`` honours Russian letters in modern Python regex.
+        return re.search(rf"(?<!\w){re.escape(stripped)}(?!\w)", haystack) is not None
+    return hint in haystack
+
+
 def rule_based_classify(*, title: str, description: str) -> int:
     """Deterministic keyword scan returning a topic id (always 1..28).
 
-    Two-stage: a tight set of *very specific* hints (longer than 4 chars,
-    or distinctive enough to avoid false positives like "go" matching
-    "Django") wins first. Generic hints are checked second. Topic 28
-    (Niche) is the safety net.
+    Winner-takes-longest across topics: every matching hint records its
+    length, and the topic owning the longest match wins. This protects
+    against short-token false positives like ``"ml"`` matching
+    ``"UML"`` — the more specific ``"системный аналитик"`` would beat
+    it. Topic 28 (Niche) is the safety net when nothing matches.
 
     Behaviour is fully deterministic — same input always yields the
-    same id. Tests rely on this.
+    same id. Ties are broken by lowest topic id (i.e. table order) so
+    the result is stable across runs. Tests rely on this.
     """
     haystack = f"{title} {description}".lower()
 
-    # Strip leading/trailing whitespace from each hint at compare time so
-    # we can include ``" go "`` (word-boundary trick) in the table.
+    best_id = 28
+    best_len = 0
     for topic in TOPICS:
         for hint in topic.hints:
-            if hint.strip() and hint in haystack:
-                return topic.id
-    return 28
+            if not _hint_matches(hint, haystack):
+                continue
+            hint_len = len(hint.strip())
+            if hint_len > best_len:
+                best_len = hint_len
+                best_id = topic.id
+    return best_id
 
 
 # Regex extracts the FIRST integer in the model's reply — robust to
