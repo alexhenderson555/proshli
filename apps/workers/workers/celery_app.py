@@ -25,15 +25,22 @@ celery_app = Celery(
         "workers.tasks.ingest",
         "workers.tasks.digest",
         "workers.tasks.billing",
+        "workers.tasks.publisher",
     ],
 )
 
 # Eagerly import task modules so they register on the canonical app object.
 # ``include=`` lazy-imports them only when the worker boots; for tests +
 # importers of ``celery_app`` we want the side-effect now.
-import workers.tasks.billing  # noqa: E402
-import workers.tasks.digest  # noqa: E402
-import workers.tasks.ingest  # noqa: E402, F401
+import workers.tasks.billing as _billing  # noqa: E402
+import workers.tasks.digest as _digest  # noqa: E402
+import workers.tasks.ingest as _ingest  # noqa: E402
+import workers.tasks.publisher as _publisher  # noqa: E402
+
+# Mark modules referenced so static analysis sees the side-effect imports
+# as intentional. The task decorators register against ``celery_app`` at
+# import time — that's the whole point.
+_REGISTERED_TASK_MODULES = (_billing, _digest, _ingest, _publisher)
 
 celery_app.conf.update(
     task_acks_late=True,
@@ -69,6 +76,14 @@ celery_app.conf.update(
         "renew-subscriptions-hourly": {
             "task": "workers.tasks.billing.renew_expiring_subscriptions",
             "schedule": crontab(minute=7),
+        },
+        # TG publication firehose: drain ``publication_queue`` every 15 min.
+        # Skewed off ``*/15`` exact-quarter-hour to avoid colliding with the
+        # ingest task at minute 0 — keeps the worker prefetch=1 contention
+        # from queueing the publisher behind a long-running ingest.
+        "publish-pending-every-15-min": {
+            "task": "workers.tasks.publisher.publish_pending_batch",
+            "schedule": crontab(minute="3,18,33,48"),
         },
     },
 )

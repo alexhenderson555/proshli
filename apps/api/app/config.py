@@ -66,6 +66,22 @@ class Settings(BaseSettings):
     bot_service_key: str = Field(default="change-me-bot-service-key")
     telegram_bot_token: str = Field(default="")
     telegram_link_code_ttl_minutes: int = Field(default=15)
+    # Wave: TG publication targets. ``telegram_publication_group_id`` is the
+    # forum supergroup chat id (negative integer in string form, e.g.
+    # ``"-1001234567890"``) into which the prefilter+publisher pair posts. Empty
+    # string disables publication (dev / CI default) — the publisher task logs
+    # ``publisher.disabled`` and exits cleanly when this is unset, so beat can
+    # still tick without errors. ``telegram_publication_channel_id`` is reserved
+    # for Phase 2 (manual approval → channel @proshli).
+    telegram_publication_group_id: str = Field(default="")
+    telegram_publication_channel_id: str = Field(default="")
+    # Max rows the publisher drains per 15-min beat tick. TG caps at 20
+    # messages/min per group; 80 ÷ 15 min keeps us safely under that with
+    # headroom for retries.
+    telegram_publication_batch_size: int = Field(default=80)
+    # Hard cap on enqueue attempts before a row is marked ``failed`` for
+    # operator inspection. Matches the spec's "max 3 attempts" rule.
+    telegram_publication_max_attempts: int = Field(default=3)
 
     # ------------------------------------------------------------------ ai
     ai_daily_request_limit: int = Field(default=25)

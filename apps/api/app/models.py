@@ -2,6 +2,7 @@ from datetime import datetime
 
 from pgvector.sqlalchemy import Vector  # type: ignore[import-untyped]
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     DateTime,
     ForeignKey,
@@ -142,6 +143,12 @@ class Vacancy(Base):
     embedding: Mapped[list[float] | None] = mapped_column(
         Vector(_EMBEDDING_DIM), nullable=True
     )
+    # Phase 1 TG-publication routing — see migration 0014. ``topic_id`` is
+    # one of 1..28 (see ``app.services.tg_topics.TOPICS``); ``classified_at``
+    # is the timestamp of the last classifier run so re-classification can
+    # be triggered by age, not just nullability.
+    topic_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    classified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     employer_links: Mapped[list["EmployerVacancy"]] = relationship(back_populates="vacancy")
 
 
@@ -350,3 +357,50 @@ class TelegramAccountLink(Base):
     telegram_username: Mapped[str | None] = mapped_column(String(128), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=now_utc)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=now_utc, index=True)
+
+
+class PublicationQueueItem(Base):
+    """One vacancy → one TG-surface post.
+
+    Phase 1 plumbing for the TG publication subsystem (see
+    ``docs/superpowers/specs/2026-05-18-tg-publication-design.md``). The
+    publisher worker reads rows where ``status == 'pending'`` and
+    ``scheduled_for <= now``, ordered by ``scheduled_for`` ASC.
+
+    The unique constraint on ``(vacancy_id, target)`` is the dedup hinge —
+    a vacancy can have at most one row per target surface
+    (``'group'`` or ``'channel'``). Re-enqueue is a deliberate admin
+    action (delete + insert), not a race-condition outcome.
+    """
+
+    __tablename__ = "publication_queue"
+    __table_args__ = (
+        UniqueConstraint(
+            "vacancy_id",
+            "target",
+            name="uq_publication_queue_vacancy_target",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, index=True)
+    vacancy_id: Mapped[int] = mapped_column(
+        ForeignKey("vacancies.id", ondelete="CASCADE"), index=True
+    )
+    # 'group' (28-topic forum supergroup) | 'channel' (curated facade).
+    target: Mapped[str] = mapped_column(String(16), index=True)
+    # 1..28 for ``target='group'``; NULL for ``target='channel'`` since
+    # the channel has no topic structure.
+    topic_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    rendered_text: Mapped[str] = mapped_column(Text)
+    # pending | published | failed | dismissed
+    status: Mapped[str] = mapped_column(String(16), default="pending", index=True)
+    scheduled_for: Mapped[datetime] = mapped_column(
+        DateTime, default=now_utc, index=True
+    )
+    published_message_id: Mapped[int | None] = mapped_column(
+        BigInteger, nullable=True
+    )
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    failure_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now_utc)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
