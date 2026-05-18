@@ -36,6 +36,27 @@ services:
       timeout: 3s
       retries: 10
 
+  # Keyword search experiment (Sprint 1 plan §docker setup).
+  # The API doesn't index against Meili yet — pgvector covers semantic
+  # ranking — but the local container lets us prototype the keyword
+  # surface without touching production code paths.
+  meilisearch:
+    image: getmeili/meilisearch:v1.11
+    container_name: otklik-meili
+    environment:
+      MEILI_ENV: development
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:-otklik-dev-master-key}
+      MEILI_NO_ANALYTICS: "true"
+    volumes:
+      - otklik-meili-data:/meili_data
+    ports:
+      - "7700:7700"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:7700/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
   api:
     build:
       context: ./apps/api
@@ -119,3 +140,4 @@ services:
 
 volumes:
   otklik-pg-data:
+  otklik-meili-data:
