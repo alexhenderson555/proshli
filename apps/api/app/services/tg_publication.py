@@ -28,6 +28,7 @@ from dataclasses import dataclass
 
 import structlog
 from app.models import PublicationQueueItem, Vacancy
+from app.services.skill_extractor import SkillExtractor, get_skill_extractor
 from app.services.tg_topics import (
     TopicClassifier,
     get_topic_classifier,
@@ -102,9 +103,7 @@ def passes_filter_rules(
     return FilterDecision(ok=True)
 
 
-async def is_duplicate(
-    db: AsyncSession, *, vacancy_id: int, target: str
-) -> bool:
+async def is_duplicate(db: AsyncSession, *, vacancy_id: int, target: str) -> bool:
     """Has this vacancy already been queued for ``target``? Cheap index hit."""
     existing = await db.scalar(
         select(PublicationQueueItem.id)
@@ -166,9 +165,7 @@ def render_post(
     """
     title = html.escape(vacancy.title or "")
     company = html.escape(vacancy.company or "—")
-    salary = _format_salary(
-        vacancy.salary_from, vacancy.salary_to, vacancy.currency
-    )
+    salary = _format_salary(vacancy.salary_from, vacancy.salary_to, vacancy.currency)
     location = html.escape(_format_location(vacancy.location))
     skills_line = " · ".join(html.escape(s) for s in top_skills[:3]) or "—"
 
@@ -184,7 +181,7 @@ def render_post(
         f"💰 {salary} · 📍 {location}\n"
         f"🛠 {skills_line}\n\n"
         f"{summary_clean}\n\n"
-        f"🔗 <a href=\"{cta_url}\">Подробнее на Proshli</a>\n"
+        f'🔗 <a href="{cta_url}">Подробнее на Proshli</a>\n'
         f"<i>Источник: {source}</i>"
     )
     return _truncate(body, _TG_MAX_CHARS)
@@ -221,6 +218,7 @@ async def enqueue_vacancy(
     locale: str = "ru",
     summary_fn: SummaryFn | None = None,
     classifier: TopicClassifier | None = None,
+    skill_extractor: SkillExtractor | None = None,
 ) -> int | None:
     """Run the full Phase-1 pipeline for one vacancy.
 
@@ -270,21 +268,29 @@ async def enqueue_vacancy(
     fn = summary_fn or _default_summary
     summary = await fn(vacancy)
 
-    # ``parsed_skills`` is a comma-separated string on the Resume model
-    # but Vacancy doesn't carry parsed skills today. We derive a tiny
-    # placeholder from the title until the parser ships — keeps the
-    # template populated without a separate migration. Production will
-    # replace this with extracted skills (Wave 12 of the spec).
-    fallback_skills = [
-        word
-        for word in re.split(r"[ ,/]+", (vacancy.title or ""))
-        if len(word) > 2
-    ][:3]
+    # Skill extraction: prefer the cached ``parsed_skills`` if a previous
+    # pass already populated it, otherwise run the dictionary + LLM
+    # extractor and cache the comma-joined result on the Vacancy so a
+    # re-publish never pays the LLM cost twice.
+    top_skills: list[str]
+    if vacancy.parsed_skills:
+        top_skills = [s.strip() for s in vacancy.parsed_skills.split(",") if s.strip()]
+    else:
+        extractor = skill_extractor or get_skill_extractor()
+        extraction = await extractor.extract(
+            title=vacancy.title or "",
+            description=vacancy.description or "",
+        )
+        top_skills = extraction.skills
+        # Persist for next pass even if the list is empty — empty string
+        # is a sentinel that "we tried" and avoids re-running on every
+        # re-publish.
+        vacancy.parsed_skills = extraction.comma_joined
 
     rendered = render_post(
         vacancy=vacancy,
         ai_summary=summary,
-        top_skills=fallback_skills,
+        top_skills=top_skills,
         base_url=base_url,
         locale=locale,
     )

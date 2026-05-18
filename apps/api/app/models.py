@@ -149,6 +149,16 @@ class Vacancy(Base):
     # be triggered by age, not just nullability.
     topic_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     classified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Wave 12: comma-separated extracted skill tokens (``"Python,FastAPI"``).
+    # Empty string when extraction hasn't run yet. The TG post renderer
+    # falls back to a title-derived placeholder if this is empty so old
+    # rows keep rendering until they're re-processed.
+    parsed_skills: Mapped[str] = mapped_column(Text, default="")
+    # Cached Claude-rendered 1-2 sentence summary for the TG post middle
+    # line. NULL means "not yet generated" — the renderer uses the
+    # deterministic first-sentence fallback in that case.
+    ai_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    summary_generated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     employer_links: Mapped[list["EmployerVacancy"]] = relationship(back_populates="vacancy")
 
 
