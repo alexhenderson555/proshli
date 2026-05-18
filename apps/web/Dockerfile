@@ -30,25 +30,27 @@ RUN pnpm --filter @proshli/web build
 
 # ---------- runtime ----------
 FROM node:22-alpine AS runtime
-WORKDIR /app
+# Mirror the monorepo layout under /repo so pnpm's relative symlinks
+# (apps/web/node_modules/<pkg> -> ../../../node_modules/.pnpm/...) stay
+# valid. Anything else (flatten, copy in /app, etc) breaks the pnpm
+# store path.
+WORKDIR /repo/apps/web
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1
 
-# Copy only what `next start` needs. With the default output, this means
-# .next, public, package.json + node_modules. Swap to standalone output
-# in Wave 10 for a 10x smaller image.
+# Workspace plumbing: root manifest, lockfile, hoisted modules,
+# .pnpm store all live at /repo.
+COPY --from=build /repo/package.json /repo/pnpm-workspace.yaml /repo/.npmrc /repo/
+COPY --from=build /repo/node_modules /repo/node_modules
+COPY --from=build /repo/packages /repo/packages
+
+# The actual web app — built artifacts, manifest, and its own
+# node_modules (whose entries are symlinks back into /repo/node_modules
+# /.pnpm/...).
 COPY --from=build /repo/apps/web/.next ./.next
 COPY --from=build /repo/apps/web/public ./public
 COPY --from=build /repo/apps/web/package.json ./package.json
-# Order matters: the web's own node_modules has next/ + react/ + the
-# pnpm-symlinked workspace deps (e.g. @proshli/ui). The root
-# node_modules is needed for hoisted modules, but it must NOT shadow
-# the web modules — so copy root first, then web on top.
-COPY --from=build /repo/node_modules ./node_modules
 COPY --from=build /repo/apps/web/node_modules ./node_modules
-# Workspace packages keep their source + own node_modules because the
-# pnpm symlinks resolve back into /app/packages/<pkg>.
-COPY --from=build /repo/packages ./packages
 
 EXPOSE 3000
 CMD ["node", "node_modules/next/dist/bin/next", "start", "--port", "3000"]
