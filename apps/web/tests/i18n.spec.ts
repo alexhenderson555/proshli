@@ -13,6 +13,12 @@ import { expect, test } from "@playwright/test";
 // to RU as expected by the assertions below.
 test.use({ locale: "ru-RU" });
 
+// `next dev` JIT-compiles each route on its first hit; on a cold CI
+// runner the `/en/vacancies` round-trip alone can blow past the
+// default 30 s per-test budget. Bump the suite-wide test timeout so
+// the explicit 30 s per-assertion waits below can actually wait.
+test.setTimeout(90_000);
+
 test.beforeEach(async ({ context }) => {
   await context.clearCookies();
 });

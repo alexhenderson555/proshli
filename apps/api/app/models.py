@@ -1,7 +1,15 @@
 from datetime import datetime
 
 from pgvector.sqlalchemy import Vector  # type: ignore[import-untyped]
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
@@ -311,6 +319,18 @@ class ProcessedWebhookEvent(Base):
     """
 
     __tablename__ = "processed_webhook_events"
+    # Atomicity hinge — see the class docstring. The webhook handler
+    # INSERTs first; a duplicate ``(source, event_id)`` pair raises
+    # ``IntegrityError`` and short-circuits with ``{"replay": True}``.
+    # Migration 0013 creates the matching index against a live DB;
+    # this constraint mirrors it for ``Base.metadata.create_all`` in
+    # the test fixture (without it the tests get a table that allows
+    # replays through, breaking ``test_webhook_replay_does_not_extend_period``).
+    __table_args__ = (
+        UniqueConstraint(
+            "source", "event_id", name="uq_processed_webhook_events_source_event"
+        ),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     source: Mapped[str] = mapped_column(String(32), index=True)
