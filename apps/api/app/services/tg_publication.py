@@ -34,6 +34,7 @@ from app.services.tg_topics import (
     get_topic_classifier,
     rule_based_classify,
 )
+from app.services.vacancy_summary import summarise_and_cache
 from app.time_utils import now_utc
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -193,12 +194,12 @@ def render_post(
 SummaryFn = Callable[[Vacancy], Awaitable[str]]
 
 
-async def _default_summary(vacancy: Vacancy) -> str:
-    """Trivial AI-summary stand-in: first sentence of the description.
+def _first_sentence_fallback(vacancy: Vacancy) -> str:
+    """Deterministic fallback: first sentence of the description.
 
-    Production wiring will swap this for a real LLM call (YandexGPT-Lite
-    per the design doc) — keeping the prefilter pluggable means we don't
-    have to spin one up in CI / dev.
+    Used when the LLM path isn't available (no ``ANTHROPIC_API_KEY``,
+    SDK import failed, or a transient error). Same shape contract as
+    the LLM path so the renderer doesn't have to branch.
     """
     description = (vacancy.description or "").strip()
     if not description:
@@ -207,6 +208,26 @@ async def _default_summary(vacancy: Vacancy) -> str:
     # restored so the truncated form still reads as a sentence.
     sentence = re.split(r"(?<=[.!?])\s+", description, maxsplit=1)[0]
     return _truncate(sentence, _AI_SUMMARY_MAX_CHARS)
+
+
+async def _default_summary(vacancy: Vacancy) -> str:
+    """Default AI-summary producer used by :func:`enqueue_vacancy`.
+
+    Order of preference:
+
+    1. ``vacancy.ai_summary`` — already generated on a prior pass.
+       Honour the cache so a re-publish costs zero LLM tokens.
+    2. Claude tool_use summary via
+       :func:`app.services.vacancy_summary.summarise_and_cache`.
+       Caches the result on the Vacancy so the next pass takes path 1.
+    3. First-sentence deterministic fallback — kicks in when the LLM
+       path returns an empty result (no API key, SDK missing, transient
+       fault).
+    """
+    llm_summary = await summarise_and_cache(vacancy)
+    if llm_summary:
+        return _truncate(llm_summary, _AI_SUMMARY_MAX_CHARS)
+    return _first_sentence_fallback(vacancy)
 
 
 async def enqueue_vacancy(
