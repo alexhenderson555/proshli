@@ -162,13 +162,15 @@ async def improve_resume_version(
 
     allowed, used_today, limit = await can_use_ai_today(db, current_user)
     if not allowed:
-        # 429 is the right shape — the user can retry tomorrow, but not now.
+        # Mirror the streaming /ai/chat error shape: machine-readable ``code``
+        # plus the numbers the client needs to render a tier-aware nudge.
         raise HTTPException(
             status_code=429,
-            detail=(
-                f"Достигнут дневной лимит AI-запросов ({limit}). "
-                "Попробуй позже или оформи подписку."
-            ),
+            detail={
+                "code": "daily_limit_reached",
+                "limit": limit,
+                "used_today": used_today,
+            },
         )
 
     try:
