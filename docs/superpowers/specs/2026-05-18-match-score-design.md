@@ -1,6 +1,6 @@
 # Match-Score MVP — Design
 
-**Status:** Draft for execution. Decisions pre-committed per "делай как лучше" mandate.
+**Status:** Implemented 2026-05-18 (commits `cd83ace`..`7a8cdc2`). Manual smoke pending on live stack.
 
 ## Goal
 
