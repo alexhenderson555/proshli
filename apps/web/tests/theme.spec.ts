@@ -7,17 +7,24 @@ import { expect, test } from "@playwright/test";
 // pick — under Playwright default this resolves to `light`).
 
 test.beforeEach(async ({ page }) => {
-  await page.goto("/");
-  // Wipe any previously stored theme so we start from the SSR default.
-  await page.evaluate(() => window.localStorage.removeItem("theme"));
-  // `clearCookies` would re-trigger locale detection, so we leave
-  // cookies alone and instead navigate fresh.
-  await page.reload();
+  // `addInitScript` runs before any page script on every navigation, so
+  // the wipe is deterministic regardless of test order — unlike
+  // evaluate-then-reload, which races the removal against the next
+  // theme-hydration script.
+  await page.addInitScript(() => {
+    try {
+      localStorage.clear();
+    } catch {}
+  });
+  await page.goto("/", { waitUntil: "domcontentloaded" });
 });
 
 test("theme switcher cycles through light / dark / oled / system", async ({ page }) => {
   const html = page.locator("html");
-  const select = page.getByLabel("Переключить тему");
+  // Theme switching is locale-independent — match either the RU or EN
+  // aria-label so the test works whether Playwright lands on `/` (RU)
+  // or `/en` (EN) on a fresh context.
+  const select = page.getByRole("combobox", { name: /Переключить тему|Switch theme/ });
 
   // Light → class `light`.
   await select.selectOption("light");

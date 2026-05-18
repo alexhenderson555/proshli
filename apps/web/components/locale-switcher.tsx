@@ -27,6 +27,11 @@ export function LocaleSwitcher() {
   const [isPending, startTransition] = useTransition();
 
   function onChange(next: string) {
+    // Defence-in-depth: the `<select>` only emits values we render in
+    // `<option>`, but a future code change or test that programmatically
+    // sets `.value` could bypass the contract. Validate membership in
+    // `routing.locales` before passing to the typed router API.
+    if (!(routing.locales as readonly string[]).includes(next)) return;
     startTransition(() => {
       // `next-intl`'s router accepts the typed locale param to switch
       // languages while preserving the current pathname.

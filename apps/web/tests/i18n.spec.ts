@@ -6,6 +6,12 @@ import { expect, test } from "@playwright/test";
 // leaves it set to `en`, hitting `/` would redirect to `/en/...`. We
 // clear cookies in `beforeEach` so each test starts from the default-
 // locale state.
+//
+// Playwright Chromium's default `Accept-Language` is `en-US`, which
+// would route a fresh cookie-less context to `/en` on first hit. Pin
+// the suite locale to `ru-RU` so the cookie-less first request goes
+// to RU as expected by the assertions below.
+test.use({ locale: "ru-RU" });
 
 test.beforeEach(async ({ context }) => {
   await context.clearCookies();
