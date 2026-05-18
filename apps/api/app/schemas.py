@@ -247,6 +247,36 @@ class ResumeVersionOut(BaseModel):
     created_at: datetime
 
 
+class ResumeImproveRequest(BaseModel):
+    """Optional hint payload for ``POST /resumes/versions/{id}/improve``.
+
+    Both fields are optional — the endpoint defaults to the version's own
+    ``target_role`` if ``target_role`` is empty, and skips the per-turn
+    focus block if ``focus`` is empty.
+    """
+
+    target_role: str = Field(default="", max_length=128)
+    focus: str = Field(default="", max_length=500)
+
+
+class ResumeImproveResponse(BaseModel):
+    """LLM-improved resume summary + concrete suggestions.
+
+    ``summary`` is a 1–2 sentence pitch the seeker can paste at the top of
+    a resume / cover letter. ``suggestions`` is a short bulleted list of
+    actionable rewrites (each item ≤ 1 sentence). ``used_today`` / ``limit``
+    mirror the AI-budget surface so the bot can warn the user when they're
+    close to the cap. ``backend`` is ``"anthropic"`` or ``"rule_based"`` so
+    the FE / bot can distinguish a real LLM call from the offline fallback.
+    """
+
+    summary: str
+    suggestions: list[str]
+    used_today: int
+    limit: int
+    backend: str
+
+
 # --------------------------------------------------------------------- billing
 
 

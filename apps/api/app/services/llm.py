@@ -108,6 +108,20 @@ class LLMResult:
     raw_output_tokens: int = 0
 
 
+@dataclass(slots=True)
+class ResumeImprovement:
+    """Structured response from :meth:`LLMService.improve_resume`.
+
+    ``summary`` is the rewritten 1–2 sentence pitch; ``suggestions`` is a
+    short list of concrete actionable rewrites (≤ 5 items). The route
+    layer wraps this into :class:`app.schemas.ResumeImproveResponse` and
+    adds usage telemetry.
+    """
+
+    summary: str
+    suggestions: list[str] = field(default_factory=list)
+
+
 class LLMService(Protocol):
     """Protocol implemented by both the real and fallback services.
 
@@ -134,6 +148,20 @@ class LLMService(Protocol):
         * ``"usage"`` — payload is ``{"input_tokens": int, "output_tokens": int}``
           (route uses this for cost telemetry; not currently emitted on the
           wire).
+        """
+        ...
+
+    async def improve_resume(
+        self, *, content: dict[str, Any], target_role: str, focus: str
+    ) -> ResumeImprovement:
+        """Produce a tightened summary + suggestion list for a resume version.
+
+        ``content`` is the seeker's ``ResumeVersion.content`` blob (free-form
+        JSON — typically ``{"summary": ..., "experience": [...], "skills":
+        [...]}``). ``target_role`` is the role they're tailoring for; ``focus``
+        is a free-form hint (e.g. "сделай акцент на ML"). Implementations
+        must never raise — fall back to a scripted answer if the model
+        errors so the route layer can surface a clean response.
         """
         ...
 
@@ -167,6 +195,48 @@ class RuleBasedLLMService:
             yield "content", "уточни стек, грейд или формат работы."
 
         yield "usage", {"input_tokens": 0, "output_tokens": 0}
+
+    async def improve_resume(
+        self, *, content: dict[str, Any], target_role: str, focus: str
+    ) -> ResumeImprovement:
+        """Deterministic fallback resume coach.
+
+        We don't have a real model — but we can still emit *useful* advice
+        by inspecting the structure of ``content`` and pointing out common
+        gaps. Keeps the endpoint behaviour-equivalent in CI / offline dev
+        without forcing every contributor to provision an Anthropic key.
+        """
+        suggestions: list[str] = []
+        skills = content.get("skills") if isinstance(content, dict) else None
+        if not skills or (isinstance(skills, list) and len(skills) < 3):
+            suggestions.append(
+                "Добавь раздел skills с 5–10 ключевыми технологиями — рекрутеры сканируют его в первую очередь."
+            )
+        experience = content.get("experience") if isinstance(content, dict) else None
+        if not experience:
+            suggestions.append(
+                "Опиши 2–3 последних проекта в формате «что сделал → какой эффект» — это сильно повышает отклик."
+            )
+        summary_field = content.get("summary") if isinstance(content, dict) else None
+        if not isinstance(summary_field, str) or len(summary_field.strip()) < 40:
+            suggestions.append(
+                "Напиши короткий summary (1–2 предложения) — позиционирование + ключевая компетенция."
+            )
+        if focus.strip():
+            suggestions.append(
+                f"Сделай явный акцент на: {focus.strip()} — выноси это в summary и первый bullet опыта."
+            )
+        if not suggestions:
+            suggestions.append(
+                "Резюме выглядит цельно — отполируй формулировки в bullet-ах: глагол действия + измеримый результат."
+            )
+
+        role_phrase = target_role.strip() or "выбранную роль"
+        summary = (
+            f"Опытный кандидат на {role_phrase}: фокус на результат, "
+            "ключевые технологии и поддающиеся проверке достижения."
+        )
+        return ResumeImprovement(summary=summary, suggestions=suggestions[:5])
 
 
 class AnthropicLLMService:
@@ -273,6 +343,122 @@ class AnthropicLLMService:
             # the SSE generator without telling the FE why.
             log.warning("llm.anthropic_failed", error=str(exc))
             yield "content", "Сейчас не удаётся достучаться до модели. Попробуй ещё раз через минуту."
+
+    async def improve_resume(
+        self, *, content: dict[str, Any], target_role: str, focus: str
+    ) -> ResumeImprovement:
+        """Call Claude to produce a structured resume improvement.
+
+        We use tool-use with a single required tool (``emit_resume_improvement``)
+        so the model returns JSON that matches :class:`ResumeImprovement`'s
+        shape directly — no fragile prose parsing. If anything goes wrong
+        we fall back to :class:`RuleBasedLLMService.improve_resume` so the
+        endpoint stays usable.
+        """
+        from anthropic import AsyncAnthropic  # noqa: F401  # ensure import path exists
+
+        resume_blob = json.dumps(content, ensure_ascii=False)
+        role_hint = target_role.strip() or "не указана"
+        focus_hint = focus.strip() or "—"
+
+        system_prompt = (
+            "Ты — карьерный консультант сервиса Otklik.ai. По JSON-резюме и "
+            "целевой роли формируешь: (1) summary в 1–2 предложения на русском, "
+            "(2) 3–5 конкретных рекомендаций по улучшению. Каждая рекомендация — "
+            "≤ 1 предложения, в форме «что сделать» (повелительное наклонение). "
+            "Не упоминай отсутствующие факты, не сочиняй опыт. Всегда вызывай "
+            "инструмент emit_resume_improvement."
+        )
+        tool: dict[str, Any] = {
+            "name": "emit_resume_improvement",
+            "description": (
+                "Возвращает улучшенное summary и список конкретных рекомендаций "
+                "по правке резюме."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "summary": {
+                        "type": "string",
+                        "description": "1–2 предложения, русский. Без воды.",
+                    },
+                    "suggestions": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "minItems": 1,
+                        "maxItems": 5,
+                        "description": "3–5 конкретных рекомендаций.",
+                    },
+                },
+                "required": ["summary", "suggestions"],
+            },
+        }
+        user_message = (
+            f"Целевая роль: {role_hint}\n"
+            f"Дополнительный фокус: {focus_hint}\n\n"
+            f"JSON-резюме:\n{resume_blob}"
+        )
+
+        try:
+            response = await self._client.messages.create(
+                model=self._model,
+                max_tokens=self._max_tokens,
+                system=cast(
+                    Any,
+                    [
+                        {
+                            "type": "text",
+                            "text": system_prompt,
+                            "cache_control": {"type": "ephemeral"},
+                        }
+                    ],
+                ),
+                tools=cast(Any, [tool]),
+                tool_choice=cast(Any, {"type": "tool", "name": "emit_resume_improvement"}),
+                messages=cast(Any, [{"role": "user", "content": user_message}]),
+            )
+        except Exception as exc:  # pragma: no cover — network / quota faults
+            log.warning("llm.improve_resume_failed", error=str(exc))
+            return await RuleBasedLLMService().improve_resume(
+                content=content, target_role=target_role, focus=focus
+            )
+
+        summary = ""
+        suggestions: list[str] = []
+        for block in getattr(response, "content", []):
+            if getattr(block, "type", "") == "tool_use":
+                raw_input = getattr(block, "input", {}) or {}
+                if isinstance(raw_input, str):
+                    try:
+                        raw_input = json.loads(raw_input)
+                    except json.JSONDecodeError:
+                        raw_input = {}
+                if isinstance(raw_input, dict):
+                    s = raw_input.get("summary")
+                    if isinstance(s, str):
+                        summary = s.strip()
+                    items = raw_input.get("suggestions")
+                    if isinstance(items, list):
+                        suggestions = [
+                            str(item).strip()
+                            for item in items
+                            if isinstance(item, str) and item.strip()
+                        ][:5]
+                break
+
+        if not summary or not suggestions:
+            # Fell through without a usable tool call — defer to the rule-based
+            # backend rather than emit a blank response.
+            log.warning(
+                "llm.improve_resume_empty_tool_call",
+                summary_len=len(summary),
+                suggestion_count=len(suggestions),
+            )
+            return await RuleBasedLLMService().improve_resume(
+                content=content, target_role=target_role, focus=focus
+            )
+
+        return ResumeImprovement(summary=summary, suggestions=suggestions)
 
 
 @lru_cache(maxsize=1)

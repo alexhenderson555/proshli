@@ -302,7 +302,10 @@ async def help_cmd(message: Message) -> None:
         "/link КОД — привязать аккаунт по коду с сайта\n"
         "/search — выполнить поиск с текущими фильтрами\n"
         "/digest_daily — включить ежедневный дайджест\n"
-        "/digest_weekly — включить еженедельный дайджест",
+        "/digest_weekly — включить еженедельный дайджест\n"
+        "/digest_off — отключить дайджест\n"
+        "/unlink — отвязать аккаунт от Telegram\n"
+        "/improve_resume — AI-советы по последнему резюме",
         reply_markup=main_menu_keyboard(),
     )
 
@@ -384,6 +387,22 @@ async def set_digest(http: httpx.AsyncClient, message: Message, frequency: str) 
     )
 
 
+def _vacancy_card_keyboard(item: dict) -> InlineKeyboardMarkup | None:
+    """Per-vacancy inline keyboard with an 'Откликнуться' deep-link.
+
+    The button is omitted when ``external_url`` is missing (e.g. a hand-
+    posted vacancy without a public landing page) so users don't see a
+    dead button. Returns ``None`` in that case so aiogram skips the
+    ``reply_markup`` field entirely.
+    """
+    url = item.get("external_url")
+    if not url:
+        return None
+    return InlineKeyboardMarkup(
+        inline_keyboard=[[InlineKeyboardButton(text="Откликнуться", url=url)]]
+    )
+
+
 async def perform_search(http: httpx.AsyncClient, message: Message) -> None:
     state = chat_state(message.chat.id)
     params: dict[str, str] = {}
@@ -403,14 +422,19 @@ async def perform_search(http: httpx.AsyncClient, message: Message) -> None:
     if not items:
         await message.answer("По текущим фильтрам вакансий не найдено.")
         return
-    lines = []
+    # One message per vacancy so each gets its own inline "Откликнуться"
+    # button bound to that vacancy's ``external_url``. Telegram caps the
+    # message rate at ~30/sec per chat — 8 results stays well clear.
     for idx, item in enumerate(items, start=1):
         promo = " [PROMO]" if item.get("is_promoted") else ""
-        lines.append(
+        salary_from = item.get("salary_from") or "—"
+        salary_to = item.get("salary_to") or "—"
+        currency = item.get("currency") or ""
+        text = (
             f"{idx}. {item['title']} @ {item['company']}{promo}\n"
-            f"   {item['location']} | {item.get('salary_from') or '-'}-{item.get('salary_to') or '-'} {item.get('currency')}"
+            f"{item['location']} | {salary_from}–{salary_to} {currency}".rstrip()
         )
-    await message.answer("\n\n".join(lines))
+        await message.answer(text, reply_markup=_vacancy_card_keyboard(item))
 
 
 @dp.message(Command("search"))
@@ -432,6 +456,149 @@ async def digest_weekly(message: Message, http: httpx.AsyncClient) -> None:
     if not await ensure_subscription_message(message):
         return
     await set_digest(http, message, "weekly")
+
+
+@dp.message(Command("digest_off"))
+async def digest_off(message: Message, http: httpx.AsyncClient) -> None:
+    """Turn off the digest entirely (both transports) for the linked user.
+
+    Sends ``DELETE /digest/preferences``; the API zeros ``via_telegram``
+    and ``via_email`` but keeps the row, so re-enabling later doesn't
+    require re-typing the chat id.
+    """
+    if not await ensure_subscription_message(message):
+        return
+    status_code, _ = await api_request_for_user(
+        http, message, "DELETE", "/digest/preferences"
+    )
+    if status_code >= 400:
+        await message.answer(f"Не удалось отключить дайджест ({status_code}).")
+        return
+    await message.answer("Дайджест отключён. Включить обратно: /digest_daily или /digest_weekly.")
+
+
+@dp.message(Command("unlink"))
+async def unlink_account(message: Message, http: httpx.AsyncClient) -> None:
+    """Revoke the Telegram link from the bot side.
+
+    Calls the bot-service-key-protected ``DELETE /auth/telegram/link``
+    endpoint and drops the locally cached JWT so subsequent commands
+    immediately fall back to the "not linked" branch.
+    """
+    tg_user_id = _telegram_user_id(message)
+    if tg_user_id is None:
+        await message.answer("Не вижу твой Telegram-аккаунт. Попробуй /start.")
+        return
+    payload = {
+        "telegram_user_id": str(tg_user_id),
+        "telegram_chat_id": str(message.chat.id),
+    }
+    try:
+        resp = await http.request(
+            "DELETE",
+            f"{API_URL}/auth/telegram/link",
+            json=payload,
+            headers=bot_service_headers(),
+        )
+    except httpx.HTTPError as exc:
+        logger.warning("unlink_account network failure: %s", exc)
+        await message.answer("Сеть недоступна, попробуй позже.")
+        return
+    # 204 = success, 404 was historic — current handler is idempotent.
+    if resp.status_code >= 400 and resp.status_code != 404:
+        await message.answer(f"Не удалось отвязать аккаунт ({resp.status_code}).")
+        return
+    TOKEN_CACHE.pop(tg_user_id, None)
+    await message.answer(
+        "Аккаунт отвязан. Чтобы пользоваться ботом снова — сгенерируй новый код на сайте и отправь /link КОД."
+    )
+
+
+@dp.message(Command("improve_resume"))
+async def improve_resume(message: Message, http: httpx.AsyncClient) -> None:
+    """Ask the API to AI-improve the seeker's latest resume version.
+
+    Picks the most recent ``ResumeVersion`` from ``GET /resumes/versions``
+    (already sorted newest-first by the API) and feeds its id into
+    ``POST /resumes/versions/{id}/improve``. The free-form text after the
+    command becomes the ``focus`` hint, e.g. ``/improve_resume сделай акцент на ML``.
+    Counts against the per-day AI budget — the response carries
+    ``used_today``/``limit`` so we can warn the user when the cap is near.
+    """
+    if not await ensure_subscription_message(message):
+        return
+
+    parts = (message.text or "").strip().split(maxsplit=1)
+    focus = parts[1].strip() if len(parts) > 1 else ""
+
+    status_code, listing = await api_request_for_user(
+        http, message, "GET", "/resumes/versions"
+    )
+    if status_code == 401:
+        # api_request_for_user already nudged the user about linking.
+        return
+    if status_code >= 400 or not isinstance(listing, list):
+        await message.answer(
+            f"Не удалось получить список резюме ({status_code}). Попробуй позже."
+        )
+        return
+    if not listing:
+        await message.answer(
+            "У тебя пока нет сохранённых резюме. Создай версию резюме на сайте, "
+            "а потом возвращайся — я подскажу, как её улучшить."
+        )
+        return
+
+    latest = listing[0]
+    version_id = latest.get("id")
+    target_role = latest.get("target_role") or ""
+    if not isinstance(version_id, int):
+        await message.answer("Резюме найдено, но в неожиданном формате. Сообщи команде.")
+        return
+
+    payload = {"target_role": target_role, "focus": focus}
+    status_code, data = await api_request_for_user(
+        http,
+        message,
+        "POST",
+        f"/resumes/versions/{version_id}/improve",
+        json=payload,
+    )
+    if status_code == 429:
+        await message.answer(
+            "Дневной лимит AI-запросов исчерпан. Попробуй завтра или оформи подписку."
+        )
+        return
+    if status_code >= 400 or not isinstance(data, dict):
+        await message.answer(
+            f"AI-сервис недоступен ({status_code}). Попробуй позже."
+        )
+        return
+
+    summary = str(data.get("summary", "")).strip()
+    suggestions = [
+        str(item).strip()
+        for item in (data.get("suggestions") or [])
+        if isinstance(item, str) and str(item).strip()
+    ]
+    used_today = data.get("used_today")
+    limit = data.get("limit")
+
+    lines: list[str] = []
+    name = str(latest.get("name", "резюме"))
+    lines.append(f"AI-разбор резюме «{name}»:")
+    if summary:
+        lines.append("")
+        lines.append(f"Summary: {summary}")
+    if suggestions:
+        lines.append("")
+        lines.append("Что улучшить:")
+        for idx, item in enumerate(suggestions, 1):
+            lines.append(f"{idx}. {item}")
+    if isinstance(used_today, int) and isinstance(limit, int):
+        lines.append("")
+        lines.append(f"Использовано AI-запросов сегодня: {used_today}/{limit}")
+    await message.answer("\n".join(lines))
 
 
 @dp.callback_query(F.data == "check_sub")

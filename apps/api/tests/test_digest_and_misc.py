@@ -39,6 +39,42 @@ async def test_digest_preferences_round_trip(client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
+async def test_digest_off_zeros_transports_but_keeps_row(client: AsyncClient) -> None:
+    """DELETE /digest/preferences flips both transports off, keeping the row.
+
+    Wave-5 bot ``/digest_off`` calls this so the seeker can opt out without
+    losing the saved ``telegram_chat_id`` — re-enabling later via
+    ``/digest_daily`` doesn't require typing the chat id again.
+    """
+    _, token, cleanup = await register_test_user(client, role="seeker")
+    headers = auth_headers(token)
+    try:
+        # Establish a chat id so the test can confirm it's preserved.
+        await client.put(
+            "/digest/preferences",
+            json={
+                "frequency": "daily",
+                "via_telegram": True,
+                "via_email": False,
+                "telegram_chat_id": "999",
+            },
+            headers=headers,
+        )
+
+        delete_resp = await client.delete("/digest/preferences", headers=headers)
+        assert delete_resp.status_code == 204
+
+        after = await client.get("/digest/preferences", headers=headers)
+        body = after.json()
+        assert body["via_telegram"] is False
+        assert body["via_email"] is False
+        # Frequency / chat id preserved so re-enabling is cheap.
+        assert body["telegram_chat_id"] == "999"
+    finally:
+        await cleanup()
+
+
+@pytest.mark.asyncio
 async def test_digest_preview_returns_payload(client: AsyncClient) -> None:
     _, token, cleanup = await register_test_user(client, role="seeker")
     try:

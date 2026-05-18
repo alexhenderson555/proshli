@@ -235,6 +235,42 @@ async def consume_telegram_link_code(
     return TokenResponse(access_token=token)
 
 
+@router.delete("/telegram/link", status_code=status.HTTP_204_NO_CONTENT)
+async def unlink_telegram(
+    payload: TelegramBotLoginRequest,
+    db: DbSession,
+    _: None = Depends(_require_bot_service_key),
+) -> Response:
+    """Drop the ``TelegramAccountLink`` for the given Telegram identity.
+
+    Bot calls this from ``/unlink`` so the user can revoke the bot's
+    access without going back to the website. We also flip the digest
+    transport off so the worker stops sending to a chat that may no
+    longer be the user's. The actual ``User`` row is untouched — the
+    user keeps their email/password account.
+    """
+    link = await db.scalar(
+        select(TelegramAccountLink).where(
+            TelegramAccountLink.telegram_user_id == payload.telegram_user_id
+        )
+    )
+    if link is None:
+        # Idempotent: unlinking an already-unlinked identity is a no-op.
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    pref = await db.scalar(
+        select(DigestPreference).where(DigestPreference.user_id == link.user_id)
+    )
+    if pref is not None:
+        pref.via_telegram = False
+        pref.telegram_chat_id = None
+        pref.updated_at = now_utc()
+
+    await db.delete(link)
+    await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 @router.post("/telegram/login", response_model=TokenResponse)
 async def login_by_telegram(
     payload: TelegramBotLoginRequest,
