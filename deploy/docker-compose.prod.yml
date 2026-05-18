@@ -52,6 +52,8 @@ services:
 
   api:
     build:
+      # api's Dockerfile lives next to its pyproject.toml and copies
+      # files relative to the apps/api directory.
       context: ../apps/api
       dockerfile: Dockerfile
     container_name: proshli-api
@@ -75,8 +77,10 @@ services:
 
   workers:
     build:
-      context: ../apps/workers
-      dockerfile: Dockerfile
+      # workers' Dockerfile references apps/api/app + apps/workers/* —
+      # so its build context must be the repo root.
+      context: ..
+      dockerfile: apps/workers/Dockerfile
     container_name: proshli-workers
     restart: unless-stopped
     env_file: .env.prod
@@ -99,8 +103,10 @@ services:
 
   tgbot:
     build:
-      context: ../apps/tgbot
-      dockerfile: Dockerfile
+      # tgbot's Dockerfile copies apps/tgbot/main.py — context = repo
+      # root so the apps/ prefix resolves.
+      context: ..
+      dockerfile: apps/tgbot/Dockerfile
     container_name: proshli-tgbot
     restart: unless-stopped
     env_file: .env.prod
@@ -115,8 +121,11 @@ services:
 
   web:
     build:
-      context: ../apps/web
-      dockerfile: Dockerfile
+      # web's Dockerfile is multi-stage and references the pnpm
+      # monorepo root (package.json, pnpm-lock.yaml, packages/).
+      # Build context = repo root.
+      context: ..
+      dockerfile: apps/web/Dockerfile
     container_name: proshli-web
     restart: unless-stopped
     env_file: .env.prod
