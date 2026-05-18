@@ -33,6 +33,7 @@ from typing import Any, cast
 
 import structlog
 from app.config import settings
+from app.services.ai_metrics import record_outcome, record_usage
 
 log = structlog.get_logger(__name__)
 
@@ -236,8 +237,10 @@ class TopicClassifier:
                     Any, [{"role": "user", "content": user_message}]
                 ),
             )
+            record_usage("topic_classify", getattr(response, "usage", None))
         except Exception as exc:  # pragma: no cover — network/quota
             log.warning("tg_topics.llm_failed", error=str(exc))
+            record_outcome("topic_classify", "error")
             return rule_based_classify(title=title, description=description)
 
         # Walk the content blocks for the first piece of text. ``response``
@@ -253,12 +256,15 @@ class TopicClassifier:
         match = _ID_RE.search(text)
         if match is None:
             log.warning("tg_topics.llm_unparseable", raw=text[:80])
+            record_outcome("topic_classify", "error")
             return rule_based_classify(title=title, description=description)
 
         candidate = int(match.group(1))
         if not is_valid_topic_id(candidate):
             log.warning("tg_topics.llm_out_of_range", value=candidate)
+            record_outcome("topic_classify", "error")
             return rule_based_classify(title=title, description=description)
+        record_outcome("topic_classify", "success")
         return candidate
 
 

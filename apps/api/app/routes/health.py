@@ -17,7 +17,8 @@ import asyncio
 
 import structlog
 from fastapi import APIRouter
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from sqlalchemy import text
 
 from app.db import engine
@@ -31,6 +32,18 @@ log = structlog.get_logger(__name__)
 async def health() -> dict[str, str]:
     """Liveness — always 200 unless the process is wedged."""
     return {"status": "ok", "service": "proshli-api"}
+
+
+@router.get("/metrics", include_in_schema=False)
+async def metrics() -> Response:
+    """Prometheus exposition endpoint.
+
+    ``include_in_schema=False`` keeps it out of the OpenAPI doc — the TS
+    SDK generator would otherwise emit a typed client for it, which is
+    nonsense (the response is text/plain in a Prometheus dialect, not
+    JSON). Scrapers hit it by path, no client generation needed.
+    """
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
 @router.get("/health/ready")

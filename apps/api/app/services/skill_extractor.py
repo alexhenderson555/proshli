@@ -34,6 +34,7 @@ from typing import Any, cast
 
 import structlog
 from app.config import settings
+from app.services.ai_metrics import record_outcome, record_usage
 
 log = structlog.get_logger(__name__)
 
@@ -291,9 +292,11 @@ class SkillExtractor:
             llm_skills = await self._llm_extract(client, title, description)
         except Exception as exc:  # noqa: BLE001 - intentional: never raise from extract
             log.warning("skill_extractor.llm_failed", error=str(exc))
+            record_outcome("skill_extract", "error")
             return ExtractionResult(skills=dict_skills, source="fallback")
 
         merged = _merge_dedup(dict_skills, llm_skills, limit=limit)
+        record_outcome("skill_extract", "success")
         return ExtractionResult(skills=merged, source="llm")
 
     async def _llm_extract(self, client: Any, title: str, description: str) -> list[str]:
@@ -316,6 +319,7 @@ class SkillExtractor:
             tool_choice=cast(Any, {"type": "tool", "name": "emit_skills"}),
             messages=cast(Any, [{"role": "user", "content": user_message}]),
         )
+        record_usage("skill_extract", getattr(response, "usage", None))
 
         for block in getattr(response, "content", []):
             if getattr(block, "type", "") == "tool_use":

@@ -35,6 +35,7 @@ from typing import Any, cast
 import structlog
 from app.config import settings
 from app.models import Vacancy
+from app.services.ai_metrics import record_outcome, record_usage
 from app.time_utils import now_utc
 
 log = structlog.get_logger(__name__)
@@ -132,10 +133,13 @@ class VacancySummaryGenerator:
             text = await self._llm_summarise(client, vacancy)
         except Exception as exc:  # noqa: BLE001 - intentional: never raise
             log.warning("vacancy_summary.llm_failed", error=str(exc))
+            record_outcome("vacancy_summary", "error")
             return SummaryResult(text="", ok=False)
 
         if not text:
+            record_outcome("vacancy_summary", "error")
             return SummaryResult(text="", ok=False)
+        record_outcome("vacancy_summary", "success")
         return SummaryResult(text=text, ok=True)
 
     async def _llm_summarise(self, client: Any, vacancy: Vacancy) -> str:
@@ -167,6 +171,7 @@ class VacancySummaryGenerator:
             tool_choice=cast(Any, {"type": "tool", "name": "emit_summary"}),
             messages=cast(Any, [{"role": "user", "content": user_message}]),
         )
+        record_usage("vacancy_summary", getattr(response, "usage", None))
 
         for block in getattr(response, "content", []):
             if getattr(block, "type", "") == "tool_use":
