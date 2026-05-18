@@ -91,7 +91,10 @@ export default function VacanciesPage() {
       {/* Filter rail — flat, hairline-bordered, no shadows */}
       <aside className="flex flex-col gap-4">
         <section className="rounded border border-border bg-surface p-4">
-          <div className="kicker mb-2">{t("feedTitle")}</div>
+          {/* h1 stays semantic so a11y + smoke tests can target it via
+              getByRole("heading"); the `kicker` class flattens it to a
+              low-emphasis editorial label visually. */}
+          <h1 className="kicker mb-2">{t("feedTitle")}</h1>
           <p className="text-[13px] leading-[1.5] text-text-secondary">
             {t("feedSubtitle")}
           </p>

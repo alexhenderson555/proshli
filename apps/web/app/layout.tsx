@@ -85,7 +85,7 @@ export default async function RootLayout({
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"
-          enableSystem={false}
+          enableSystem
           themes={["dark", "light", "oled"]}
         >
           <NextIntlClientProvider locale={locale} messages={messages}>
