@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 
+import structlog
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy import desc, select
 
@@ -19,9 +20,12 @@ from app.schemas import (
     ResumeVersionOut,
 )
 from app.services.ai_guardrails import can_use_ai_today, store_ai_usage
+from app.services.embeddings import get_embedding_service
 from app.services.llm import get_llm_service
 from app.services.resume_parser import extract_skills, extract_text_from_pdf_bytes
 from app.time_utils import now_utc
+
+log = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/resumes", tags=["resumes"])
 
@@ -50,11 +54,22 @@ async def upload_resume(
         raise HTTPException(status_code=400, detail="Could not extract text from resume")
 
     skills = extract_skills(raw_text)
+
+    try:
+        embedding_service = get_embedding_service()
+        # voyage-3 hard limit is ~32k tokens; 8000 chars is a safe + cheap cap.
+        vectors = await embedding_service.embed_texts([raw_text[:8000]])
+        embedding = vectors[0]
+    except Exception as exc:
+        log.warning("resume.embedding_failed", error=str(exc))
+        embedding = None
+
     resume = Resume(
         user_id=current_user.id,
         name=name,
         raw_text=raw_text,
         parsed_skills=", ".join(skills),
+        embedding=embedding,
         created_at=now_utc(),
     )
     db.add(resume)
