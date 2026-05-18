@@ -24,7 +24,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import Response
 from sqlalchemy import asc, desc, func, select, update
 
-from app.auth import get_current_user
+from app.auth import get_current_user, get_optional_user
 from app.deps import DbSession
 from app.models import (
     EmployerActionLog,
@@ -46,6 +46,7 @@ from app.schemas import (
 from app.services.embeddings import get_embedding_service
 from app.services.employer import log_employer_action, require_employer_ownership
 from app.services.hh_live import fetch_live_hh_vacancies
+from app.services.match_score import batch_match_scores, match_tier, user_resume_embedding
 from app.services.semantic_search import embed_vacancy, search_vacancies_semantic
 from app.time_utils import now_utc
 
@@ -137,6 +138,8 @@ async def list_vacancies(
     work_mode: str | None = Query(default=None),
     include_archived: bool = Query(default=False),
     include_live_hh: bool = Query(default=True),
+    include_match: bool = Query(default=False),
+    current_user: User | None = Depends(get_optional_user),
 ) -> list[VacancyOut]:
     await _expire_promotions(db)
 
@@ -183,12 +186,43 @@ async def list_vacancies(
     db_rows = list((await db.scalars(stmt)).all())
     db_items: list[VacancyOut] = [VacancyOut.model_validate(item) for item in db_rows]
 
+    # Resolve the resume embedding once, shared across all return paths.
+    resume_emb: list[float] | None = None
+    if include_match and current_user is not None:
+        resume_emb = await user_resume_embedding(db, current_user.id)
+
+    async def _apply_scores(items: list[VacancyOut]) -> list[VacancyOut]:
+        """Attach match_score / match_tier to DB-backed items in-place.
+
+        hh_live items are external and don't exist in our vacancies table,
+        so their scores remain None. Returns the mutated list for convenience.
+        """
+        if resume_emb is None:
+            return items
+        scorable_ids = [
+            item.id
+            for item in items
+            if item.id and getattr(item, "source", "") != "hh_live"
+        ]
+        scores = await batch_match_scores(db, resume_emb, scorable_ids)
+        result: list[VacancyOut] = []
+        for item in items:
+            s = scores.get(item.id) if item.id else None
+            if s is not None:
+                # Reconstruct with match fields to survive Pydantic's
+                # immutability — model_validate on a dict is always safe.
+                item = VacancyOut(
+                    **{**item.model_dump(), "match_score": s, "match_tier": match_tier(s)}
+                )
+            result.append(item)
+        return result
+
     if source == "hh_live":
         db_items = []
     elif source and source != "hh_live":
-        return db_items
+        return await _apply_scores(db_items)
     if not include_live_hh:
-        return db_items
+        return await _apply_scores(db_items)
 
     try:
         live_items = await fetch_live_hh_vacancies(
@@ -204,7 +238,7 @@ async def list_vacancies(
 
     combined: list[VacancyOut] = [*db_items, *live_items]
     combined.sort(key=lambda item: (item.is_promoted, item.published_at), reverse=True)
-    return combined
+    return await _apply_scores(combined)
 
 
 @router.get("/my", response_model=list[VacancyOut])

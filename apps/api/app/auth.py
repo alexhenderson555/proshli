@@ -123,3 +123,41 @@ async def get_current_user(
             detail="User not found or inactive",
         )
     return user
+
+
+async def get_optional_user(
+    db: DbSession,
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    proshli_access: str | None = Cookie(default=None),
+) -> User | None:
+    """Same auth flow as ``get_current_user`` but returns ``None`` on missing
+    or invalid token instead of raising 401.
+
+    Used by endpoints that serve both anonymous and authed traffic — e.g.
+    ``GET /vacancies`` returns the same list regardless, but only attaches
+    match-score data when the caller is logged in with a resume on file.
+    """
+    token: str | None = None
+    if credentials is not None and credentials.credentials:
+        token = credentials.credentials
+    elif proshli_access:
+        token = proshli_access
+
+    if not token:
+        return None
+
+    try:
+        payload = jwt.decode(
+            token, settings.jwt_secret, algorithms=[settings.jwt_algorithm]
+        )
+        user_id_str = payload.get("sub")
+        if not user_id_str:
+            return None
+        user_id = int(user_id_str)
+    except (JWTError, ValueError):
+        return None
+
+    user = await db.get(User, user_id)
+    if not user or not user.is_active:
+        return None
+    return user

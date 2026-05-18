@@ -70,6 +70,8 @@ class VacancyOut(BaseModel):
     is_promoted: bool
     promotion_expires_at: datetime | None
     external_url: str | None = None
+    match_score: float | None = None
+    match_tier: Literal["strong", "decent", "stretch", "longshot"] | None = None
 
     model_config = {"from_attributes": True}
 

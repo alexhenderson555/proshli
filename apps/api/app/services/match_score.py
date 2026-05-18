@@ -86,7 +86,7 @@ async def user_resume_embedding(
     if resume is None:
         return None
     if resume.embedding is not None:
-        return list(resume.embedding)
+        return [float(x) for x in resume.embedding]
     if not resume.raw_text or not resume.raw_text.strip():
         return None
     try:
@@ -104,7 +104,7 @@ async def user_resume_embedding(
         return None
     resume.embedding = emb
     await db.commit()
-    return list(emb)
+    return [float(x) for x in emb]
 
 
 async def batch_match_scores(
