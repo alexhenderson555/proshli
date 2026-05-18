@@ -64,7 +64,10 @@ services:
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/1
       CELERY_RESULT_BACKEND: redis://redis:6379/2
-      APP_ENV: production
+      # APP_ENV=staging skips the "refuse-on-default-secret" guard that
+      # production mode enforces. Flip to production once ЮKassa and
+      # other optional integrations have real credentials.
+      APP_ENV: staging
     depends_on:
       postgres:
         condition: service_healthy
@@ -74,6 +77,10 @@ services:
       - proshli
     expose:
       - "8000"
+    volumes:
+      # Shared Telethon session — created once via the tg_login script and
+      # reused by the workers container for connector runs.
+      - proshli-tg-data:/data
 
   workers:
     build:
@@ -89,7 +96,10 @@ services:
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/1
       CELERY_RESULT_BACKEND: redis://redis:6379/2
-      APP_ENV: production
+      # APP_ENV=staging skips the "refuse-on-default-secret" guard that
+      # production mode enforces. Flip to production once ЮKassa and
+      # other optional integrations have real credentials.
+      APP_ENV: staging
     depends_on:
       postgres:
         condition: service_healthy
@@ -100,6 +110,10 @@ services:
     # Run beat + worker in one container via `-B`. For >1 worker
     # split into separate services (one beat, N workers).
     command: ["uv", "run", "celery", "-A", "workers.celery_app", "worker", "-B", "--loglevel=info", "--concurrency=2"]
+    volumes:
+      # Same Telethon session volume as api — workers run the connectors,
+      # api runs the one-shot login script.
+      - proshli-tg-data:/data
 
   tgbot:
     build:
@@ -171,3 +185,4 @@ volumes:
   proshli-redis-data:
   proshli-caddy-data:
   proshli-caddy-config:
+  proshli-tg-data:

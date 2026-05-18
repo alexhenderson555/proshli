@@ -123,9 +123,31 @@ class Settings(BaseSettings):
     hh_base_url: str = Field(default="https://api.hh.ru")
     hh_search_text: str = Field(default="python developer")
     hh_region: str = Field(default="113")  # 113 = Russia
-    hh_per_page: int = Field(default=20)
+    hh_per_page: int = Field(default=100)
     hh_live_enabled: bool = Field(default=True)
-    hh_live_limit: int = Field(default=30)
+    hh_live_limit: int = Field(default=2000)
+    # Comma-separated list of HH search queries; empty → use the default
+    # 47-role roster from ``connectors.hh``.
+    hh_search_queries: str = Field(default="")
+    # Comma-separated HH area ids (113 = Russia). Empty → default sweep.
+    hh_areas: str = Field(default="")
+    # Hard cap on pages per (query, area) combination. HH allows up to 20
+    # pages of 100 — 3 is plenty for "recent" sweeps every 10 min.
+    hh_max_pages_per_query: int = Field(default=3)
+
+    # ------------------------------------------------------------------ telegram scraping
+    # User-account credentials (NOT the bot token). Get them from
+    # https://my.telegram.org/apps. Empty values disable the Telethon path.
+    telegram_api_id: str = Field(default="")
+    telegram_api_hash: str = Field(default="")
+    # Path (without .session suffix) where Telethon caches the auth session.
+    # The worker container mounts /data as a volume so the session survives
+    # restarts. The first run requires an interactive login via
+    # ``python -m scripts.tg_login`` to create the file.
+    telegram_session_path: str = Field(default="/data/proshli-tg")
+    # Override the channel roster (comma-separated bare @handles). Empty →
+    # use the default 79-channel curated list in connectors.telegram_channels.
+    tg_channels: str = Field(default="")
 
     # ------------------------------------------------------------------ smtp
     smtp_host: str = Field(default="")

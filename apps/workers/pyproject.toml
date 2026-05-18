@@ -21,6 +21,7 @@ dependencies = [
     "passlib[bcrypt]>=1.7.4",
     "python-jose[cryptography]>=3.3.0",
     "yookassa>=3.5.0",
+    "telethon>=1.36.0",
 ]
 
 [dependency-groups]
@@ -84,4 +85,8 @@ ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = ["yookassa", "yookassa.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["telethon", "telethon.*"]
 ignore_missing_imports = true
