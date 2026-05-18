@@ -229,17 +229,36 @@ class TelegramChannelsConnector(SourceConnector):
     def fetch(self) -> list[VacancyPayload]:
         if not self._is_configured():
             return []
-        try:
-            # Telethon is async-native; spin a private loop because we are
-            # called from a sync Celery task.
-            return asyncio.run(self._fetch_async())
-        except RuntimeError:
-            # Already inside a running loop (rare in our worker setup but
-            # possible under pytest-asyncio fixtures).
+        # Telethon needs an event loop; Celery's async bridge may already be
+        # running one in the current thread (``Cannot run the event loop
+        # while another loop is running``). Run the coroutine in a fresh
+        # thread with its own dedicated loop so the connector is safe to
+        # call from any context — sync, async, nested-async.
+        import threading
+
+        result: list[VacancyPayload] = []
+        error: list[BaseException] = []
+
+        def _runner() -> None:
             loop = asyncio.new_event_loop()
             try:
-                return loop.run_until_complete(self._fetch_async())
+                asyncio.set_event_loop(loop)
+                result.extend(loop.run_until_complete(self._fetch_async()))
+            except BaseException as exc:  # noqa: BLE001
+                error.append(exc)
             finally:
-                loop.close()
-        except Exception:  # noqa: BLE001
+                try:
+                    loop.close()
+                except Exception:  # noqa: BLE001
+                    pass
+
+        thread = threading.Thread(target=_runner, daemon=True)
+        thread.start()
+        # Soft timeout: 79 channels × ~0.5 s each, with overhead, well under
+        # 120 s. Hard cap protects beat from a hung session.
+        thread.join(timeout=180)
+        if thread.is_alive():
             return []
+        if error:
+            return []
+        return result
