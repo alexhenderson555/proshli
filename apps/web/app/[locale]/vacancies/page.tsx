@@ -25,7 +25,10 @@ export default function VacanciesPage() {
   const [stack, setStack] = useState("");
   const [level, setLevel] = useState("");
   const [workMode, setWorkMode] = useState("");
-  const [source, setSource] = useState("hh_live");
+  // `""` = all sources. Prod DB has rows under `company_sites`, `habr_career`,
+  // `telegram`, `hh` — `hh_live` is a synthetic "live fetch" source that
+  // returns 0 rows here, which is why the feed showed empty on first paint.
+  const [source, setSource] = useState("");
   const [minSalary, setMinSalary] = useState("");
   const [aiMessage, setAiMessage] = useState("");
   const [aiStatus, setAiStatus] = useState(t("aiStatusInitial"));
@@ -127,9 +130,12 @@ export default function VacanciesPage() {
               value={source}
               onChange={setSource}
               options={[
-                { value: "hh_live", label: t("sourceHhLive") },
                 { value: "", label: t("sourceAll") },
+                { value: "company_sites", label: t("sourceCompanySites") },
+                { value: "habr_career", label: t("sourceHabrCareer") },
+                { value: "telegram", label: t("sourceTelegram") },
                 { value: "hh", label: t("sourceHh") },
+                { value: "hh_live", label: t("sourceHhLive") },
                 { value: "manual", label: t("sourceManual") },
               ]}
             />
