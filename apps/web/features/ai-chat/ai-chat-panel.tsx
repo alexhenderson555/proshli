@@ -1,9 +1,9 @@
 "use client";
 
-// Embedded AI search demo. Shown on the landing page and (optionally)
-// inside the vacancies sidebar. Streams typed `data-*` events from
-// `/ai/chat/stream` and renders them as live status + filter chips +
-// suggestion list — no waiting for the full response.
+// Embedded AI search demo — flat editorial card, no gradient blobs.
+// Streams typed `data-*` events from `/ai/chat/stream` and renders them
+// as live status + filter chips + suggestion list — no waiting for the
+// full response.
 //
 // When the user is not signed in we still let them *try* the surface,
 // but the submit call gracefully falls back to a "log in to continue"
@@ -120,21 +120,25 @@ export function AiChatPanel({
   const streaming = phase === "streaming";
 
   return (
-    <section className={cn("panel relative overflow-hidden p-6 lg:p-7", className)}>
-      <div className="absolute inset-0 -z-10 bg-gradient-to-br from-[hsl(var(--primary)/0.08)] via-transparent to-[hsl(var(--accent)/0.08)]" />
+    <section
+      className={cn(
+        "rounded border border-border bg-surface p-5",
+        className,
+      )}
+    >
       <header className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
-          <Bot className="h-4 w-4 text-accent" aria-hidden="true" />
-          {t("kicker")}
+        <div className="flex items-center gap-1.5">
+          <Bot className="h-3.5 w-3.5 text-text-tertiary" aria-hidden="true" />
+          <span className="kicker">{t("kicker")}</span>
         </div>
         {usage ? (
-          <span className="text-xs text-muted-foreground">
+          <span className="text-[11px] font-[510] tabular-nums text-text-tertiary">
             {usage.used_today}/{usage.limit} {t("usageSuffix")}
           </span>
         ) : null}
       </header>
 
-      <div className="mt-4 flex flex-col gap-3">
+      <div className="mt-4 flex flex-col gap-2.5">
         <Textarea
           value={message}
           onChange={setMessage}
@@ -143,23 +147,23 @@ export function AiChatPanel({
           aria-label={t("ariaLabel")}
         />
         <div className="flex items-center justify-between gap-3">
-          <Button onClick={submit} disabled={streaming}>
+          <Button onClick={submit} disabled={streaming} size="sm">
             {streaming ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 {t("buttonStreaming")}
               </>
             ) : (
               <>
-                <Sparkles className="h-4 w-4" />
+                <Sparkles className="h-3.5 w-3.5" />
                 {t("buttonSubmit")}
               </>
             )}
           </Button>
           <span
             className={cn(
-              "text-sm",
-              phase === "error" ? "text-destructive" : "text-muted-foreground",
+              "text-[12px]",
+              phase === "error" ? "text-[var(--danger)]" : "text-text-tertiary",
             )}
             aria-live="polite"
           >
@@ -170,14 +174,12 @@ export function AiChatPanel({
 
       {filters.length > 0 ? (
         <div className="mt-5">
-          <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {t("filtersHeader")}
-          </div>
-          <div className="mt-2 flex flex-wrap gap-2">
+          <div className="kicker">{t("filtersHeader")}</div>
+          <div className="mt-2 flex flex-wrap gap-1.5">
             {filters.map((f) => (
               <span
                 key={f.key}
-                className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary"
+                className="inline-flex items-center gap-1 rounded-sm border border-border bg-elevated px-1.5 py-px text-[11px] font-[510] text-text-secondary"
               >
                 {filterLabel(f)}
               </span>
@@ -188,19 +190,17 @@ export function AiChatPanel({
 
       {suggestions.length > 0 ? (
         <div className="mt-5">
-          <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {t("suggestionsHeader")}
-          </div>
-          <ul className="mt-2 flex flex-col gap-1.5">
+          <div className="kicker">{t("suggestionsHeader")}</div>
+          <ul className="mt-2 flex flex-col gap-1">
             {suggestions.map((hint) => (
               <li key={hint}>
                 <button
                   type="button"
                   onClick={() => setMessage(hint)}
-                  className="group flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-foreground transition hover:bg-muted"
+                  className="group flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-[13px] text-text-secondary transition-colors hover:bg-elevated hover:text-text-primary"
                 >
                   <span>{hint}</span>
-                  <ArrowRight className="h-3.5 w-3.5 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-primary" />
+                  <ArrowRight className="h-3 w-3 text-text-tertiary transition-transform group-hover:translate-x-0.5 group-hover:text-accent" />
                 </button>
               </li>
             ))}

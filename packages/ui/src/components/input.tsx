@@ -9,8 +9,12 @@ import * as React from "react";
 
 import { cn } from "../lib/utils";
 
+// Shared between Input / Select / Textarea so the three feel like one
+// primitive. Editorial dense: 28px tall (h-8 equivalent via py-1.5),
+// rounded 4px, elevated surface so fields read as "indents" of the
+// canvas rather than raised cards.
 export const fieldClass =
-  "w-full rounded-xl border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none transition focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-60";
+  "w-full rounded border border-border bg-elevated px-2.5 py-1.5 text-[13px] font-[510] text-text-primary placeholder:text-text-tertiary outline-none transition-[border-color,box-shadow] focus-visible:border-accent focus-visible:ring-1 focus-visible:ring-accent/40 disabled:cursor-not-allowed disabled:opacity-40";
 
 export interface InputProps {
   value: string;

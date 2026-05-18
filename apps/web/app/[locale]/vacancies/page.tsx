@@ -1,10 +1,20 @@
 "use client";
 
+// Vacancy feed page. Two-column layout: filter rail on the left,
+// continuous list of vacancies on the right.
+//
+// Filter changes re-run the search through a debounced `useEffect` (see
+// `search` callback below). The AI composer is a separate textarea that
+// posts the natural-language query to the backend, which extracts filter
+// values and feeds them back into the same state — so AI is just a
+// shortcut for filling the form.
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { VacancyCard } from "@/components/vacancy-card";
-import { Button, Card, Input, Select, Textarea } from "@/components/ui";
+import { Button, Input, Select, Textarea } from "@/components/ui";
+import { Stagger } from "@proshli/ui";
 import { api } from "@/lib/api";
 import { getToken } from "@/lib/session";
 import type { Vacancy } from "@/lib/types";
@@ -77,14 +87,29 @@ export default function VacanciesPage() {
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
-      <div className="flex flex-col gap-4">
-        <Card>
-          <h1 className="text-xl font-extrabold">{t("feedTitle")}</h1>
-          <p className="mt-1 text-sm text-[var(--text-muted)]">{t("feedSubtitle")}</p>
-          <div className="mt-3 grid gap-2">
-            <Input value={location} onChange={setLocation} placeholder={t("filterLocation")} />
-            <Input value={stack} onChange={setStack} placeholder={t("filterStack")} />
+    <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
+      {/* Filter rail — flat, hairline-bordered, no shadows */}
+      <aside className="flex flex-col gap-4">
+        <section className="rounded border border-border bg-surface p-4">
+          <div className="kicker mb-2">{t("feedTitle")}</div>
+          <p className="text-[13px] leading-[1.5] text-text-secondary">
+            {t("feedSubtitle")}
+          </p>
+        </section>
+
+        <section className="rounded border border-border bg-surface p-4">
+          <div className="kicker mb-3">Filters</div>
+          <div className="grid gap-2">
+            <Input
+              value={location}
+              onChange={setLocation}
+              placeholder={t("filterLocation")}
+            />
+            <Input
+              value={stack}
+              onChange={setStack}
+              placeholder={t("filterStack")}
+            />
             <Select
               value={level}
               onChange={setLevel}
@@ -115,33 +140,49 @@ export default function VacanciesPage() {
                 { value: "office", label: t("workModeOffice") },
               ]}
             />
-            <Input value={minSalary} onChange={setMinSalary} placeholder={t("filterMinSalary")} />
-            <Button onClick={search} disabled={loading}>
+            <Input
+              value={minSalary}
+              onChange={setMinSalary}
+              placeholder={t("filterMinSalary")}
+            />
+            <Button onClick={search} disabled={loading} className="mt-1">
               {loading ? t("buttonSearching") : t("buttonSearch")}
             </Button>
           </div>
-        </Card>
+        </section>
 
-        <Card>
-          <h2 className="text-lg font-bold">{t("aiCardTitle")}</h2>
+        <section className="rounded border border-border bg-surface p-4">
+          <div className="kicker mb-3">{t("aiCardTitle")}</div>
           <Textarea
             value={aiMessage}
             onChange={setAiMessage}
             placeholder={t("aiPlaceholder")}
-            rows={5}
+            rows={4}
           />
-          <div className="mt-2">
-            <Button onClick={runAiComposer}>{t("aiButton")}</Button>
-          </div>
-          <p className="mt-3 text-sm text-[var(--text-muted)]">{aiStatus}</p>
-        </Card>
-      </div>
+          <Button onClick={runAiComposer} variant="secondary" size="sm" className="mt-2 w-full">
+            {t("aiButton")}
+          </Button>
+          <p
+            aria-live="polite"
+            className="mt-2 text-[12px] leading-[1.5] text-text-tertiary"
+          >
+            {aiStatus}
+          </p>
+        </section>
+      </aside>
 
-      <section className="flex flex-col gap-3">
+      {/* Feed — list rhythm, tight gaps, hairline separators inside cards */}
+      <section className="min-w-0">
         {orderedVacancies.length === 0 ? (
-          <Card className="text-sm text-[var(--text-muted)]">{t("emptyState")}</Card>
+          <div className="rounded border border-border bg-surface p-6 text-center text-[13px] text-text-tertiary">
+            {t("emptyState")}
+          </div>
         ) : (
-          orderedVacancies.map((vacancy) => <VacancyCard key={vacancy.id} vacancy={vacancy} />)
+          <Stagger step={0.03} immediate className="flex flex-col">
+            {orderedVacancies.map((vacancy) => (
+              <VacancyCard key={vacancy.id} vacancy={vacancy} />
+            ))}
+          </Stagger>
         )}
       </section>
     </div>

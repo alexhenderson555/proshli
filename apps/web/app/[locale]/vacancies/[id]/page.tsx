@@ -1,11 +1,16 @@
 "use client";
 
+// Vacancy detail page. Two columns on desktop (main content + sticky
+// aside with salary + key facts), single column on mobile with a fixed
+// bottom CTA bar so the "Apply" button is always reachable.
+
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 
-import { Badge, Button, Card } from "@/components/ui";
+import { Badge, Button } from "@/components/ui";
 import { VacancyCard } from "@/components/vacancy-card";
+import { FadeIn } from "@proshli/ui";
 import { Link } from "@/i18n/navigation";
 import { api } from "@/lib/api";
 import type { Vacancy } from "@/lib/types";
@@ -68,177 +73,227 @@ export default function VacancyDetailsPage() {
   }, [params.id]);
 
   const salaryLabel = useMemo(() => {
-    if (!vacancy) {
-      return "—";
-    }
-    if (!vacancy.salary_from && !vacancy.salary_to) {
-      return t("salaryNotSet");
-    }
-    return `${t("salaryFrom")} ${vacancy.salary_from?.toLocaleString(intlTag) ?? "—"} ${t("salaryTo")} ${
-      vacancy.salary_to?.toLocaleString(intlTag) ?? "—"
-    } ${vacancy.currency}`;
+    if (!vacancy) return "—";
+    if (!vacancy.salary_from && !vacancy.salary_to) return t("salaryNotSet");
+    return [
+      vacancy.salary_from
+        ? `${t("salaryFrom")} ${vacancy.salary_from.toLocaleString(intlTag)}`
+        : null,
+      vacancy.salary_to
+        ? `${t("salaryTo")} ${vacancy.salary_to.toLocaleString(intlTag)}`
+        : null,
+    ]
+      .filter(Boolean)
+      .join(" ") + ` ${vacancy.currency}`;
   }, [vacancy, intlTag, t]);
+
   const modeLabel = useMemo(() => {
-    if (!vacancy) {
-      return "";
-    }
+    if (!vacancy) return "";
     const hay = `${vacancy.location} ${vacancy.description}`.toLowerCase();
-    if (hay.includes("remote") || hay.includes("удален")) {
-      return t("modeRemote");
-    }
-    if (hay.includes("hybrid") || hay.includes("гибрид")) {
-      return t("modeHybrid");
-    }
-    if (hay.includes("office") || hay.includes("офис")) {
-      return t("modeOffice");
-    }
+    if (hay.includes("remote") || hay.includes("удален")) return t("modeRemote");
+    if (hay.includes("hybrid") || hay.includes("гибрид")) return t("modeHybrid");
+    if (hay.includes("office") || hay.includes("офис")) return t("modeOffice");
     return t("modeUnknown");
   }, [vacancy, t]);
+
   const skills = useMemo(() => {
-    if (!vacancy?.description) {
-      return [];
-    }
+    if (!vacancy?.description) return [];
     const known = [
-      "python",
-      "sql",
-      "postgresql",
-      "fastapi",
-      "django",
-      "flask",
-      "kafka",
-      "docker",
-      "kubernetes",
-      "linux",
-      "javascript",
-      "typescript",
-      "react",
-      "vue",
-      "node",
-      "git",
-      "ci/cd",
-      "airflow",
-      "spark",
-      "tableau",
-      "power bi",
+      "python", "sql", "postgresql", "fastapi", "django", "flask",
+      "kafka", "docker", "kubernetes", "linux", "javascript", "typescript",
+      "react", "vue", "node", "git", "ci/cd", "airflow", "spark",
+      "tableau", "power bi",
     ];
     const hay = vacancy.description.toLowerCase();
     return known.filter((item) => hay.includes(item)).slice(0, 10);
   }, [vacancy]);
+
   const quickApplyHref = vacancy?.external_url ?? "";
 
   if (loading) {
-    return <Card>{t("loadingText")}</Card>;
+    return (
+      <div className="rounded border border-border bg-surface p-6 text-[13px] text-text-tertiary">
+        {t("loadingText")}
+      </div>
+    );
   }
 
   if (!vacancy) {
     return (
-      <Card>
-        <p className="text-sm text-[var(--danger)]">{error || t("loadFailed")}</p>
-        <Link href="/vacancies" className="mt-2 inline-block">
-          <Button variant="secondary">{t("backToFeed")}</Button>
+      <div className="rounded border border-border bg-surface p-6">
+        <p className="text-[13px] text-[var(--danger)]">{error || t("loadFailed")}</p>
+        <Link href="/vacancies" className="mt-3 inline-block">
+          <Button variant="secondary" size="sm">
+            {t("backToFeed")}
+          </Button>
         </Link>
-      </Card>
+      </div>
     );
   }
 
+  const published = new Date(vacancy.published_at).toLocaleString(intlTag, {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
-      <Card>
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge text={vacancy.source.toUpperCase()} />
-          {vacancy.is_promoted ? <Badge text="PROMO" tone="brand" /> : null}
-          <Badge text={vacancy.experience_level.toUpperCase()} tone="success" />
-          <Badge text={modeLabel.toUpperCase()} />
-        </div>
-        <h1 className="mt-3 text-3xl font-extrabold tracking-[-0.01em]">{vacancy.title}</h1>
-        <p className="mt-1 text-base font-semibold text-[var(--text-muted)]">
-          {vacancy.company} • {vacancy.location}
-        </p>
-        <div className="mt-4 rounded-2xl border border-[var(--line)] bg-[var(--surface-alt)] p-4">
-          <div className="grid gap-2 text-sm text-[var(--text-muted)] md:grid-cols-2">
-            <p>
-              <span className="font-semibold text-[var(--text)]">{t("salary")}:</span> {salaryLabel}
-            </p>
-            <p>
-              <span className="font-semibold text-[var(--text)]">{t("applications")}:</span> {vacancy.applications_count}
-            </p>
-            <p>
-              <span className="font-semibold text-[var(--text)]">{t("published")}:</span>{" "}
-              {new Date(vacancy.published_at).toLocaleString(intlTag)}
-            </p>
-            <p>
-              <span className="font-semibold text-[var(--text)]">{t("employmentType")}:</span> {vacancy.employment_type}
-            </p>
+    <div className="grid gap-6 lg:grid-cols-[1fr_320px] pb-24 lg:pb-0">
+      <FadeIn y={6} duration={0.35} immediate>
+        <article className="rounded border border-border bg-surface p-6">
+          {/* Header chips */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Badge text={vacancy.source.toUpperCase()} />
+            {vacancy.is_promoted ? <Badge text="PROMO" tone="brand" /> : null}
+            <Badge text={vacancy.experience_level.toUpperCase()} />
+            <Badge text={modeLabel.toUpperCase()} />
+            {!vacancy.is_active ? <Badge text="ARCHIVED" tone="warning" /> : null}
           </div>
-        </div>
-        <p className="mt-4 text-sm leading-7 whitespace-pre-wrap">{vacancy.description || t("descriptionEmpty")}</p>
-        <div className="mt-4 flex gap-2">
-          {vacancy.external_url ? (
-            <a href={vacancy.external_url} target="_blank" rel="noreferrer">
-              <Button>{t("applyHh")}</Button>
-            </a>
-          ) : (
-            <Button>{t("apply")}</Button>
-          )}
-          <Link href="/vacancies">
-            <Button variant="secondary">{t("backToFeed")}</Button>
-          </Link>
-        </div>
-      </Card>
-      <aside className="self-start lg:sticky lg:top-24">
-        <Card>
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">{t("salary")}</p>
-            <p className="mt-1 text-2xl font-extrabold leading-tight text-emerald-800">{salaryLabel}</p>
-          </div>
-          <h2 className="text-base font-extrabold">{t("keyFacts")}</h2>
-          <div className="mt-3 grid gap-2 text-sm text-[var(--text-muted)]">
-            <p>
-              <span className="font-semibold text-[var(--text)]">{t("salary")}:</span> {salaryLabel}
-            </p>
-            <p>
-              <span className="font-semibold text-[var(--text)]">{t("format")}:</span> {modeLabel}
-            </p>
-            <p>
-              <span className="font-semibold text-[var(--text)]">{t("company")}:</span> {vacancy.company}
-            </p>
-            <p>
-              <span className="font-semibold text-[var(--text)]">{t("location")}:</span> {vacancy.location}
-            </p>
-          </div>
-          <h3 className="mt-4 text-sm font-extrabold">{t("keySkills")}</h3>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {skills.length === 0 ? (
-              <span className="text-xs text-[var(--text-muted)]">{t("skillsEmpty")}</span>
+
+          <h1 className="mt-4 text-[28px] font-[580] leading-[1.15] tracking-[-0.02em] text-text-primary">
+            {vacancy.title}
+          </h1>
+          <p className="mt-1.5 text-[14px] font-[510] text-text-secondary">
+            {vacancy.company}
+            <span className="mx-2 text-text-tertiary">·</span>
+            {vacancy.location}
+          </p>
+
+          {/* Meta grid */}
+          <dl className="mt-5 grid gap-x-6 gap-y-3 rounded border border-border bg-elevated p-4 sm:grid-cols-2">
+            {[
+              [t("salary"), salaryLabel],
+              [t("applications"), String(vacancy.applications_count)],
+              [t("published"), published],
+              [t("employmentType"), vacancy.employment_type],
+            ].map(([label, value]) => (
+              <div key={label} className="flex flex-col gap-0.5">
+                <dt className="text-[10px] font-[510] uppercase tracking-[0.1em] text-text-tertiary">
+                  {label}
+                </dt>
+                <dd className="text-[13px] font-[510] tabular-nums text-text-primary">
+                  {value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+
+          {/* Description */}
+          <p className="mt-6 text-[14px] leading-[1.65] text-text-secondary whitespace-pre-wrap">
+            {vacancy.description || t("descriptionEmpty")}
+          </p>
+
+          {/* Bottom actions (desktop only — mobile uses sticky bar) */}
+          <div className="mt-6 hidden lg:flex items-center gap-2">
+            {vacancy.external_url ? (
+              <a href={vacancy.external_url} target="_blank" rel="noreferrer">
+                <Button>{t("applyHh")}</Button>
+              </a>
             ) : (
-              skills.map((item) => <Badge key={item} text={item.toUpperCase()} tone="brand" />)
+              <Button>{t("apply")}</Button>
             )}
+            <Link href="/vacancies">
+              <Button variant="secondary">{t("backToFeed")}</Button>
+            </Link>
           </div>
+        </article>
+      </FadeIn>
+
+      {/* Sticky aside — salary callout + key facts + skills */}
+      <aside className="self-start lg:sticky lg:top-20 flex flex-col gap-3">
+        <section className="rounded border border-border-strong bg-elevated p-4">
+          <div className="kicker">{t("salary")}</div>
+          <p className="mt-1 text-[22px] font-[580] tabular-nums leading-tight text-text-primary">
+            {salaryLabel}
+          </p>
+        </section>
+
+        <section className="rounded border border-border bg-surface p-4">
+          <div className="kicker mb-3">{t("keyFacts")}</div>
+          <dl className="grid gap-2.5 text-[13px]">
+            {[
+              [t("format"), modeLabel],
+              [t("company"), vacancy.company],
+              [t("location"), vacancy.location],
+            ].map(([label, value]) => (
+              <div
+                key={label}
+                className="flex items-baseline justify-between gap-3"
+              >
+                <dt className="text-text-tertiary">{label}</dt>
+                <dd className="text-text-primary text-right truncate">{value}</dd>
+              </div>
+            ))}
+          </dl>
+
+          <div className="mt-4 border-t border-border pt-3">
+            <div className="kicker mb-2">{t("keySkills")}</div>
+            <div className="flex flex-wrap gap-1">
+              {skills.length === 0 ? (
+                <span className="text-[12px] text-text-tertiary">
+                  {t("skillsEmpty")}
+                </span>
+              ) : (
+                skills.map((item) => (
+                  <Badge key={item} text={item.toUpperCase()} />
+                ))
+              )}
+            </div>
+          </div>
+
           <div className="mt-4">
             {vacancy.external_url ? (
-              <a href={vacancy.external_url} target="_blank" rel="noreferrer" className="block">
+              <a
+                href={vacancy.external_url}
+                target="_blank"
+                rel="noreferrer"
+                className="block"
+              >
                 <Button className="w-full">{t("applyHh")}</Button>
               </a>
             ) : (
               <Button className="w-full">{t("apply")}</Button>
             )}
           </div>
-        </Card>
+        </section>
       </aside>
 
-      <section className="grid gap-3 lg:col-span-2">
-        <h2 className="text-lg font-bold">{t("similarTitle")}</h2>
-        {related.length === 0 ? <Card>{t("similarEmpty")}</Card> : related.map((item) => <VacancyCard key={item.id} vacancy={item} />)}
+      {/* Similar vacancies — spans both columns */}
+      <section className="lg:col-span-2">
+        <div className="kicker mb-3">{t("similarTitle")}</div>
+        {related.length === 0 ? (
+          <div className="rounded border border-border bg-surface p-4 text-[13px] text-text-tertiary">
+            {t("similarEmpty")}
+          </div>
+        ) : (
+          <div className="rounded border border-border bg-surface px-4">
+            {related.map((item) => (
+              <VacancyCard key={item.id} vacancy={item} />
+            ))}
+          </div>
+        )}
       </section>
-      <div className="fixed inset-x-0 bottom-3 z-40 px-4 lg:hidden">
+
+      {/* Mobile sticky action bar — bottom of viewport, safe-area aware */}
+      <div
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 backdrop-blur-md px-4 py-3 lg:hidden"
+        style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
+      >
         {quickApplyHref ? (
-          <a href={quickApplyHref} target="_blank" rel="noreferrer" className="mx-auto block w-full max-w-md">
-            <Button className="w-full">{t("quickApplyHh")}</Button>
+          <a
+            href={quickApplyHref}
+            target="_blank"
+            rel="noreferrer"
+            className="block"
+          >
+            <Button className="w-full" size="lg">
+              {t("quickApplyHh")}
+            </Button>
           </a>
         ) : (
-          <div className="mx-auto w-full max-w-md">
-            <Button className="w-full">{t("quickApply")}</Button>
-          </div>
+          <Button className="w-full" size="lg">
+            {t("quickApply")}
+          </Button>
         )}
       </div>
     </div>

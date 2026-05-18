@@ -1,16 +1,15 @@
+// Landing page. Server component — translations resolved at request time
+// via `getTranslations`. Three sections: hero (intro + AI demo panel),
+// features (4-tile grid), bottom CTA. All motion is mount-only via the
+// shared FadeIn / Stagger primitives so the page never re-animates on
+// route re-entry.
+
 import { ArrowRight, Bot, Filter, Sparkles, Zap } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { AiChatPanel } from "@/features/ai-chat/ai-chat-panel";
 import { Link } from "@/i18n/navigation";
-
-// Server component — translations resolved at request time.
-//
-// Why `setRequestLocale` again here even though the parent layout does
-// it: per next-intl docs, every static-render-eligible page must call
-// it so the locale gets baked into the page's RSC payload, otherwise
-// `generateStaticParams` works but `getTranslations` won't have the
-// right locale during the static export.
+import { FadeIn, Stagger } from "@proshli/ui";
 
 export default async function Home({
   params,
@@ -18,6 +17,9 @@ export default async function Home({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
+  // Re-pin the locale here even though the layout did it — static
+  // rendering needs every page to call setRequestLocale so the locale
+  // is baked into the RSC payload.
   setRequestLocale(locale);
   const t = await getTranslations("landing");
 
@@ -35,90 +37,102 @@ export default async function Home({
   ] as const;
 
   return (
-    <div className="flex flex-col gap-16 py-8">
-      {/* Hero */}
-      <section className="grid gap-10 lg:grid-cols-[1.2fr_1fr] lg:items-center">
-        <div className="flex flex-col gap-6">
-          <span className="inline-flex w-fit items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            <Sparkles className="h-3.5 w-3.5 text-accent" />
-            {t("badge")}
-          </span>
-          <h1 className="text-balance text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
-            {t("heroTitleLead")}{" "}
-            <span className="bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(var(--accent))] bg-clip-text text-transparent">
-              {t("heroTitleAccent")}
+    <div className="flex flex-col gap-20 py-10">
+      {/* Hero — left column copy + CTAs + metric strip, right column AI demo */}
+      <section className="grid gap-10 lg:grid-cols-[1.15fr_1fr] lg:items-center">
+        <FadeIn y={12} duration={0.5} immediate>
+          <div className="flex flex-col gap-6">
+            <span className="inline-flex w-fit items-center gap-1.5 rounded border border-border bg-elevated px-2 py-1 text-[11px] font-[510] uppercase tracking-[0.1em] text-text-secondary">
+              <Sparkles className="h-3 w-3 text-accent" aria-hidden="true" />
+              {t("badge")}
             </span>
-            .
-          </h1>
-          <p className="max-w-2xl text-pretty text-base text-muted-foreground sm:text-lg">
-            {t("heroSubtitle")}
-          </p>
-          <div className="flex flex-wrap items-center gap-3">
-            <Link
-              href="/auth?mode=register"
-              className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition hover:opacity-90"
-            >
-              {t("ctaPrimary")}
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-            <Link
-              href="/vacancies"
-              className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-5 py-3 text-sm font-semibold text-foreground transition hover:bg-muted"
-            >
-              {t("ctaSecondary")}
-            </Link>
+            <h1 className="text-balance text-[40px] font-[580] leading-[1.05] tracking-[-0.03em] text-text-primary sm:text-[48px] lg:text-[56px]">
+              {t("heroTitleLead")}{" "}
+              <span className="text-accent">{t("heroTitleAccent")}</span>.
+            </h1>
+            <p className="max-w-xl text-pretty text-[15px] leading-[1.6] text-text-secondary">
+              {t("heroSubtitle")}
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <Link
+                href="/auth?mode=register"
+                className="inline-flex items-center gap-1.5 rounded bg-accent px-4 py-2 text-[13px] font-[510] text-white transition-colors hover:bg-accent-hover active:bg-accent-active"
+              >
+                {t("ctaPrimary")}
+                <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+              </Link>
+              <Link
+                href="/vacancies"
+                className="inline-flex items-center gap-1.5 rounded border border-border bg-elevated px-4 py-2 text-[13px] font-[510] text-text-primary transition-colors hover:border-border-strong"
+              >
+                {t("ctaSecondary")}
+              </Link>
+            </div>
+            <dl className="mt-3 grid max-w-md grid-cols-3 gap-6">
+              {metrics.map((m) => (
+                <div key={m.label} className="flex flex-col gap-1">
+                  <dt className="text-[22px] font-[580] tabular-nums tracking-[-0.02em] text-text-primary">
+                    {m.value}
+                  </dt>
+                  <dd className="text-[10px] font-[510] uppercase tracking-[0.1em] text-text-tertiary">
+                    {m.label}
+                  </dd>
+                </div>
+              ))}
+            </dl>
           </div>
-          <dl className="mt-4 grid max-w-md grid-cols-3 gap-6">
-            {metrics.map((m) => (
-              <div key={m.label} className="flex flex-col gap-1">
-                <dt className="text-2xl font-extrabold tracking-tight text-foreground">{m.value}</dt>
-                <dd className="text-xs text-muted-foreground">{m.label}</dd>
-              </div>
-            ))}
-          </dl>
-        </div>
+        </FadeIn>
 
-        <AiChatPanel />
+        <FadeIn y={12} duration={0.5} immediate>
+          <AiChatPanel />
+        </FadeIn>
       </section>
 
-      {/* Features */}
-      <section className="flex flex-col gap-8">
-        <div className="flex flex-col gap-2">
-          <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
+      {/* Features — flat editorial grid, no lift, hover = border tint only */}
+      <section className="flex flex-col gap-6">
+        <div className="flex flex-col gap-1.5">
+          <div className="kicker">{t("featuresKicker") || "Features"}</div>
+          <h2 className="text-[28px] font-[580] leading-tight tracking-[-0.02em] text-text-primary sm:text-[32px]">
             {t("featuresTitle")}
           </h2>
-          <p className="max-w-2xl text-muted-foreground">{t("featuresSubtitle")}</p>
+          <p className="max-w-2xl text-[14px] leading-[1.6] text-text-secondary">
+            {t("featuresSubtitle")}
+          </p>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Stagger step={0.06} immediate className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {features.map(({ icon: Icon, title, body }) => (
             <article
               key={title}
-              className="panel flex flex-col gap-3 p-5 transition hover:-translate-y-0.5 hover:shadow-md"
+              className="flex flex-col gap-3 rounded border border-border bg-surface p-4 transition-colors hover:border-border-strong"
             >
-              <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <Icon className="h-5 w-5" />
+              <div className="inline-flex h-8 w-8 items-center justify-center rounded bg-elevated text-accent">
+                <Icon className="h-4 w-4" aria-hidden="true" />
               </div>
-              <h3 className="text-base font-bold">{title}</h3>
-              <p className="text-sm text-muted-foreground">{body}</p>
+              <h3 className="text-[14px] font-[580] tracking-[-0.01em] text-text-primary">
+                {title}
+              </h3>
+              <p className="text-[13px] leading-[1.55] text-text-secondary">{body}</p>
             </article>
           ))}
-        </div>
+        </Stagger>
       </section>
 
-      {/* CTA */}
-      <section className="panel flex flex-col items-start gap-4 p-8 sm:flex-row sm:items-center sm:justify-between sm:p-10">
-        <div className="flex flex-col gap-2">
-          <h2 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
+      {/* Bottom CTA — flat panel, no gradient */}
+      <section className="flex flex-col items-start gap-4 rounded border border-border bg-surface p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8">
+        <div className="flex flex-col gap-1.5">
+          <h2 className="text-[22px] font-[580] leading-tight tracking-[-0.02em] text-text-primary sm:text-[26px]">
             {t("ctaSectionTitle")}
           </h2>
-          <p className="max-w-xl text-muted-foreground">{t("ctaSectionSubtitle")}</p>
+          <p className="max-w-xl text-[13px] leading-[1.55] text-text-secondary">
+            {t("ctaSectionSubtitle")}
+          </p>
         </div>
         <Link
           href="/auth?mode=register"
-          className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition hover:opacity-90"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded bg-accent px-4 py-2 text-[13px] font-[510] text-white transition-colors hover:bg-accent-hover active:bg-accent-active"
         >
           {t("ctaSectionButton")}
-          <ArrowRight className="h-4 w-4" />
+          <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
         </Link>
       </section>
     </div>
