@@ -9,7 +9,7 @@ SHELL := /bin/bash
 
 # Avoid mistaking targets for files with the same name.
 .PHONY: help dev up down logs ps migrate seed test test-api test-workers test-web \
-        lint lint-api lint-web format gen-types clean install ci
+        lint lint-api lint-web format gen-types clean install ci smoke-prod
 
 help:  ## Show this help.
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -84,3 +84,6 @@ clean:  ## Remove build artifacts.
 ci:  ## Lightweight pre-push check (mirrors CI).
 	$(MAKE) lint
 	$(MAKE) test
+
+smoke-prod:  ## Post-deploy smoke check against $PROSHLI_SMOKE_BASE_URL (default: localhost).
+	python scripts/smoke_prod.py
