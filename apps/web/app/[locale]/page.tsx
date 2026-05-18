@@ -38,9 +38,15 @@ export default async function Home({
 
   return (
     <div className="flex flex-col gap-20 py-10">
-      {/* Hero — left column copy + CTAs + metric strip, right column AI demo */}
+      {/* Hero — left column copy + CTAs + metric strip, right column AI demo.
+          The hero deliberately renders without a `<FadeIn>` motion wrapper:
+          Playwright's `strict mode` selectors observed framer-motion's
+          presence/initial pair as two separate DOM nodes for the heading
+          span, which broke `getByText` even when only one node was visible.
+          The features grid below still uses `<Stagger>`, so the landing
+          still feels animated on first paint. */}
       <section className="grid gap-10 lg:grid-cols-[1.15fr_1fr] lg:items-center">
-        <FadeIn y={12} duration={0.5} immediate>
+        <div>
           <div className="flex flex-col gap-6">
             <span className="inline-flex w-fit items-center gap-1.5 rounded border border-border bg-elevated px-2 py-1 text-[11px] font-[510] uppercase tracking-[0.1em] text-text-secondary">
               <Sparkles className="h-3 w-3 text-accent" aria-hidden="true" />
@@ -81,11 +87,9 @@ export default async function Home({
               ))}
             </dl>
           </div>
-        </FadeIn>
+        </div>
 
-        <FadeIn y={12} duration={0.5} immediate>
-          <AiChatPanel />
-        </FadeIn>
+        <AiChatPanel />
       </section>
 
       {/* Features — flat editorial grid, no lift, hover = border tint only */}
