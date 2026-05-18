@@ -317,3 +317,8 @@ class CheckoutResponse(BaseModel):
     confirmation_url: str
     payment_id: str
     status: str
+
+
+class MatchScoreOut(BaseModel):
+    score: float
+    tier: Literal["strong", "decent", "stretch", "longshot"]

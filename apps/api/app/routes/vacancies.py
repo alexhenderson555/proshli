@@ -38,6 +38,7 @@ from app.schemas import (
     EmployerActionLogOut,
     EmployerVacancyAnalyticsOut,
     EmployerVacancyPageOut,
+    MatchScoreOut,
     VacancyCreateRequest,
     VacancyOut,
     VacancyPromoteRequest,
@@ -465,6 +466,29 @@ async def search_semantic(
         db, q, get_embedding_service(), limit=limit
     )
     return [VacancyOut.model_validate(row) for row in rows]
+
+
+@router.get("/{vacancy_id}/match-score", response_model=MatchScoreOut)
+async def get_match_score(
+    vacancy_id: int,
+    db: DbSession,
+    current_user: User = Depends(get_current_user),
+) -> MatchScoreOut:
+    """Return the cosine match score between the caller's resume and a vacancy.
+
+    Always-authed — anonymous callers get 401 from ``get_current_user``.
+    404 when the caller has no resume on file, or the vacancy has no embedding.
+    Used by the vacancy detail page to load the score after page render without
+    re-fetching the full vacancy list.
+    """
+    resume_emb = await user_resume_embedding(db, current_user.id)
+    if resume_emb is None:
+        raise HTTPException(status_code=404, detail="No resume on file")
+    scores = await batch_match_scores(db, resume_emb, [vacancy_id])
+    score = scores.get(vacancy_id)
+    if score is None:
+        raise HTTPException(status_code=404, detail="Vacancy not embedded")
+    return MatchScoreOut(score=score, tier=match_tier(score))
 
 
 @router.get("/{vacancy_id}", response_model=VacancyOut)
