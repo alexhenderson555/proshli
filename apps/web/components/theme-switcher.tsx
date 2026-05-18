@@ -45,7 +45,7 @@ export function ThemeSwitcher() {
     return (
       <div
         aria-hidden="true"
-        className="h-9 w-9 rounded-lg border border-border bg-card"
+        className="h-7 w-7 rounded border border-border bg-elevated"
       />
     );
   }
@@ -63,14 +63,14 @@ export function ThemeSwitcher() {
   };
 
   return (
-    <label className="relative inline-flex h-9 items-center rounded-lg border border-border bg-card pl-2 pr-1 text-xs font-semibold text-muted-foreground">
-      <Icon className="h-4 w-4" aria-hidden="true" />
+    <label className="relative inline-flex h-7 items-center rounded border border-border bg-elevated pl-2 pr-1 text-[11px] font-[510] text-text-secondary hover:border-border-strong transition-colors">
+      <Icon className="h-3.5 w-3.5" aria-hidden="true" />
       <span className="sr-only">{t("themeAriaLabel")}</span>
       <select
         aria-label={t("themeAriaLabel")}
         value={current}
         onChange={(event) => setTheme(event.target.value)}
-        className="ml-1 cursor-pointer appearance-none bg-transparent pr-4 text-xs font-semibold uppercase tracking-wider text-foreground focus:outline-none"
+        className="ml-1 cursor-pointer appearance-none bg-transparent pr-3 text-[11px] font-[510] uppercase tracking-[0.08em] text-text-primary focus:outline-none"
       >
         {THEME_ORDER.map((key) => (
           <option key={key} value={key}>

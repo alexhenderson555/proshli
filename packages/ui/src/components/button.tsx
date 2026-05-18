@@ -1,12 +1,12 @@
-// Token-driven Button. The variant/size names follow the Proshli
-// in-app vocabulary (`primary` / `secondary` / `ghost` / `danger`,
-// sizes `sm` / `md` / `lg`) rather than the raw shadcn defaults — the
-// brand styles use a stronger "primary action" cue, so the
-// `default → primary` rename keeps call sites readable.
+// Linear-style Button. Compact, low-radius, color-shift hover (no lift).
 //
-// Classes route through Tailwind CSS variables (`--primary`, etc.) so
-// dark/oled themes re-skin via the `class` toggle on <html> with no
-// component change. `cva` keeps the variant matrix tree-shakable.
+// Variants: primary (filled accent), secondary (elevated chip with border),
+// ghost (transparent), danger. Sizes are tight — md is 32px tall, the
+// editorial-density default. Use `lg` only when the button is the page's
+// dominant CTA (auth submit, billing plan select).
+//
+// Focus ring is built into the base class — `ring-accent` shows on
+// keyboard nav only (`focus-visible`), never on mouse click.
 
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
@@ -14,20 +14,24 @@ import * as React from "react";
 import { cn } from "../lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50",
+  // Base: rounded (4px), inter 510, no shadow, color-only transitions.
+  "inline-flex items-center justify-center gap-1.5 rounded font-[510] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-canvas disabled:cursor-not-allowed disabled:opacity-40 select-none",
   {
     variants: {
       variant: {
-        primary: "bg-primary text-primary-foreground hover:opacity-90 shadow-sm",
+        primary:
+          "bg-accent text-white hover:bg-accent-hover active:bg-accent-active",
         secondary:
-          "bg-card text-foreground border border-border hover:bg-muted",
-        ghost: "bg-transparent text-foreground hover:bg-muted",
-        danger: "bg-destructive text-destructive-foreground hover:opacity-90",
+          "bg-elevated text-text-primary border border-border hover:border-border-strong hover:bg-elevated",
+        ghost:
+          "bg-transparent text-text-secondary hover:bg-elevated hover:text-text-primary",
+        danger:
+          "bg-danger text-white hover:opacity-90 active:opacity-95",
       },
       size: {
-        sm: "h-8 px-3 text-xs",
-        md: "h-10 px-4 text-sm",
-        lg: "h-11 px-5 text-base",
+        sm: "h-7 px-2.5 text-[12px]",
+        md: "h-8 px-3 text-[13px]",
+        lg: "h-9 px-4 text-[14px]",
       },
     },
     defaultVariants: {

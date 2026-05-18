@@ -6,17 +6,22 @@
 // on the request, which keeps `<html lang>` in sync.
 
 import type { Metadata, Viewport } from "next";
-import { JetBrains_Mono, Manrope } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 
-const manrope = Manrope({
-  variable: "--font-manrope",
+// Inter Variable — Linear's typeface. Weight axis 100-900 lets us use 510 for
+// body and 580 for headings without loading two static cuts. `display: swap`
+// keeps the page interactive while Inter loads; the fallback chain in
+// globals.css covers the cold-cache flash without visible reflow.
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin", "cyrillic"],
   display: "swap",
+  axes: ["opsz"],
 });
 
 const mono = JetBrains_Mono({
@@ -55,7 +60,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export const viewport: Viewport = {
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#000000" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0b0d" },
   ],
   width: "device-width",
   initialScale: 1,
@@ -73,15 +78,15 @@ export default async function RootLayout({
     // server <html> may diverge from what next-themes paints client-side.
     <html
       lang={locale}
-      className={`${manrope.variable} ${mono.variable} h-full antialiased`}
+      className={`${inter.variable} ${mono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <body className="flex min-h-full flex-col bg-background text-foreground">
+      <body className="flex min-h-full flex-col bg-canvas text-text-primary">
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
+          defaultTheme="dark"
           enableSystem
-          themes={["light", "dark", "oled"]}
+          themes={["dark", "light", "oled"]}
         >
           <NextIntlClientProvider locale={locale} messages={messages}>
             {children}

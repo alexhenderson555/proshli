@@ -1,15 +1,14 @@
 "use client";
 
-// Top navigation bar. Brand mark on the left, navigation in the middle,
-// auth CTA on the right plus locale + theme switchers. Stays sticky as
-// you scroll.
+// Top navigation. Editorial dense: 52px row, hairline bottom, flat brand
+// mark, segmented active state on the centre nav. Sticky so the canvas
+// can scroll under it with backdrop-blur for legibility.
 //
-// Auth-awareness is intentionally light right now: we read the JWT token
-// from localStorage and flip the right-side CTA accordingly. Server-side
-// cookie auth lives in `lib/session.ts`.
+// Auth-awareness reads the JWT from localStorage and flips the right-side
+// CTA — same behaviour as before, just visually quieter. The dashboard
+// link only appears when authed.
 
 import { useSyncExternalStore } from "react";
-import { Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Link, usePathname } from "@/i18n/navigation";
@@ -20,7 +19,6 @@ import { ThemeSwitcher } from "./theme-switcher";
 // classic `useEffect`-then-setState pattern (which trips React 19's
 // `react-hooks/set-state-in-effect` rule) and gives us SSR safety
 // via the `serverSnapshot` parameter for free.
-
 function subscribeToToken(cb: () => void) {
   if (typeof window === "undefined") return () => {};
   window.addEventListener("storage", cb);
@@ -52,39 +50,45 @@ export function AppHeader() {
 
   const nav = [
     { href: "/vacancies", label: t("navVacancies") },
+    { href: "/billing", label: t("navBilling") },
     { href: "/seeker", label: t("navSeeker") },
     { href: "/employer", label: t("navEmployer") },
   ] as const;
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-background/85 backdrop-blur">
-      <div className="container flex items-center justify-between gap-4 py-3">
-        <Link href="/" className="flex items-center gap-2.5" aria-label={t("brandAriaLabel")}>
+    <header className="sticky top-0 z-50 border-b border-border bg-canvas/85 backdrop-blur-md">
+      <div className="container flex items-center justify-between gap-6 py-2.5">
+        <Link
+          href="/"
+          className="flex items-center gap-2 focus-ring"
+          aria-label={t("brandAriaLabel")}
+        >
           <span
-            className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[hsl(var(--primary))] to-[hsl(var(--accent))] text-primary-foreground shadow-sm"
+            className="inline-flex h-6 w-6 items-center justify-center rounded-sm bg-accent text-white font-[580] text-[12px] leading-none"
             aria-hidden="true"
           >
-            <Sparkles className="h-4 w-4" />
+            P
           </span>
-          <div className="leading-tight">
-            <div className="text-sm font-extrabold tracking-tight">Proshli</div>
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-              {t("brandSubtitle")}
-            </div>
-          </div>
+          <span className="text-[13px] font-[580] tracking-[-0.02em] text-text-primary">
+            Proshli
+          </span>
         </Link>
-        <nav className="hidden flex-wrap items-center gap-1 md:flex" aria-label={t("navAriaLabel")}>
+
+        <nav
+          className="hidden md:flex items-center gap-0.5"
+          aria-label={t("navAriaLabel")}
+        >
           {nav.map((link) => {
             const active = pathname.startsWith(link.href);
             return (
               <Link
                 key={link.href}
                 href={link.href}
-                className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${
+                className={
                   active
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                }`}
+                    ? "rounded px-2.5 py-1.5 text-[13px] font-[510] text-text-primary bg-elevated transition-colors"
+                    : "rounded px-2.5 py-1.5 text-[13px] font-[510] text-text-tertiary hover:text-text-primary hover:bg-elevated transition-colors"
+                }
                 aria-current={active ? "page" : undefined}
               >
                 {link.label}
@@ -92,13 +96,14 @@ export function AppHeader() {
             );
           })}
         </nav>
-        <div className="flex items-center gap-2">
+
+        <div className="flex items-center gap-1.5">
           <LocaleSwitcher />
           <ThemeSwitcher />
           {authed ? (
             <Link
-              href="/seeker"
-              className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground transition hover:opacity-90"
+              href="/dashboard"
+              className="rounded bg-accent px-2.5 py-1.5 text-[13px] font-[510] text-white transition-colors hover:bg-accent-hover"
             >
               {t("ctaDashboard")}
             </Link>
@@ -106,13 +111,13 @@ export function AppHeader() {
             <>
               <Link
                 href="/auth?mode=login"
-                className="hidden rounded-lg px-3 py-2 text-sm font-semibold text-muted-foreground transition hover:bg-muted hover:text-foreground sm:inline-block"
+                className="hidden sm:inline-block rounded px-2 py-1.5 text-[13px] font-[510] text-text-secondary hover:text-text-primary hover:bg-elevated transition-colors"
               >
                 {t("ctaLogin")}
               </Link>
               <Link
                 href="/auth?mode=register"
-                className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground transition hover:opacity-90"
+                className="rounded bg-accent px-2.5 py-1.5 text-[13px] font-[510] text-white transition-colors hover:bg-accent-hover"
               >
                 {t("ctaRegister")}
               </Link>

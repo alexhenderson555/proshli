@@ -33,7 +33,7 @@ export function Textarea({
       onChange={(event) => onChange(event.target.value)}
       placeholder={placeholder}
       rows={rows}
-      className={cn(fieldClass, "min-h-[6rem] resize-y", className)}
+      className={cn(fieldClass, "min-h-[80px] py-2 resize-y leading-[1.55]", className)}
       {...rest}
     />
   );

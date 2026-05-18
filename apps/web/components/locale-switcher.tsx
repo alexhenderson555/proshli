@@ -53,15 +53,15 @@ export function LocaleSwitcher() {
   }
 
   return (
-    <label className="relative inline-flex h-9 items-center rounded-lg border border-border bg-card pl-2 pr-1 text-xs font-semibold text-muted-foreground">
-      <Globe className="h-4 w-4" aria-hidden="true" />
+    <label className="relative inline-flex h-7 items-center rounded border border-border bg-elevated pl-2 pr-1 text-[11px] font-[510] text-text-secondary hover:border-border-strong transition-colors">
+      <Globe className="h-3.5 w-3.5" aria-hidden="true" />
       <span className="sr-only">{t("languageAriaLabel")}</span>
       <select
         aria-label={t("languageAriaLabel")}
         value={locale}
         disabled={isPending}
         onChange={(event) => onChange(event.target.value)}
-        className="ml-1 cursor-pointer appearance-none bg-transparent pr-4 text-xs font-semibold uppercase tracking-wider text-foreground focus:outline-none"
+        className="ml-1 cursor-pointer appearance-none bg-transparent pr-3 text-[11px] font-[510] uppercase tracking-[0.08em] text-text-primary focus:outline-none"
       >
         {routing.locales.map((value) => (
           <option key={value} value={value}>
