@@ -1,6 +1,12 @@
-// Minimal shadcn-style Button. Wave 10 will replace this with the full
-// shadcn copy (`pnpm dlx shadcn@latest add button`) but for Wave 9 we ship
-// enough to compile the package and let downstream apps adopt the import.
+// Token-driven Button. The variant/size names follow the Otklik
+// in-app vocabulary (`primary` / `secondary` / `ghost` / `danger`,
+// sizes `sm` / `md` / `lg`) rather than the raw shadcn defaults — the
+// brand styles use a stronger "primary action" cue, so the
+// `default → primary` rename keeps call sites readable.
+//
+// Classes route through Tailwind CSS variables (`--primary`, etc.) so
+// dark/oled themes re-skin via the `class` toggle on <html> with no
+// component change. `cva` keeps the variant matrix tree-shakable.
 
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
@@ -8,30 +14,25 @@ import * as React from "react";
 import { cn } from "../lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+  "inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
-        destructive:
-          "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-        outline:
-          "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+        primary: "bg-primary text-primary-foreground hover:opacity-90 shadow-sm",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
+          "bg-card text-foreground border border-border hover:bg-muted",
+        ghost: "bg-transparent text-foreground hover:bg-muted",
+        danger: "bg-destructive text-destructive-foreground hover:opacity-90",
       },
       size: {
-        default: "h-10 px-4 py-2",
-        sm: "h-9 px-3",
-        lg: "h-11 px-8",
-        icon: "h-10 w-10",
+        sm: "h-8 px-3 text-xs",
+        md: "h-10 px-4 text-sm",
+        lg: "h-11 px-5 text-base",
       },
     },
     defaultVariants: {
-      variant: "default",
-      size: "default",
+      variant: "primary",
+      size: "md",
     },
   },
 );
@@ -41,9 +42,10 @@ export interface ButtonProps
     VariantProps<typeof buttonVariants> {}
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, ...props }, ref) => (
+  ({ className, variant, size, type = "button", ...props }, ref) => (
     <button
       ref={ref}
+      type={type}
       className={cn(buttonVariants({ variant, size }), className)}
       {...props}
     />

@@ -1,10 +1,12 @@
 import asyncio
+import logging
 import os
+import time
 from dataclasses import dataclass, field
 
 import httpx
 from aiogram import Bot, Dispatcher, F
-from aiogram.exceptions import TelegramBadRequest
+from aiogram.exceptions import TelegramBadRequest, TelegramNetworkError
 from aiogram.filters import Command, CommandStart
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
@@ -17,7 +19,32 @@ REQUIRE_CHANNEL_SUBSCRIPTION = os.getenv("REQUIRE_CHANNEL_SUBSCRIPTION", "true")
 REQUIRED_CHANNEL_USERNAME = os.getenv("REQUIRED_CHANNEL_USERNAME", "@iischnaya").strip()
 EMPLOYER_PROMO_URL = os.getenv("EMPLOYER_PROMO_URL", "https://t.me/your_channel")
 
+# How long we trust a Telegram-issued user JWT before we re-mint one.
+# Backend default is 60 min — we keep a safe margin so a click landing
+# right at the boundary doesn't 401.
+TOKEN_CACHE_TTL_SECONDS = 30 * 60
+
+logger = logging.getLogger("otklik.tgbot")
+
 dp = Dispatcher()
+
+
+@dataclass
+class CachedToken:
+    """A user-JWT minted by the API for a Telegram identity.
+
+    We keep the issued-at clock and refresh proactively rather than
+    waiting for a 401. ``user_id`` is the Telegram user id (not the
+    Otklik user id) — we don't need the latter on the bot side.
+    """
+
+    token: str
+    issued_at: float
+
+    @property
+    def is_fresh(self) -> bool:
+        return (time.monotonic() - self.issued_at) < TOKEN_CACHE_TTL_SECONDS
+
 
 @dataclass
 class ChatState:
@@ -26,6 +53,9 @@ class ChatState:
 
 
 CHAT_STATE: dict[int, ChatState] = {}
+# Telegram user id → cached user JWT. Keyed by user (not chat) so private
+# + group chats for the same user share auth.
+TOKEN_CACHE: dict[int, CachedToken] = {}
 
 
 def main_menu_keyboard() -> InlineKeyboardMarkup:
@@ -90,26 +120,70 @@ def bot_service_headers() -> dict[str, str]:
     return {"x-bot-service-key": BOT_SERVICE_KEY}
 
 
-async def login_user_via_telegram(message: Message) -> str | None:
-    telegram_user_id = str(message.from_user.id if message.from_user else "")
-    telegram_chat_id = str(message.chat.id)
+async def _login_user_via_telegram(
+    http: httpx.AsyncClient,
+    telegram_user_id: int,
+    telegram_chat_id: int,
+) -> str | None:
+    """Mint a fresh user JWT from the API for this Telegram identity.
+
+    Only call when the cache is stale — see ``get_user_token`` for the
+    cached entry point.
+    """
     payload = {
-        "telegram_user_id": telegram_user_id,
-        "telegram_chat_id": telegram_chat_id,
+        "telegram_user_id": str(telegram_user_id),
+        "telegram_chat_id": str(telegram_chat_id),
     }
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        resp = await client.post(
+    try:
+        resp = await http.post(
             f"{API_URL}/auth/telegram/login",
             json=payload,
             headers=bot_service_headers(),
         )
+    except httpx.HTTPError as exc:
+        logger.warning("login_user_via_telegram network failure: %s", exc)
+        return None
     if resp.status_code >= 400:
+        logger.info(
+            "login_user_via_telegram non-2xx: status=%s body=%s",
+            resp.status_code,
+            resp.text[:200],
+        )
         return None
     data = resp.json()
     return data.get("access_token")
 
 
+async def get_user_token(
+    http: httpx.AsyncClient,
+    telegram_user_id: int,
+    telegram_chat_id: int,
+) -> str | None:
+    """Return a valid user JWT, hitting the API only when the cache is stale.
+
+    Saves a full DB round-trip on every callback click (the previous
+    behaviour). The cache is invalidated by:
+      - TTL expiry (``TOKEN_CACHE_TTL_SECONDS``).
+      - A 401 on a downstream call — the caller can ``pop`` the entry
+        and retry with a fresh login.
+    """
+    cached = TOKEN_CACHE.get(telegram_user_id)
+    if cached and cached.is_fresh:
+        return cached.token
+    token = await _login_user_via_telegram(http, telegram_user_id, telegram_chat_id)
+    if token:
+        TOKEN_CACHE[telegram_user_id] = CachedToken(token=token, issued_at=time.monotonic())
+    return token
+
+
+def _telegram_user_id(message_or_query: Message | CallbackQuery) -> int | None:
+    """Best-effort extraction of the Telegram user id from any event."""
+    user = message_or_query.from_user
+    return user.id if user else None
+
+
 async def api_request_for_user(
+    http: httpx.AsyncClient,
     message: Message,
     method: str,
     path: str,
@@ -117,7 +191,12 @@ async def api_request_for_user(
     params: dict | None = None,
     json: dict | None = None,
 ) -> tuple[int, dict | list | str | None]:
-    user_token = await login_user_via_telegram(message)
+    tg_user_id = _telegram_user_id(message)
+    if tg_user_id is None:
+        await message.answer("Не вижу твой Telegram-аккаунт. Попробуй /start.")
+        return 401, None
+
+    user_token = await get_user_token(http, tg_user_id, message.chat.id)
     if not user_token:
         await message.answer(
             "Аккаунт не привязан.\n"
@@ -126,15 +205,27 @@ async def api_request_for_user(
             reply_markup=main_menu_keyboard(),
         )
         return 401, None
+
     headers = {"Authorization": f"Bearer {user_token}"}
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        resp = await client.request(
+    try:
+        resp = await http.request(
             method=method,
             url=f"{API_URL}{path}",
             params=params,
             json=json,
             headers=headers,
         )
+    except httpx.HTTPError as exc:
+        logger.warning("api_request_for_user network failure: %s", exc)
+        await message.answer("Сеть недоступна, попробуй позже.")
+        return 0, None
+
+    # If the API rejected our cached token, drop it and let the next
+    # interaction re-mint. We do not silently retry here — that hides
+    # bugs in the link flow.
+    if resp.status_code == 401:
+        TOKEN_CACHE.pop(tg_user_id, None)
+
     content_type = resp.headers.get("content-type", "")
     if "application/json" in content_type:
         return resp.status_code, resp.json()
@@ -145,24 +236,30 @@ def is_subscription_guard_enabled() -> bool:
     return REQUIRE_CHANNEL_SUBSCRIPTION and bool(REQUIRED_CHANNEL_USERNAME)
 
 
-async def is_subscribed(bot: Bot, user_id: int) -> bool:
+async def is_subscribed(bot: Bot | None, user_id: int) -> bool:
     if not is_subscription_guard_enabled():
         return True
+    if bot is None:
+        # ``message.bot`` is typed as Optional by aiogram; in practice
+        # it's always set on real updates, but be defensive — refuse
+        # rather than crash.
+        return False
     try:
         member = await bot.get_chat_member(REQUIRED_CHANNEL_USERNAME, user_id)
-        return member.status in {"member", "administrator", "creator"}
     except TelegramBadRequest:
+        # User has never been a member, or the bot can't see the channel.
         return False
-    except Exception:  # noqa: BLE001
+    except TelegramNetworkError as exc:
+        logger.warning("is_subscribed network failure: %s", exc)
         return False
+    return member.status in {"member", "administrator", "creator"}
 
 
 async def ensure_subscription_message(message: Message) -> bool:
     if not is_subscription_guard_enabled():
         return True
-    bot = message.bot
-    user_id = message.from_user.id if message.from_user else 0
-    ok = await is_subscribed(bot, user_id)
+    user_id = _telegram_user_id(message) or 0
+    ok = await is_subscribed(message.bot, user_id)
     if ok:
         return True
     await message.answer(
@@ -175,9 +272,7 @@ async def ensure_subscription_message(message: Message) -> bool:
 async def ensure_subscription_callback(query: CallbackQuery) -> bool:
     if not is_subscription_guard_enabled():
         return True
-    bot = query.bot
-    user_id = query.from_user.id
-    ok = await is_subscribed(bot, user_id)
+    ok = await is_subscribed(query.bot, query.from_user.id)
     if ok:
         return True
     await query.answer("Сначала подпишись на канал.", show_alert=True)
@@ -196,8 +291,24 @@ async def help_job(message: Message) -> None:
     )
 
 
+@dp.message(Command("help"))
+async def help_cmd(message: Message) -> None:
+    """Bot-level help (commands), distinct from `/help_job` (topic scope)."""
+    await message.answer(
+        "Доступные команды:\n"
+        "/start — главное меню\n"
+        "/help — эта подсказка\n"
+        "/help_job — что я умею по теме работы\n"
+        "/link КОД — привязать аккаунт по коду с сайта\n"
+        "/search — выполнить поиск с текущими фильтрами\n"
+        "/digest_daily — включить ежедневный дайджест\n"
+        "/digest_weekly — включить еженедельный дайджест",
+        reply_markup=main_menu_keyboard(),
+    )
+
+
 @dp.message(Command("link"))
-async def link_account(message: Message) -> None:
+async def link_account(message: Message, http: httpx.AsyncClient) -> None:
     parts = (message.text or "").strip().split(maxsplit=1)
     if len(parts) < 2:
         await message.answer("Используй формат: /link ABCD1234")
@@ -205,21 +316,32 @@ async def link_account(message: Message) -> None:
     code = parts[1].strip().upper()
     if not await ensure_subscription_message(message):
         return
+    tg_user_id = _telegram_user_id(message)
+    if tg_user_id is None:
+        await message.answer("Не вижу твой Telegram-аккаунт. Попробуй /start.")
+        return
     payload = {
         "code": code,
-        "telegram_user_id": str(message.from_user.id if message.from_user else ""),
+        "telegram_user_id": str(tg_user_id),
         "telegram_chat_id": str(message.chat.id),
         "telegram_username": message.from_user.username if message.from_user else None,
     }
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        resp = await client.post(
+    try:
+        resp = await http.post(
             f"{API_URL}/auth/telegram/consume-link",
             json=payload,
             headers=bot_service_headers(),
         )
+    except httpx.HTTPError as exc:
+        logger.warning("link_account network failure: %s", exc)
+        await message.answer("Сеть недоступна, попробуй позже.")
+        return
     if resp.status_code >= 400:
         await message.answer("Код невалидный или истек. Сгенерируй новый код на сайте и попробуй снова.")
         return
+    # Fresh link → drop any stale cached token so the next API call
+    # re-mints under the new identity.
+    TOKEN_CACHE.pop(tg_user_id, None)
     await message.answer("Готово! Аккаунт привязан. Теперь можно искать вакансии и включать дайджест.")
 
 
@@ -232,12 +354,13 @@ async def start(message: Message) -> None:
         "Привет! Я Otklik.ai-бот.\n"
         "Я ищу вакансии, сохраняю фильтры, помогаю AI и настраиваю дайджест.\n"
         "Чтобы привязать аккаунт: сгенерируй код на сайте и отправь /link КОД.\n"
-        f"Используй кнопки ниже.{subscription_hint}",
+        "Команды: /help. Используй кнопки ниже."
+        f"{subscription_hint}",
         reply_markup=main_menu_keyboard(),
     )
 
 
-async def set_digest(message: Message, frequency: str) -> None:
+async def set_digest(http: httpx.AsyncClient, message: Message, frequency: str) -> None:
     payload = {
         "frequency": frequency,
         "via_telegram": True,
@@ -246,6 +369,7 @@ async def set_digest(message: Message, frequency: str) -> None:
     }
 
     status_code, _ = await api_request_for_user(
+        http,
         message,
         "PUT",
         "/digest/preferences",
@@ -260,9 +384,9 @@ async def set_digest(message: Message, frequency: str) -> None:
     )
 
 
-async def perform_search(message: Message) -> None:
+async def perform_search(http: httpx.AsyncClient, message: Message) -> None:
     state = chat_state(message.chat.id)
-    params = {}
+    params: dict[str, str] = {}
     if "level" in state.filters:
         params["level"] = state.filters["level"]
     if "stack" in state.filters:
@@ -270,17 +394,17 @@ async def perform_search(message: Message) -> None:
     if "work_mode" in state.filters:
         params["work_mode"] = state.filters["work_mode"]
 
-    status_code, data = await api_request_for_user(message, "GET", "/vacancies", params=params)
+    status_code, data = await api_request_for_user(http, message, "GET", "/vacancies", params=params)
     if status_code >= 400:
         await message.answer(f"Не удалось выполнить поиск ({status_code}).")
         return
 
-    data = (data or [])[:8]
-    if not data:
+    items = (data or [])[:8] if isinstance(data, list) else []
+    if not items:
         await message.answer("По текущим фильтрам вакансий не найдено.")
         return
     lines = []
-    for idx, item in enumerate(data, start=1):
+    for idx, item in enumerate(items, start=1):
         promo = " [PROMO]" if item.get("is_promoted") else ""
         lines.append(
             f"{idx}. {item['title']} @ {item['company']}{promo}\n"
@@ -290,24 +414,24 @@ async def perform_search(message: Message) -> None:
 
 
 @dp.message(Command("search"))
-async def search_command(message: Message) -> None:
+async def search_command(message: Message, http: httpx.AsyncClient) -> None:
     if not await ensure_subscription_message(message):
         return
-    await perform_search(message)
+    await perform_search(http, message)
 
 
 @dp.message(Command("digest_daily"))
-async def digest_daily(message: Message) -> None:
+async def digest_daily(message: Message, http: httpx.AsyncClient) -> None:
     if not await ensure_subscription_message(message):
         return
-    await set_digest(message, "daily")
+    await set_digest(http, message, "daily")
 
 
 @dp.message(Command("digest_weekly"))
-async def digest_weekly(message: Message) -> None:
+async def digest_weekly(message: Message, http: httpx.AsyncClient) -> None:
     if not await ensure_subscription_message(message):
         return
-    await set_digest(message, "weekly")
+    await set_digest(http, message, "weekly")
 
 
 @dp.callback_query(F.data == "check_sub")
@@ -335,29 +459,29 @@ async def link_help(query: CallbackQuery) -> None:
 
 
 @dp.callback_query(F.data == "search_now")
-async def search_now(query: CallbackQuery) -> None:
+async def search_now(query: CallbackQuery, http: httpx.AsyncClient) -> None:
     if not await ensure_subscription_callback(query):
         return
     if query.message:
-        await perform_search(query.message)
+        await perform_search(http, query.message)
     await query.answer()
 
 
 @dp.callback_query(F.data == "digest_daily")
-async def digest_daily_cb(query: CallbackQuery) -> None:
+async def digest_daily_cb(query: CallbackQuery, http: httpx.AsyncClient) -> None:
     if not await ensure_subscription_callback(query):
         return
     if query.message:
-        await set_digest(query.message, "daily")
+        await set_digest(http, query.message, "daily")
     await query.answer()
 
 
 @dp.callback_query(F.data == "digest_weekly")
-async def digest_weekly_cb(query: CallbackQuery) -> None:
+async def digest_weekly_cb(query: CallbackQuery, http: httpx.AsyncClient) -> None:
     if not await ensure_subscription_callback(query):
         return
     if query.message:
-        await set_digest(query.message, "weekly")
+        await set_digest(http, query.message, "weekly")
     await query.answer()
 
 
@@ -426,7 +550,7 @@ async def promo_info(query: CallbackQuery) -> None:
 async def set_quick_filter(query: CallbackQuery) -> None:
     if not await ensure_subscription_callback(query):
         return
-    if not query.message:
+    if not query.message or not query.data:
         await query.answer()
         return
     state = chat_state(query.message.chat.id)
@@ -450,13 +574,14 @@ async def set_quick_filter(query: CallbackQuery) -> None:
 
 
 @dp.message(F.text)
-async def fallback(message: Message) -> None:
+async def fallback(message: Message, http: httpx.AsyncClient) -> None:
     state = chat_state(message.chat.id)
+    text = message.text or ""
     if state.waiting_ai_input:
         if not await ensure_subscription_message(message):
             return
-        payload = {"message": message.text}
-        status_code, data = await api_request_for_user(message, "POST", "/ai/chat", json=payload)
+        payload = {"message": text}
+        status_code, data = await api_request_for_user(http, message, "POST", "/ai/chat", json=payload)
         if status_code >= 400 or not isinstance(data, dict):
             await message.answer(f"AI не ответил корректно ({status_code}).")
             return
@@ -464,14 +589,14 @@ async def fallback(message: Message) -> None:
             for key, value in data["extracted_filters"].items():
                 state.filters[key] = value
             await message.answer(f"AI применил фильтры: {state.filters}")
-            await perform_search(message)
+            await perform_search(http, message)
         else:
             await message.answer(data.get("message", "AI не смог извлечь фильтры."))
         state.waiting_ai_input = False
         return
 
-    if message.text.startswith("/"):
-        await message.answer("Неизвестная команда. Нажми /start.")
+    if text.startswith("/"):
+        await message.answer("Неизвестная команда. Нажми /start или /help.")
         return
 
     await message.answer(
@@ -482,10 +607,24 @@ async def fallback(message: Message) -> None:
 
 
 async def main() -> None:
+    logging.basicConfig(
+        level=os.getenv("LOG_LEVEL", "INFO").upper(),
+        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+    )
+
     if not BOT_TOKEN:
         raise RuntimeError("Set TELEGRAM_BOT_TOKEN before running bot.")
-    bot = Bot(token=BOT_TOKEN)
-    await dp.start_polling(bot)
+
+    # Single httpx client shared across all handlers — reuses TCP /
+    # keepalive connections and saves ~50 ms per call vs. the previous
+    # per-request ``async with httpx.AsyncClient()``. Injected into
+    # handlers via aiogram's ``workflow_data`` dependency mechanism.
+    async with httpx.AsyncClient(timeout=10.0) as http:
+        bot = Bot(token=BOT_TOKEN)
+        try:
+            await dp.start_polling(bot, http=http)
+        finally:
+            await bot.session.close()
 
 
 if __name__ == "__main__":
