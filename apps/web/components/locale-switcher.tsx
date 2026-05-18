@@ -11,7 +11,7 @@ import { useTransition } from "react";
 import { Globe } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 
-import { usePathname, useRouter } from "@/i18n/navigation";
+import { usePathname } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
 
 const FLAGS: Record<string, string> = {
@@ -19,10 +19,18 @@ const FLAGS: Record<string, string> = {
   en: "EN",
 };
 
+// `as-needed` mapping: RU has no prefix, EN gets `/en/...`.
+function localePath(pathname: string, locale: string): string {
+  // `pathname` from next-intl's `usePathname()` is the locale-stripped
+  // path (e.g. `/vacancies`). Re-attach the prefix for non-default
+  // locales; default locale keeps the bare path.
+  if (locale === routing.defaultLocale) return pathname === "" ? "/" : pathname;
+  return pathname === "/" ? `/${locale}` : `/${locale}${pathname}`;
+}
+
 export function LocaleSwitcher() {
   const t = useTranslations("header");
   const locale = useLocale();
-  const router = useRouter();
   const pathname = usePathname();
   const [isPending, startTransition] = useTransition();
 
@@ -30,12 +38,17 @@ export function LocaleSwitcher() {
     // Defence-in-depth: the `<select>` only emits values we render in
     // `<option>`, but a future code change or test that programmatically
     // sets `.value` could bypass the contract. Validate membership in
-    // `routing.locales` before passing to the typed router API.
+    // `routing.locales` before passing through.
     if (!(routing.locales as readonly string[]).includes(next)) return;
+    if (next === locale) return;
     startTransition(() => {
-      // `next-intl`'s router accepts the typed locale param to switch
-      // languages while preserving the current pathname.
-      router.replace(pathname, { locale: next as (typeof routing.locales)[number] });
+      // Use a hard navigation rather than next-intl's soft `router.replace`.
+      // The latter triggers a client-side route change but reuses the
+      // cached root layout, leaving `<html lang>` and any server-rendered
+      // strings pinned to the *previous* locale. A full document
+      // navigation makes the proxy re-run, the cookie get set, and the
+      // RSC tree re-render from scratch with the new locale.
+      window.location.assign(localePath(pathname, next));
     });
   }
 

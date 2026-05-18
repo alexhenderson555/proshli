@@ -48,11 +48,15 @@ test("locale switcher swaps language and preserves pathname", async ({ page }) =
   const switcher = page.getByLabel("Переключить язык");
   await switcher.selectOption("en");
 
-  // `next dev` JIT-compiles the `/en/vacancies` route on the first
-  // hit. On a cold CI runner that can take 15-20 s, well past the
-  // default 5 s assertion timeout. Wait explicitly for the navigation
-  // and bump the visibility assertion timeout to match.
+  // The switcher does a hard `window.location.assign` so the proxy
+  // re-runs and the root layout re-renders with the new locale. Wait
+  // for both the URL and `<html lang>` to flip before checking the
+  // EN heading copy — the latter is the signal that the server
+  // response has actually reached the DOM.
   await page.waitForURL(/\/en\/vacancies/, { timeout: 30_000 });
+  await expect(page.locator("html")).toHaveAttribute("lang", "en", {
+    timeout: 30_000,
+  });
   await expect(
     page.getByRole("heading", { name: "Vacancy feed" }),
   ).toBeVisible({ timeout: 30_000 });
