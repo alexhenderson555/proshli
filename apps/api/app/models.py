@@ -5,6 +5,7 @@ from sqlalchemy import (
     BigInteger,
     Boolean,
     DateTime,
+    Float,
     ForeignKey,
     Integer,
     String,
@@ -37,7 +38,9 @@ class User(Base):
     )
     ai_usage_events: Mapped[list["AiUsageEvent"]] = relationship(back_populates="owner")
     seeker_profile: Mapped["SeekerProfile"] = relationship(back_populates="owner", uselist=False)
-    employer_profile: Mapped["EmployerProfile"] = relationship(back_populates="owner", uselist=False)
+    employer_profile: Mapped["EmployerProfile"] = relationship(
+        back_populates="owner", uselist=False
+    )
     resume_versions: Mapped[list["ResumeVersion"]] = relationship(back_populates="owner")
     employer_vacancies: Mapped[list["EmployerVacancy"]] = relationship(back_populates="owner")
     employer_actions: Mapped[list["EmployerActionLog"]] = relationship(back_populates="owner")
@@ -90,22 +93,14 @@ class Subscription(Base):
     __tablename__ = "subscriptions"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    user_id: Mapped[int] = mapped_column(
-        ForeignKey("users.id"), unique=True, index=True
-    )
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), unique=True, index=True)
     plan_id: Mapped[int] = mapped_column(ForeignKey("plans.id"), index=True)
-    yookassa_payment_method_id: Mapped[str | None] = mapped_column(
-        String(128), nullable=True
-    )
+    yookassa_payment_method_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="pending", index=True)
-    current_period_end: Mapped[datetime | None] = mapped_column(
-        DateTime, nullable=True, index=True
-    )
+    current_period_end: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
     last_payment_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=now_utc)
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=now_utc, index=True
-    )
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=now_utc, index=True)
 
     owner: Mapped[User] = relationship(back_populates="subscription")
     plan: Mapped[Plan] = relationship()
@@ -140,9 +135,7 @@ class Vacancy(Base):
     # in migration 0012; the index is declared at DDL level rather than
     # via ORM hints so the build parameters (``lists = 100``) stay in
     # one place.
-    embedding: Mapped[list[float] | None] = mapped_column(
-        Vector(_EMBEDDING_DIM), nullable=True
-    )
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(_EMBEDDING_DIM), nullable=True)
     # Phase 1 TG-publication routing — see migration 0014. ``topic_id`` is
     # one of 1..28 (see ``app.services.tg_topics.TOPICS``); ``classified_at``
     # is the timestamp of the last classifier run so re-classification can
@@ -294,7 +287,9 @@ class EmployerActionLog(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
-    vacancy_id: Mapped[int | None] = mapped_column(ForeignKey("vacancies.id"), nullable=True, index=True)
+    vacancy_id: Mapped[int | None] = mapped_column(
+        ForeignKey("vacancies.id"), nullable=True, index=True
+    )
     action: Mapped[str] = mapped_column(String(64), index=True)
     meta_json: Mapped[str] = mapped_column(Text, default="{}")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=now_utc, index=True)
@@ -344,9 +339,7 @@ class ProcessedWebhookEvent(Base):
     # the test fixture (without it the tests get a table that allows
     # replays through, breaking ``test_webhook_replay_does_not_extend_period``).
     __table_args__ = (
-        UniqueConstraint(
-            "source", "event_id", name="uq_processed_webhook_events_source_event"
-        ),
+        UniqueConstraint("source", "event_id", name="uq_processed_webhook_events_source_event"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -404,13 +397,79 @@ class PublicationQueueItem(Base):
     rendered_text: Mapped[str] = mapped_column(Text)
     # pending | published | failed | dismissed
     status: Mapped[str] = mapped_column(String(16), default="pending", index=True)
-    scheduled_for: Mapped[datetime] = mapped_column(
-        DateTime, default=now_utc, index=True
-    )
-    published_message_id: Mapped[int | None] = mapped_column(
-        BigInteger, nullable=True
-    )
+    scheduled_for: Mapped[datetime] = mapped_column(DateTime, default=now_utc, index=True)
+    published_message_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     attempts: Mapped[int] = mapped_column(Integer, default=0)
     failure_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=now_utc)
     published_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class CompanyPrestige(Base):
+    """Per-company prestige score (0.0 – 1.0) used by channel-approval scoring.
+
+    Phase 2 of the TG-publication design. The score is hand-curated for
+    the top ~100 employers (Yandex, Tinkoff, Sber, Avito, ВКонтакте, etc.)
+    and defaults to ``0.0`` for everyone else — that gives the daily
+    scoring task a deterministic prestige signal without forcing an LLM
+    classifier in the request path.
+
+    The string column ``company_normalised`` is the lowercased, trimmed,
+    accent-stripped form of the company name — keeps the lookup stable
+    across "Яндекс" / "yandex" / "ЯНДЕКС".
+    """
+
+    __tablename__ = "company_prestige"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    company_normalised: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    score: Mapped[float] = mapped_column(Float, default=0.0)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=now_utc)
+
+
+class ChannelCandidate(Base):
+    """Daily top-N scored vacancy awaiting admin approval for @proshli channel.
+
+    Phase 2 flow: the daily 09:00 MSK scoring task picks the top N
+    candidates by composite score (salary + prestige + freshness +
+    topic-demand), inserts one row per candidate with ``status='pending'``,
+    and DMs the admin a single message containing inline ✅/❌ buttons
+    keyed by the candidate id. On ✅ the bot-side handler hits a
+    bot-service endpoint that flips ``status='approved'`` and inserts
+    a corresponding ``publication_queue`` row with
+    ``target='channel'``. ❌ flips to ``status='rejected'``.
+
+    Idempotency: ``(vacancy_id, batch_date)`` unique. The same vacancy
+    can re-appear on a future day if it wasn't acted on the first time.
+    """
+
+    __tablename__ = "channel_candidates"
+    __table_args__ = (
+        UniqueConstraint(
+            "vacancy_id",
+            "batch_date",
+            name="uq_channel_candidates_vacancy_batch",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, index=True)
+    vacancy_id: Mapped[int] = mapped_column(
+        ForeignKey("vacancies.id", ondelete="CASCADE"), index=True
+    )
+    # ISO date of the daily scoring run — used as the dedup key with
+    # ``vacancy_id``. Same row can be re-considered on a later day.
+    batch_date: Mapped[str] = mapped_column(String(10), index=True)
+    # Composite score in [0, 1]. Components live in ``score_breakdown``
+    # as a JSON-encoded text blob so the scoring weights can evolve
+    # without a migration.
+    score: Mapped[float] = mapped_column(Float, default=0.0, index=True)
+    score_breakdown: Mapped[str] = mapped_column(Text, default="{}")
+    # pending | approved | rejected
+    status: Mapped[str] = mapped_column(String(16), default="pending", index=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Telegram message_id of the admin DM that surfaced this candidate.
+    # Stored so the callback handler can edit the message text/markup
+    # to reflect the decision (strike-through + remove buttons).
+    admin_message_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now_utc)

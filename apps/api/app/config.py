@@ -42,9 +42,7 @@ class Settings(BaseSettings):
     app_log_level: str = Field(default="INFO")
 
     # ------------------------------------------------------------------ data
-    database_url: str = Field(
-        default="postgresql+asyncpg://proshli:proshli@localhost:5432/proshli"
-    )
+    database_url: str = Field(default="postgresql+asyncpg://proshli:proshli@localhost:5432/proshli")
     auto_create_schema: bool = Field(default=False)
 
     redis_url: str = Field(default="redis://localhost:6379/0")
@@ -82,6 +80,14 @@ class Settings(BaseSettings):
     # Hard cap on enqueue attempts before a row is marked ``failed`` for
     # operator inspection. Matches the spec's "max 3 attempts" rule.
     telegram_publication_max_attempts: int = Field(default=3)
+    # Phase 2 channel approval — admin Telegram chat id (private DM) that
+    # receives the daily top-8 with inline ✅/❌ buttons. Empty disables
+    # the approval flow (the scoring task logs ``channel_approval.disabled``
+    # and exits cleanly).
+    telegram_admin_chat_id: str = Field(default="")
+    # Daily top-N candidates surfaced to the admin DM. 8 fits comfortably
+    # in one TG message even if every card spans a few lines.
+    channel_approval_top_n: int = Field(default=8)
 
     # ------------------------------------------------------------------ ai
     ai_daily_request_limit: int = Field(default=25)
@@ -133,9 +139,7 @@ class Settings(BaseSettings):
     sentry_traces_sample_rate: float = Field(default=0.1)
 
     # ------------------------------------------------------------------ cors
-    cors_allowed_origins: str = Field(
-        default="http://localhost:3000,http://127.0.0.1:3000"
-    )
+    cors_allowed_origins: str = Field(default="http://localhost:3000,http://127.0.0.1:3000")
 
     # ------------------------------------------------------------------ proxies
     # Comma-separated list of CIDR ranges (or bare IPs) that we trust to set
