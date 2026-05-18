@@ -14,7 +14,7 @@ already has the rows is a no-op.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from datetime import datetime, timezone
+from datetime import datetime
 
 import sqlalchemy as sa
 from alembic import op
@@ -154,7 +154,12 @@ def upgrade() -> None:
     # ``invalid input for query argument $N`` (only datetime instances
     # are accepted positionally). The semantic is identical: the row's
     # creation moment captured at migration time.
-    now = datetime.now(timezone.utc)
+    #
+    # The ``created_at`` column is ``TIMESTAMP WITHOUT TIME ZONE``, so
+    # asyncpg rejects an offset-aware datetime with "can't subtract
+    # offset-naive and offset-aware datetimes". Use a naive UTC
+    # timestamp to match the column type.
+    now = datetime.utcnow()
     to_insert = [
         {**row, "created_at": now}
         for row in _PLAN_SEED
