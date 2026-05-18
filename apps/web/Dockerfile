@@ -18,9 +18,14 @@ RUN pnpm install --frozen-lockfile
 # ---------- build ----------
 FROM base AS build
 WORKDIR /repo
+# Stage the source first, then layer the installed node_modules on top
+# so the deps-stage installs (including symlinks into packages/*) survive
+# the COPY. Without this `COPY . .` would land *after* the modules copy
+# and could shadow workspace node_modules that next build needs.
+COPY . .
 COPY --from=deps /repo/node_modules ./node_modules
 COPY --from=deps /repo/apps/web/node_modules ./apps/web/node_modules
-COPY . .
+COPY --from=deps /repo/packages ./packages
 RUN pnpm --filter @proshli/web build
 
 # ---------- runtime ----------
