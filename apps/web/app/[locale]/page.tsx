@@ -9,7 +9,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { AiChatPanel } from "@/features/ai-chat/ai-chat-panel";
 import { Link } from "@/i18n/navigation";
-import { FadeIn, Stagger } from "@proshli/ui";
+import { Stagger } from "@proshli/ui";
 
 export default async function Home({
   params,
