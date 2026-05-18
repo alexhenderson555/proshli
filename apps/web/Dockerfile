@@ -40,8 +40,15 @@ ENV NODE_ENV=production \
 COPY --from=build /repo/apps/web/.next ./.next
 COPY --from=build /repo/apps/web/public ./public
 COPY --from=build /repo/apps/web/package.json ./package.json
+# Order matters: the web's own node_modules has next/ + react/ + the
+# pnpm-symlinked workspace deps (e.g. @proshli/ui). The root
+# node_modules is needed for hoisted modules, but it must NOT shadow
+# the web modules — so copy root first, then web on top.
 COPY --from=build /repo/node_modules ./node_modules
-COPY --from=build /repo/apps/web/node_modules ./apps/web-node_modules
+COPY --from=build /repo/apps/web/node_modules ./node_modules
+# Workspace packages keep their source + own node_modules because the
+# pnpm symlinks resolve back into /app/packages/<pkg>.
+COPY --from=build /repo/packages ./packages
 
 EXPOSE 3000
 CMD ["node", "node_modules/next/dist/bin/next", "start", "--port", "3000"]
