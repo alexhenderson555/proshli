@@ -1,1 +1,1 @@
-# Otklik.ai backend package
+# Proshli backend package

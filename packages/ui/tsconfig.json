@@ -1,5 +1,5 @@
 {
-  "extends": "@otklik/tsconfig/react-library.json",
+  "extends": "@proshli/tsconfig/react-library.json",
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "dist",

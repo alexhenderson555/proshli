@@ -1,9 +1,9 @@
 import type { StorybookConfig } from "@storybook/react-vite";
 
-// Storybook for `@otklik/ui`. Picks up `*.stories.tsx` next to each
+// Storybook for `@proshli/ui`. Picks up `*.stories.tsx` next to each
 // component so a story lives beside the source it documents. The vite
 // final hook injects `@tailwindcss/vite` so utility classes resolve
-// against the Otklik token set imported by `./preview.css`.
+// against the Proshli token set imported by `./preview.css`.
 
 const config: StorybookConfig = {
   stories: ["../src/**/*.stories.@(ts|tsx)"],

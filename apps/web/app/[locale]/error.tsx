@@ -23,7 +23,7 @@ export default function GlobalError({
   useEffect(() => {
     // Surface to the console so it shows up in dev tools / Sentry's
     // browser SDK (once wired). `digest` is Next's correlation id.
-    console.error("[otklik] unhandled client error", error);
+    console.error("[proshli] unhandled client error", error);
   }, [error]);
 
   return (

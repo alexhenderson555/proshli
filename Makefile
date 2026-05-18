@@ -1,4 +1,4 @@
-# Otklik.ai — top-level Makefile.
+# Proshli — top-level Makefile.
 #
 # A single front door for the common dev commands. Each target prints its
 # action so log scrollback stays readable. Targets are idempotent unless
@@ -44,7 +44,7 @@ migrate:  ## Apply Alembic migrations against the running pg container.
 	cd apps/api && uv run alembic upgrade head
 
 seed:  ## Re-create the dev database from scratch (drops + migrates).
-	docker compose exec pg psql -U otklik -d otklik -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+	docker compose exec pg psql -U proshli -d proshli -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
 	$(MAKE) migrate
 
 test: test-api test-workers test-web  ## Run every test suite.
@@ -56,7 +56,7 @@ test-workers:  ## Run Celery workers smoke tests.
 	cd apps/workers && uv run pytest -q
 
 test-web:  ## Run the frontend Playwright tests.
-	pnpm --filter @otklik/web test
+	pnpm --filter @proshli/web test
 
 lint: lint-api lint-web  ## Run all linters.
 
@@ -74,7 +74,7 @@ format:  ## Apply autoformatters across the repo.
 	pnpm prettier --write "**/*.{ts,tsx,md,json,yml}"
 
 gen-types:  ## Regenerate the TS SDK from the live OpenAPI document.
-	pnpm -F @otklik/shared-types gen
+	pnpm -F @proshli/shared-types gen
 
 clean:  ## Remove build artifacts.
 	rm -rf node_modules apps/*/node_modules apps/*/.next apps/*/dist packages/*/dist .turbo

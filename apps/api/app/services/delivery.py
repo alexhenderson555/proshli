@@ -45,7 +45,7 @@ def send_email_digest(to_email: str, items: list[dict[str, str]]) -> tuple[bool,
         return True, None
 
     msg = EmailMessage()
-    msg["Subject"] = "Otklik.ai: персональная подборка вакансий"
+    msg["Subject"] = "Proshli: персональная подборка вакансий"
     msg["From"] = settings.smtp_from_email
     msg["To"] = to_email
     msg.set_content(_format_digest_text(items))

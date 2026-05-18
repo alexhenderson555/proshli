@@ -122,7 +122,7 @@ async def create_checkout(
             plan_slug=plan.slug,
             price_rub=plan.price_rub,
             user_email=current_user.email,
-            description=f"Otklik.ai — тариф {plan.name_ru}",
+            description=f"Proshli — тариф {plan.name_ru}",
             save_payment_method=True,
             return_url=payload.return_url,
             idempotency_seed=f"{current_user.id}:{plan.id}",

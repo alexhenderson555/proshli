@@ -26,18 +26,18 @@ jobs:
       postgres:
         image: pgvector/pgvector:pg16
         env:
-          POSTGRES_USER: otklik
-          POSTGRES_PASSWORD: otklik
-          POSTGRES_DB: otklik
+          POSTGRES_USER: proshli
+          POSTGRES_PASSWORD: proshli
+          POSTGRES_DB: proshli
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U otklik -d otklik"
+          --health-cmd "pg_isready -U proshli -d proshli"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
     env:
-      DATABASE_URL: postgresql+asyncpg://otklik:otklik@localhost:5432/otklik
+      DATABASE_URL: postgresql+asyncpg://proshli:proshli@localhost:5432/proshli
       JWT_SECRET: test-secret
       APP_ENV: test
     defaults:
@@ -60,10 +60,10 @@ jobs:
 
       - name: Enable pgvector extension
         env:
-          PGPASSWORD: otklik
+          PGPASSWORD: proshli
         run: |
           sudo apt-get update && sudo apt-get install -y postgresql-client
-          psql -h localhost -U otklik -d otklik -c "CREATE EXTENSION IF NOT EXISTS vector;"
+          psql -h localhost -U proshli -d proshli -c "CREATE EXTENSION IF NOT EXISTS vector;"
 
       - name: Ruff lint
         run: uv run ruff check workers tests

@@ -1,8 +1,8 @@
-# Otklik.ai Telegram Bot (scaffold)
+# Proshli Telegram Bot (scaffold)
 
 ## Что делает
 
-Telegram-бот Otklik.ai: онбординг, настройка периодичности дайджеста
+Telegram-бот Proshli: онбординг, настройка периодичности дайджеста
 (`daily` / `weekly`), привязка **Telegram chat ID** к аккаунту через
 короткоживущий код из веба (см. поток `/link` в корневом `README`).
 
@@ -14,7 +14,7 @@ Telegram-бот Otklik.ai: онбординг, настройка периоди
 | Переменная | Назначение |
 |------------|------------|
 | `TELEGRAM_BOT_TOKEN` | Токен от BotFather |
-| `OTKLIK_API_URL` | URL API. По умолчанию `http://127.0.0.1:8000`. Старый `JOBSKOUT_API_URL` тоже принимается как fallback. |
+| `PROSHLI_API_URL` | URL API. По умолчанию `http://127.0.0.1:8000`. Старый `JOBSKOUT_API_URL` тоже принимается как fallback. |
 | `BOT_SERVICE_KEY` | Shared secret с API для service-to-service auth |
 | `REQUIRE_CHANNEL_SUBSCRIPTION` | `true`/`false` — гейт по подписке на канал |
 | `REQUIRED_CHANNEL_USERNAME` | `@channel` для гейта |
@@ -35,4 +35,4 @@ python main.py
 |----------|----------------|
 | Нет ответа бота | Токен, сеть до `api.telegram.org`, прокси при необходимости. |
 | API 401 | `BOT_SERVICE_KEY` совпадает с тем, что в API; user-JWT не протух. |
-| Линк не срабатывает | Код из веба не истёк, `OTKLIK_API_URL` правильный, логи API. |
+| Линк не срабатывает | Код из веба не истёк, `PROSHLI_API_URL` правильный, логи API. |

@@ -1397,7 +1397,7 @@ export interface operations {
             header?: never;
             path?: never;
             cookie?: {
-                otklik_access?: string | null;
+                proshli_access?: string | null;
             };
         };
         requestBody?: never;
@@ -1498,7 +1498,7 @@ export interface operations {
             header?: never;
             path?: never;
             cookie?: {
-                otklik_access?: string | null;
+                proshli_access?: string | null;
             };
         };
         requestBody?: never;
@@ -1529,7 +1529,7 @@ export interface operations {
             header?: never;
             path?: never;
             cookie?: {
-                otklik_access?: string | null;
+                proshli_access?: string | null;
             };
         };
         requestBody?: never;
@@ -1560,7 +1560,7 @@ export interface operations {
             header?: never;
             path?: never;
             cookie?: {
-                otklik_access?: string | null;
+                proshli_access?: string | null;
             };
         };
         requestBody: {
@@ -1595,7 +1595,7 @@ export interface operations {
             header?: never;
             path?: never;
             cookie?: {
-                otklik_access?: string | null;
+                proshli_access?: string | null;
             };
         };
         requestBody?: never;
@@ -1626,7 +1626,7 @@ export interface operations {
             header?: never;
             path?: never;
             cookie?: {
-                otklik_access?: string | null;
+                proshli_access?: string | null;
             };
         };
         requestBody: {
@@ -1663,7 +1663,7 @@ export interface operations {
             header?: never;
             path?: never;
             cookie?: {
-                otklik_access?: string | null;
+                proshli_access?: string | null;
             };
         };
         requestBody: {
@@ -1698,7 +1698,7 @@ export interface operations {
             header?: never;
             path?: never;
             cookie?: {
-                otklik_access?: string | null;
+                proshli_access?: string | null;
             };
         };
         requestBody?: never;
@@ -1729,7 +1729,7 @@ export interface operations {
             header?: never;
             path?: never;
             cookie?: {
-                otklik_access?: string | null;
+                proshli_access?: string | null;
             };
         };
         requestBody: {
@@ -1804,7 +1804,7 @@ export interface operations {
             header?: never;
             path?: never;
             cookie?: {
-                otklik_access?: string | null;
+                proshli_access?: string | null;
             };
         };
         requestBody: {
@@ -1843,7 +1843,7 @@ export interface operations {
             header?: never;
             path?: never;
             cookie?: {
-                otklik_access?: string | null;
+                proshli_access?: string | null;
             };
         };
         requestBody?: never;
@@ -1880,7 +1880,7 @@ export interface operations {
             header?: never;
             path?: never;
             cookie?: {
-                otklik_access?: string | null;
+                proshli_access?: string | null;
             };
         };
         requestBody?: never;
@@ -1911,7 +1911,7 @@ export interface operations {
             header?: never;
             path?: never;
             cookie?: {
-                otklik_access?: string | null;
+                proshli_access?: string | null;
             };
         };
         requestBody?: never;
@@ -1948,7 +1948,7 @@ export interface operations {
             header?: never;
             path?: never;
             cookie?: {
-                otklik_access?: string | null;
+                proshli_access?: string | null;
             };
         };
         requestBody?: never;
@@ -1982,7 +1982,7 @@ export interface operations {
             header?: never;
             path?: never;
             cookie?: {
-                otklik_access?: string | null;
+                proshli_access?: string | null;
             };
         };
         requestBody?: never;
@@ -2017,7 +2017,7 @@ export interface operations {
             header?: never;
             path?: never;
             cookie?: {
-                otklik_access?: string | null;
+                proshli_access?: string | null;
             };
         };
         requestBody?: never;
@@ -2081,7 +2081,7 @@ export interface operations {
                 vacancy_id: number;
             };
             cookie?: {
-                otklik_access?: string | null;
+                proshli_access?: string | null;
             };
         };
         requestBody: {
@@ -2118,7 +2118,7 @@ export interface operations {
                 vacancy_id: number;
             };
             cookie?: {
-                otklik_access?: string | null;
+                proshli_access?: string | null;
             };
         };
         requestBody?: never;
@@ -2153,7 +2153,7 @@ export interface operations {
                 vacancy_id: number;
             };
             cookie?: {
-                otklik_access?: string | null;
+                proshli_access?: string | null;
             };
         };
         requestBody?: never;
@@ -2188,7 +2188,7 @@ export interface operations {
                 vacancy_id: number;
             };
             cookie?: {
-                otklik_access?: string | null;
+                proshli_access?: string | null;
             };
         };
         requestBody?: never;
@@ -2223,7 +2223,7 @@ export interface operations {
                 vacancy_id: number;
             };
             cookie?: {
-                otklik_access?: string | null;
+                proshli_access?: string | null;
             };
         };
         requestBody: {
@@ -2262,7 +2262,7 @@ export interface operations {
                 source_name: string;
             };
             cookie?: {
-                otklik_access?: string | null;
+                proshli_access?: string | null;
             };
         };
         requestBody?: never;
@@ -2313,7 +2313,7 @@ export interface operations {
             header?: never;
             path?: never;
             cookie?: {
-                otklik_access?: string | null;
+                proshli_access?: string | null;
             };
         };
         requestBody?: never;
@@ -2344,7 +2344,7 @@ export interface operations {
             header?: never;
             path?: never;
             cookie?: {
-                otklik_access?: string | null;
+                proshli_access?: string | null;
             };
         };
         requestBody: {
@@ -2379,7 +2379,7 @@ export interface operations {
             header?: never;
             path?: never;
             cookie?: {
-                otklik_access?: string | null;
+                proshli_access?: string | null;
             };
         };
         requestBody?: never;
@@ -2410,7 +2410,7 @@ export interface operations {
             header?: never;
             path?: never;
             cookie?: {
-                otklik_access?: string | null;
+                proshli_access?: string | null;
             };
         };
         requestBody: {
@@ -2445,7 +2445,7 @@ export interface operations {
             header?: never;
             path?: never;
             cookie?: {
-                otklik_access?: string | null;
+                proshli_access?: string | null;
             };
         };
         requestBody: {
@@ -2482,7 +2482,7 @@ export interface operations {
             header?: never;
             path?: never;
             cookie?: {
-                otklik_access?: string | null;
+                proshli_access?: string | null;
             };
         };
         requestBody?: never;
@@ -2533,7 +2533,7 @@ export interface operations {
             header?: never;
             path?: never;
             cookie?: {
-                otklik_access?: string | null;
+                proshli_access?: string | null;
             };
         };
         requestBody?: never;
@@ -2564,7 +2564,7 @@ export interface operations {
             header?: never;
             path?: never;
             cookie?: {
-                otklik_access?: string | null;
+                proshli_access?: string | null;
             };
         };
         requestBody: {
@@ -2599,7 +2599,7 @@ export interface operations {
             header?: never;
             path?: never;
             cookie?: {
-                otklik_access?: string | null;
+                proshli_access?: string | null;
             };
         };
         requestBody?: never;

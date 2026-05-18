@@ -1,4 +1,4 @@
-# Otklik.ai Architecture
+# Proshli Architecture
 
 This document describes how the system fits together. For repo layout and
 quick-start commands see [`README.md`](../README.md); for Sprint plans see
@@ -7,7 +7,7 @@ quick-start commands see [`README.md`](../README.md); for Sprint plans see
 ## Domains
 
 - **Auth & Roles** — email/password registration, JWT in an `HttpOnly`
-  cookie (`otklik_access`, `SameSite=lax`), seeker/employer roles, and a
+  cookie (`proshli_access`, `SameSite=lax`), seeker/employer roles, and a
   Telegram account-link flow guarded by a shared bot-service key.
 - **Vacancy Aggregation** — connectors pull from third-party feeds into
   `raw_vacancies`, dedupe and normalize into `vacancies`. Search supports
@@ -94,7 +94,7 @@ the batch.
 - **Sprint 1 (shipped):** auth, vacancies + ingestion, resume upload,
   AI guardrail + chat, basic digests, bot scaffold, CI gates, mypy
   strict, Bandit. Open carryovers: Storybook, Meilisearch experiment,
-  YC deploy pipeline, staging.otklik.ai, self-hosted observability.
+  YC deploy pipeline, staging.proshli.ru, self-hosted observability.
 - **Sprint 2 (in progress):** ЮKassa billing, LLM streaming with
   tool-use, pgvector semantic search, next-intl + next-themes, resume
   builder + AI improve, bot polish.

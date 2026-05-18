@@ -32,7 +32,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   if (options.body !== undefined) {
     headers["Content-Type"] = "application/json";
   }
-  // ``credentials: "include"`` so the ``otklik_access`` HttpOnly cookie
+  // ``credentials: "include"`` so the ``proshli_access`` HttpOnly cookie
   // (set by the backend on register/login — F8) travels cross-origin from
   // localhost:3000 → localhost:8000 in dev and from the app domain → the
   // API domain in prod. The bearer ``Authorization`` header still wins

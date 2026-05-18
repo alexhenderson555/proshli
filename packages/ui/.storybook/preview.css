@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Otklik design tokens — kept in sync with apps/web/app/globals.css.
+/* Proshli design tokens — kept in sync with apps/web/app/globals.css.
  * Storybook needs its own copy because it doesn't pull in the Next
  * app's stylesheet. If you change tokens in the web app, mirror them
  * here so the previewed components match production.

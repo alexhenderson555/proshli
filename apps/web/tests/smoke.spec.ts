@@ -22,7 +22,7 @@ test.beforeEach(async ({ context }) => {
 
 test("auth page renders onboarding copy", async ({ page }) => {
   await page.goto("/auth");
-  await expect(page.getByRole("heading", { name: "Onboarding Otklik.ai" })).toBeVisible(ASSERT_TIMEOUT);
+  await expect(page.getByRole("heading", { name: "Onboarding Proshli" })).toBeVisible(ASSERT_TIMEOUT);
 });
 
 test("vacancies page renders search panel", async ({ page }) => {

@@ -43,7 +43,7 @@ class Settings(BaseSettings):
 
     # ------------------------------------------------------------------ data
     database_url: str = Field(
-        default="postgresql+asyncpg://otklik:otklik@localhost:5432/otklik"
+        default="postgresql+asyncpg://proshli:proshli@localhost:5432/proshli"
     )
     auto_create_schema: bool = Field(default=False)
 
@@ -110,7 +110,7 @@ class Settings(BaseSettings):
     smtp_port: int = Field(default=587)
     smtp_user: str = Field(default="")
     smtp_password: str = Field(default="")
-    smtp_from_email: str = Field(default="noreply@otklik.local")
+    smtp_from_email: str = Field(default="noreply@proshli.local")
 
     # ------------------------------------------------------------------ observability
     sentry_dsn: str | None = Field(default=None)

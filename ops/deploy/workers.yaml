@@ -1,12 +1,12 @@
-# Reference manifest for `otklik-workers-staging` Serverless Container.
+# Reference manifest for `proshli-workers-staging` Serverless Container.
 # Note: Celery beat + worker normally run as two long-lived processes,
 # but YC Serverless Containers are request-driven. For staging we
 # trigger the worker periodically via `yc serverless trigger` and let
 # beat run as a separate cron-triggered container. Production should
 # move to a Compute VM or Managed Kubernetes once load justifies it.
 
-container: otklik-workers-staging
-image: cr.yandex/${YC_REGISTRY_ID}/otklik-workers
+container: proshli-workers-staging
+image: cr.yandex/${YC_REGISTRY_ID}/proshli-workers
 resources:
   cores: 1
   memory: 512MB

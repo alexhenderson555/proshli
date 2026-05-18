@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /* ---------------------------------------------------------------------------
- * Otklik.ai design system.
+ * Proshli design system.
  *
  * Tokens live as `--*` CSS custom properties so dark mode is a single
  * class toggle on <html>. Tailwind v4 picks them up via `@theme inline`
@@ -19,7 +19,7 @@
   --popover: 0 0% 100%;
   --popover-foreground: 222 47% 11%;
 
-  --primary: 221 83% 53%; /* otklik blue */
+  --primary: 221 83% 53%; /* proshli blue */
   --primary-foreground: 0 0% 100%;
 
   --secondary: 210 40% 96.1%;
@@ -28,7 +28,7 @@
   --muted: 210 40% 96.1%;
   --muted-foreground: 215 16% 47%;
 
-  --accent: 162 73% 38%; /* otklik green */
+  --accent: 162 73% 38%; /* proshli green */
   --accent-foreground: 0 0% 100%;
 
   --destructive: 0 84% 60%;

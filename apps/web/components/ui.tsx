@@ -1,8 +1,8 @@
 // Thin re-export layer. The authoritative primitives now live in
-// `@otklik/ui`; we keep this stub so call sites (`@/components/ui`)
+// `@proshli/ui`; we keep this stub so call sites (`@/components/ui`)
 // don't need to change all at once.
 //
-// New code should import directly from `@otklik/ui`.
+// New code should import directly from `@proshli/ui`.
 
 export {
   Badge,
@@ -23,4 +23,4 @@ export {
   type SkeletonProps,
   Textarea,
   type TextareaProps,
-} from "@otklik/ui";
+} from "@proshli/ui";

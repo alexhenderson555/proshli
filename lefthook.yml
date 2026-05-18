@@ -17,7 +17,7 @@ pre-commit:
       stage_fixed: true
     eslint:
       glob: "apps/web/**/*.{ts,tsx}"
-      run: pnpm -F @otklik/web lint --max-warnings=0
+      run: pnpm -F @proshli/web lint --max-warnings=0
 
 commit-msg:
   commands:

@@ -120,7 +120,7 @@ async def _renew(db: AsyncSession) -> dict[str, Any]:
                 payment_method_id=sub.yookassa_payment_method_id,
                 price_rub=plan.price_rub,
                 user_email=user.email,
-                description=f"Otklik.ai — продление тарифа {plan.name_ru}",
+                description=f"Proshli — продление тарифа {plan.name_ru}",
                 idempotency_seed=f"{sub.id}:{period_end_iso}",
             )
         except RuntimeError:

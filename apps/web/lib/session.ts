@@ -3,7 +3,7 @@
 // Session token storage.
 //
 // As of Sprint 2 (F8) the backend issues the access token as an HttpOnly
-// cookie (``otklik_access``) — that's the primary auth carrier and the
+// cookie (``proshli_access``) — that's the primary auth carrier and the
 // browser handles it transparently. This module's localStorage shim is
 // kept around for two reasons:
 //
@@ -20,7 +20,7 @@
 // authoritative carrier for the security guarantee. The local mirror is
 // strictly a UX convenience, NOT a security boundary.
 
-const TOKEN_KEY = "otklik_web_token";
+const TOKEN_KEY = "proshli_web_token";
 const LEGACY_TOKEN_KEY = "jobskout_web_token";
 
 function migrateLegacyToken(): string | null {
@@ -58,6 +58,6 @@ export function clearToken(): void {
   window.localStorage.removeItem(LEGACY_TOKEN_KEY);
   // The server-side cookie has its own expiry path — components that call
   // ``clearToken`` on logout should also hit ``api.logout()`` so the
-  // browser drops ``otklik_access``. The two are wired together in the
+  // browser drops ``proshli_access``. The two are wired together in the
   // header logout handler.
 }

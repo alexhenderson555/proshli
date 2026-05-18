@@ -23,7 +23,7 @@ export async function AppFooter() {
       title: t("groupCompany"),
       links: [
         { href: "/#features", label: t("linkFeatures") },
-        { href: "mailto:hello@otklik.ai", label: "hello@otklik.ai" },
+        { href: "mailto:hello@proshli.ru", label: "hello@proshli.ru" },
       ],
     },
   ] as const;
@@ -32,7 +32,7 @@ export async function AppFooter() {
     <footer className="mt-12 border-t border-border bg-card">
       <div className="container grid gap-10 py-12 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr]">
         <div className="flex flex-col gap-3">
-          <div className="text-base font-extrabold tracking-tight">Otklik.ai</div>
+          <div className="text-base font-extrabold tracking-tight">Proshli</div>
           <p className="max-w-sm text-sm text-muted-foreground">{t("tagline")}</p>
         </div>
         {linkGroups.map((group) => (

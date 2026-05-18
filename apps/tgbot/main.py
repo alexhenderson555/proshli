@@ -11,9 +11,9 @@ from aiogram.filters import Command, CommandStart
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
-# `OTKLIK_API_URL` is the canonical name post-rebrand; `JOBSKOUT_API_URL`
+# `PROSHLI_API_URL` is the canonical name post-rebrand; `JOBSKOUT_API_URL`
 # is still honoured as a fallback so older deployments don't break.
-API_URL = os.getenv("OTKLIK_API_URL") or os.getenv("JOBSKOUT_API_URL", "http://127.0.0.1:8000")
+API_URL = os.getenv("PROSHLI_API_URL") or os.getenv("JOBSKOUT_API_URL", "http://127.0.0.1:8000")
 BOT_SERVICE_KEY = os.getenv("BOT_SERVICE_KEY", "change-me-bot-service-key")
 REQUIRE_CHANNEL_SUBSCRIPTION = os.getenv("REQUIRE_CHANNEL_SUBSCRIPTION", "true").lower() == "true"
 REQUIRED_CHANNEL_USERNAME = os.getenv("REQUIRED_CHANNEL_USERNAME", "@iischnaya").strip()
@@ -24,7 +24,7 @@ EMPLOYER_PROMO_URL = os.getenv("EMPLOYER_PROMO_URL", "https://t.me/your_channel"
 # right at the boundary doesn't 401.
 TOKEN_CACHE_TTL_SECONDS = 30 * 60
 
-logger = logging.getLogger("otklik.tgbot")
+logger = logging.getLogger("proshli.tgbot")
 
 dp = Dispatcher()
 
@@ -35,7 +35,7 @@ class CachedToken:
 
     We keep the issued-at clock and refresh proactively rather than
     waiting for a 401. ``user_id`` is the Telegram user id (not the
-    Otklik user id) — we don't need the latter on the bot side.
+    Proshli user id) — we don't need the latter on the bot side.
     """
 
     token: str
@@ -354,7 +354,7 @@ async def start(message: Message) -> None:
     if is_subscription_guard_enabled():
         subscription_hint = f"\nДоступ к функциям открыт после подписки на {REQUIRED_CHANNEL_USERNAME}."
     await message.answer(
-        "Привет! Я Otklik.ai-бот.\n"
+        "Привет! Я Proshli-бот.\n"
         "Я ищу вакансии, сохраняю фильтры, помогаю AI и настраиваю дайджест.\n"
         "Чтобы привязать аккаунт: сгенерируй код на сайте и отправь /link КОД.\n"
         "Команды: /help. Используй кнопки ниже."
@@ -617,7 +617,7 @@ async def link_help(query: CallbackQuery) -> None:
     if query.message:
         await query.message.answer(
             "Как привязать аккаунт:\n"
-            "1) Войди на сайт Otklik.ai под своим аккаунтом соискателя\n"
+            "1) Войди на сайт Proshli под своим аккаунтом соискателя\n"
             "2) Нажми кнопку генерации кода Telegram\n"
             "3) Отправь в боте: /link КОД",
             reply_markup=main_menu_keyboard(),

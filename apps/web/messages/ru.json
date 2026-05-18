@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "Otklik.ai",
+    "appName": "Proshli",
     "tagline": "AI-агрегатор вакансий",
     "back": "Назад",
     "loading": "Загрузка...",
@@ -14,15 +14,15 @@
     "errorUnknown": "Неизвестная ошибка"
   },
   "metadata": {
-    "titleDefault": "Otklik.ai — AI-агрегатор вакансий",
-    "titleTemplate": "%s · Otklik.ai",
-    "description": "Otklik.ai — умный поиск работы по всей России. Агрегируем вакансии с десятков площадок, фильтруем под вас и помогаем откликаться быстрее.",
-    "keywords": "работа, вакансии, поиск работы, AI, агрегатор, Otklik",
-    "ogTitle": "Otklik.ai — AI-агрегатор вакансий",
-    "ogDescription": "Один умный поиск по десяткам площадок. Otklik.ai находит подходящие вакансии и помогает откликаться."
+    "titleDefault": "Proshli — AI-агрегатор вакансий",
+    "titleTemplate": "%s · Proshli",
+    "description": "Proshli — умный поиск работы по всей России. Агрегируем вакансии с десятков площадок, фильтруем под вас и помогаем откликаться быстрее.",
+    "keywords": "работа, вакансии, поиск работы, AI, агрегатор, Proshli",
+    "ogTitle": "Proshli — AI-агрегатор вакансий",
+    "ogDescription": "Один умный поиск по десяткам площадок. Proshli находит подходящие вакансии и помогает откликаться."
   },
   "header": {
-    "brandAriaLabel": "Otklik.ai — на главную",
+    "brandAriaLabel": "Proshli — на главную",
     "brandSubtitle": "AI job aggregator",
     "navAriaLabel": "Основная навигация",
     "navVacancies": "Вакансии",
@@ -46,14 +46,14 @@
     "linkForSeeker": "Соискателю",
     "linkForEmployer": "Работодателю",
     "linkFeatures": "Возможности",
-    "copyright": "© {year} Otklik.ai · Сделано в России",
+    "copyright": "© {year} Proshli · Сделано в России",
     "version": "v0.1 · early access"
   },
   "landing": {
     "badge": "Beta · Russia-first",
     "heroTitleLead": "Найдите работу мечты —",
     "heroTitleAccent": "пока AI ищет за вас",
-    "heroSubtitle": "Otklik.ai собирает вакансии со всех ключевых площадок России и СНГ, понимает ваш запрос на естественном языке и доставляет лучшие предложения в Telegram.",
+    "heroSubtitle": "Proshli собирает вакансии со всех ключевых площадок России и СНГ, понимает ваш запрос на естественном языке и доставляет лучшие предложения в Telegram.",
     "ctaPrimary": "Начать бесплатно",
     "ctaSecondary": "Смотреть вакансии",
     "metricSourcesValue": "40+",
@@ -63,9 +63,9 @@
     "metricAvailabilityValue": "24/7",
     "metricAvailabilityLabel": "AI работает за вас",
     "featuresTitle": "Один инструмент вместо десяти вкладок",
-    "featuresSubtitle": "Otklik берёт на себя рутину поиска работы: агрегацию, фильтрацию, нотификации и быстрый отклик.",
+    "featuresSubtitle": "Proshli берёт на себя рутину поиска работы: агрегацию, фильтрацию, нотификации и быстрый отклик.",
     "feature1Title": "AI-поиск под вас",
-    "feature1Body": "Опишите идеальную работу обычным языком — Otklik сам подберёт фильтры и найдёт подходящие вакансии.",
+    "feature1Body": "Опишите идеальную работу обычным языком — Proshli сам подберёт фильтры и найдёт подходящие вакансии.",
     "feature2Title": "Один поток вакансий",
     "feature2Body": "Агрегируем HeadHunter, SuperJob, Хабр Карьеру, Telegram-каналы и десятки нишевых источников.",
     "feature3Title": "Telegram-доставка",
@@ -77,16 +77,16 @@
     "ctaSectionButton": "Зарегистрироваться"
   },
   "aiChat": {
-    "kicker": "Otklik AI · попробовать",
+    "kicker": "Proshli AI · попробовать",
     "usageSuffix": "в день",
     "placeholder": "Например: ищу удалённого middle python разработчика от 250к",
-    "ariaLabel": "Запрос для Otklik AI",
+    "ariaLabel": "Запрос для Proshli AI",
     "buttonSubmit": "Найти с AI",
     "buttonStreaming": "Стримлю…",
     "statusIdle": "Опишите идеальную вакансию своими словами.",
     "statusNeedsQuery": "Сначала опишите запрос — хотя бы пару слов.",
     "statusNeedsAuth": "Войдите в аккаунт, чтобы запустить AI-поиск.",
-    "statusConnecting": "Подключаюсь к Otklik AI…",
+    "statusConnecting": "Подключаюсь к Proshli AI…",
     "statusFailure": "Не удалось получить ответ AI.",
     "filtersHeader": "Извлечённые фильтры",
     "suggestionsHeader": "Похожие запросы",
@@ -96,7 +96,7 @@
     "filterLocation": "Локация"
   },
   "auth": {
-    "title": "Onboarding Otklik.ai",
+    "title": "Onboarding Proshli",
     "subtitle": "HH-похожий входной поток, но с AI-first идентичностью: создаешь аккаунт и сразу переходишь к фильтрам и персональному матчингу.",
     "tabLogin": "Вход",
     "tabRegister": "Регистрация",
@@ -111,7 +111,7 @@
     "statusSuccess": "Успех: токен сохранен в localStorage.",
     "statusErrorPrefix": "Ошибка",
     "stateTitle": "Состояние",
-    "stateNote1": "JWT хранится в localStorage как `otklik_web_token`.",
+    "stateNote1": "JWT хранится в localStorage как `proshli_web_token`.",
     "stateNote2": "Дальше переходи в разделы `Вакансии` или `Соискатель`.",
     "stateNote3": "Для employer-flow открой страницу `Работодатель`."
   },
@@ -145,7 +145,7 @@
   },
   "vacancies": {
     "feedTitle": "Лента вакансий",
-    "feedSubtitle": "HH-паттерн поиска + кастомная Otklik-фишка: AI-композер фильтров и приоритет промо-вакансий.",
+    "feedSubtitle": "HH-паттерн поиска + кастомная Proshli-фишка: AI-композер фильтров и приоритет промо-вакансий.",
     "filterLocation": "Локация: Москва / Remote",
     "filterStack": "Стек: Python, React, Data",
     "filterLevelAny": "Любой уровень",
@@ -224,7 +224,7 @@
   },
   "employer": {
     "title": "Кабинет работодателя",
-    "subtitle": "Управляй вакансиями, архивом и продвижением. Поток знаком HH, монетизация и аналитика — Otklik-style.",
+    "subtitle": "Управляй вакансиями, архивом и продвижением. Поток знаком HH, монетизация и аналитика — Proshli-style.",
     "titleField": "Title вакансии",
     "companyField": "Компания",
     "locationField": "Локация",

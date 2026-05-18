@@ -13,7 +13,7 @@ priority order is:
 
 1. ``Authorization: Bearer <token>`` — explicit, used by the bot service
    and CLI scripts.
-2. ``otklik_access`` cookie — what the Next.js frontend uses. The cookie
+2. ``proshli_access`` cookie — what the Next.js frontend uses. The cookie
    is set ``HttpOnly`` + ``SameSite=Lax`` + ``Secure`` (in non-dev) so a
    browser-side XSS can't read it the way ``localStorage`` would expose
    it.
@@ -40,7 +40,7 @@ pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 # the dependency raises 401 itself if BOTH carriers are absent.
 bearer_scheme = HTTPBearer(auto_error=False)
 
-ACCESS_COOKIE_NAME = "otklik_access"
+ACCESS_COOKIE_NAME = "proshli_access"
 
 
 def hash_password(password: str) -> str:
@@ -88,15 +88,15 @@ def clear_access_cookie(response: Response) -> None:
 async def get_current_user(
     db: DbSession,
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
-    otklik_access: str | None = Cookie(default=None),
+    proshli_access: str | None = Cookie(default=None),
 ) -> User:
     # Bearer takes precedence — it's the explicit carrier used by service
     # accounts. The cookie path is the FE's default.
     token: str | None = None
     if credentials is not None and credentials.credentials:
         token = credentials.credentials
-    elif otklik_access:
-        token = otklik_access
+    elif proshli_access:
+        token = proshli_access
 
     if not token:
         raise HTTPException(

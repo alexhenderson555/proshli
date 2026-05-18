@@ -1,7 +1,7 @@
-# Reference manifest for `otklik-web-staging` Serverless Container.
+# Reference manifest for `proshli-web-staging` Serverless Container.
 
-container: otklik-web-staging
-image: cr.yandex/${YC_REGISTRY_ID}/otklik-web  # tag flipped per revision
+container: proshli-web-staging
+image: cr.yandex/${YC_REGISTRY_ID}/proshli-web  # tag flipped per revision
 resources:
   cores: 1
   memory: 512MB
@@ -10,8 +10,8 @@ resources:
 service_account_id: ${YC_DEPLOY_SA_ID}
 environment:
   NODE_ENV: production
-  NEXT_PUBLIC_API_URL: https://staging.otklik.ai/api
-  NEXT_PUBLIC_SITE_URL: https://staging.otklik.ai
+  NEXT_PUBLIC_API_URL: https://staging.proshli.ru/api
+  NEXT_PUBLIC_SITE_URL: https://staging.proshli.ru
   NEXT_PUBLIC_SENTRY_DSN: ${SENTRY_DSN_WEB}
-  NEXT_PUBLIC_PLAUSIBLE_DOMAIN: staging.otklik.ai
+  NEXT_PUBLIC_PLAUSIBLE_DOMAIN: staging.proshli.ru
   NEXT_PUBLIC_PLAUSIBLE_HOST: ${PLAUSIBLE_HOST}

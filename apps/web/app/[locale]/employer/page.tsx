@@ -21,7 +21,7 @@ export default function EmployerPage() {
   const [uiStatus, setUiStatus] = useState(t("statusReady"));
 
   const [title, setTitle] = useState("");
-  const [company, setCompany] = useState("Otklik");
+  const [company, setCompany] = useState("Proshli");
   const [location, setLocation] = useState("Remote");
   const [description, setDescription] = useState("");
 

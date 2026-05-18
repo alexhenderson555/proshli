@@ -1,7 +1,7 @@
-import otklik from "@otklik/eslint-config";
+import proshli from "@proshli/eslint-config";
 
 export default [
-  ...otklik,
+  ...proshli,
   {
     ignores: ["dist/**", "node_modules/**"],
   },

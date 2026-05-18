@@ -22,7 +22,7 @@ class DemoHhConnector(SourceConnector):
             "order_by": "publication_time",
             "search_field": "name",
         }
-        headers = {"User-Agent": "Otklik.ai/1.0 (job-aggregator)"}
+        headers = {"User-Agent": "Proshli/1.0 (job-aggregator)"}
 
         with httpx.Client(timeout=20.0, headers=headers) as client:
             response = client.get(f"{settings.hh_base_url}/vacancies", params=params)

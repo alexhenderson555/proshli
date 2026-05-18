@@ -1,4 +1,4 @@
-// Controlled `<select>` matching the Otklik `onChange(value)` shape.
+// Controlled `<select>` matching the Proshli `onChange(value)` shape.
 // Options are passed as `{value, label}` so the call site doesn't have
 // to declare a child JSX list. The `appearance-none` strips browser
 // chrome so the field visually aligns with `Input` / `Textarea`.

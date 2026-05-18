@@ -1,9 +1,9 @@
-// Shared ESLint flat config preset for all Otklik TS/JS packages.
+// Shared ESLint flat config preset for all Proshli TS/JS packages.
 //
 // Apps and packages can compose it like this:
 //
-//   import otklik from "@otklik/eslint-config";
-//   export default [...otklik];
+//   import proshli from "@proshli/eslint-config";
+//   export default [...proshli];
 //
 // The Next.js layer adds React/JSX rules on top (see ./next.mjs).
 

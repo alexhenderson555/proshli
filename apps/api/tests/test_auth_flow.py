@@ -22,7 +22,7 @@ async def test_health_endpoint(client: AsyncClient) -> None:
     assert resp.status_code == 200
     body = resp.json()
     assert body["status"] == "ok"
-    assert body["service"] == "otklik-api"
+    assert body["service"] == "proshli-api"
 
 
 @pytest.mark.asyncio
@@ -142,7 +142,7 @@ async def test_register_sets_httponly_cookie(client: AsyncClient) -> None:
         )
         assert resp.status_code == 201, resp.text
         set_cookie_header = resp.headers.get("set-cookie", "")
-        assert "otklik_access=" in set_cookie_header
+        assert "proshli_access=" in set_cookie_header
         assert "HttpOnly" in set_cookie_header
         assert "SameSite=lax" in set_cookie_header
 

@@ -1,11 +1,11 @@
-# Reference manifest for `otklik-api-staging` Serverless Container.
+# Reference manifest for `proshli-api-staging` Serverless Container.
 # Format is internal documentation — `yc-sls-container-deploy` does not
 # read this file. See `ops/deploy/README.md` for how secrets translate
 # into the `yc serverless container update` invocation that pins these
 # values on the container before the workflow flips revisions.
 
-container: otklik-api-staging
-image: cr.yandex/${YC_REGISTRY_ID}/otklik-api  # tag flipped per revision
+container: proshli-api-staging
+image: cr.yandex/${YC_REGISTRY_ID}/proshli-api  # tag flipped per revision
 resources:
   cores: 1
   memory: 512MB
@@ -24,5 +24,5 @@ environment:
   YOOKASSA_SHOP_ID: ${YOOKASSA_SHOP_ID}
   YOOKASSA_SECRET_KEY: ${YOOKASSA_SECRET_KEY}
   SENTRY_DSN: ${SENTRY_DSN_API}
-  CORS_ALLOWED_ORIGINS: https://staging.otklik.ai
+  CORS_ALLOWED_ORIGINS: https://staging.proshli.ru
   TRUSTED_PROXIES: ${YC_GATEWAY_CIDR}  # only honour XFF from the gateway

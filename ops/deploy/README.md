@@ -1,7 +1,7 @@
 # Yandex Cloud staging deploy
 
 These YAML files document the **expected** runtime configuration of the
-Serverless Containers backing `staging.otklik.ai`. They are reference
+Serverless Containers backing `staging.proshli.ru`. They are reference
 material — the actual deploy happens from
 `.github/workflows/deploy-staging.yml` via
 [`yc-actions/yc-sls-container-deploy@v3`][gha-yc-deploy], which only
@@ -26,15 +26,15 @@ variables → Actions`:
 Local one-shot bootstrap (before the workflow ever runs):
 
 ```bash
-yc serverless container create --name otklik-api-staging
-yc serverless container create --name otklik-web-staging
-yc serverless container create --name otklik-workers-staging
+yc serverless container create --name proshli-api-staging
+yc serverless container create --name proshli-web-staging
+yc serverless container create --name proshli-workers-staging
 # tgbot can run as a Serverless Container too (long-poll) or on a
 # Compute VM with webhook mode — pick once the Sprint 2 bot launch is
 # closer.
 
 # Then, per service, set immutable runtime config:
-yc serverless container update --name otklik-api-staging \
+yc serverless container update --name proshli-api-staging \
   --service-account-id "$YC_DEPLOY_SA_ID" \
   --environment DATABASE_URL="$YC_PG_DSN" \
   --environment REDIS_URL="$YC_REDIS_URL" \
@@ -44,7 +44,7 @@ yc serverless container update --name otklik-api-staging \
   --environment ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY"
 ```
 
-Domain binding (`staging.otklik.ai`) lives behind a Yandex Cloud API
+Domain binding (`staging.proshli.ru`) lives behind a Yandex Cloud API
 Gateway routing `/api/*` to the api container and `/*` to the web
 container; SSL is managed via the Certificate Manager. See the YC
 console for the gateway spec.

@@ -1,5 +1,5 @@
 {
-  "extends": "@otklik/tsconfig/next.json",
+  "extends": "@proshli/tsconfig/next.json",
   "compilerOptions": {
     "paths": {
       "@/*": ["./*"]

@@ -1,7 +1,7 @@
 [project]
-name = "otklik-api"
+name = "proshli-api"
 version = "0.1.0"
-description = "Otklik.ai backend API"
+description = "Proshli backend API"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "fastapi>=0.115.0",

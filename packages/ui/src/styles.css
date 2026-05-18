@@ -1,8 +1,8 @@
-/* @otklik/ui design tokens — shadcn/ui CSS variables.
+/* @proshli/ui design tokens — shadcn/ui CSS variables.
  *
  * Consumers import this from their global stylesheet:
  *
- *   @import "@otklik/ui/styles.css";
+ *   @import "@proshli/ui/styles.css";
  *   @import "tailwindcss";
  *
  * The `--*` custom properties are referenced by every shadcn component's

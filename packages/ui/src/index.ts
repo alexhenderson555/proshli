@@ -1,4 +1,4 @@
-// Barrel for `@otklik/ui`. Wave 10 expanded this to cover the full
+// Barrel for `@proshli/ui`. Wave 10 expanded this to cover the full
 // primitive set the web app uses (Button + form fields + surfaces).
 // Keep alphabetised so diffs stay clean.
 

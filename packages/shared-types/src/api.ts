@@ -4,7 +4,7 @@
 // The OpenAPI codegen output stores every model under
 // `components["schemas"]["XYZ"]` which is verbose at call sites. We
 // expose a flat alias for each schema we use across the apps so callers
-// can `import type { Vacancy, UserOut } from "@otklik/shared-types"` and
+// can `import type { Vacancy, UserOut } from "@proshli/shared-types"` and
 // stay backward-compatible with the pre-codegen world (Wave 9 follow-up).
 //
 // **Renames worth knowing about:**

@@ -1,4 +1,4 @@
-// Controlled text input. The Otklik convention is `onChange(value)` —
+// Controlled text input. The Proshli convention is `onChange(value)` —
 // callers don't need to unwrap `event.target.value` themselves — so
 // the SDK shape diverges from the raw HTML element.
 //

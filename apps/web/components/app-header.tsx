@@ -32,7 +32,7 @@ function getTokenSnapshot() {
   try {
     // Keep in sync with `lib/session.ts` `TOKEN_KEY`.
     return (
-      window.localStorage.getItem("otklik_web_token") ??
+      window.localStorage.getItem("proshli_web_token") ??
       window.localStorage.getItem("jobskout_web_token")
     );
   } catch {
@@ -67,7 +67,7 @@ export function AppHeader() {
             <Sparkles className="h-4 w-4" />
           </span>
           <div className="leading-tight">
-            <div className="text-sm font-extrabold tracking-tight">Otklik.ai</div>
+            <div className="text-sm font-extrabold tracking-tight">Proshli</div>
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
               {t("brandSubtitle")}
             </div>

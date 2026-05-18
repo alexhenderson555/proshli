@@ -50,7 +50,7 @@ def _stable_idempotence_key(*parts: str) -> str:
     digest = hashlib.sha256("|".join(parts).encode("utf-8")).hexdigest()
     # Trim to keep readable in logs; 24 hex chars = 96 bits of entropy, still
     # collision-safe inside our own namespace.
-    return f"otklik-{digest[:24]}"
+    return f"proshli-{digest[:24]}"
 
 log = logging.getLogger(__name__)
 

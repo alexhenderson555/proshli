@@ -9,7 +9,7 @@ __pycache__/
 .python-version
 
 # Local DBs
-otklik.db
+proshli.db
 jobskout.db
 *.db
 

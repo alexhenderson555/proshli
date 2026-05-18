@@ -554,7 +554,7 @@ def test_create_payment_uses_sdk(monkeypatch: pytest.MonkeyPatch) -> None:
         plan_slug="pro",
         price_rub=490,
         user_email="user@example.com",
-        description="Otklik.ai — тариф Pro",
+        description="Proshli — тариф Pro",
         save_payment_method=True,
     )
 

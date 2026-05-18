@@ -54,8 +54,8 @@ jobs:
       - uses: yc-actions/yc-sls-container-deploy@v3
         with:
           yc-sa-json-credentials: ${{ secrets.YC_SA_JSON_KEY }}
-          container-name: otklik-${{ matrix.service }}-staging
+          container-name: proshli-${{ matrix.service }}-staging
           revision-service-account-id: ${{ secrets.YC_DEPLOY_SA_ID }}
-          revision-image-url: cr.yandex/${{ secrets.YC_REGISTRY_ID }}/otklik-${{ matrix.service }}:${{ github.sha }}
+          revision-image-url: cr.yandex/${{ secrets.YC_REGISTRY_ID }}/proshli-${{ matrix.service }}:${{ github.sha }}
           revision-cores: 1
           revision-memory: 512MB

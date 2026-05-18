@@ -1,4 +1,4 @@
-// Token-driven Button. The variant/size names follow the Otklik
+// Token-driven Button. The variant/size names follow the Proshli
 // in-app vocabulary (`primary` / `secondary` / `ghost` / `danger`,
 // sizes `sm` / `md` / `lg`) rather than the raw shadcn defaults — the
 // brand styles use a stronger "primary action" cue, so the

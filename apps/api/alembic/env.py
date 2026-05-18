@@ -1,4 +1,4 @@
-"""Alembic env for Otklik.ai — async-mode.
+"""Alembic env for Proshli — async-mode.
 
 Pattern adapted from ``reference-vault/backend-python/fastapi-clean-example``:
 online mode uses ``async_engine_from_config`` + ``asyncio.run`` so the engine

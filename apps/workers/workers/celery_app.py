@@ -18,7 +18,7 @@ from celery import Celery
 from celery.schedules import crontab
 
 celery_app = Celery(
-    "otklik",
+    "proshli",
     broker=settings.redis_url,
     backend=settings.redis_url,
     include=[

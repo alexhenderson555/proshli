@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "Otklik.ai",
+    "appName": "Proshli",
     "tagline": "AI job aggregator",
     "back": "Back",
     "loading": "Loading...",
@@ -14,15 +14,15 @@
     "errorUnknown": "Unknown error"
   },
   "metadata": {
-    "titleDefault": "Otklik.ai — AI job aggregator",
-    "titleTemplate": "%s · Otklik.ai",
-    "description": "Otklik.ai — smart job search across Russia and CIS. We aggregate vacancies from dozens of sources, filter them for you, and help you apply faster.",
-    "keywords": "jobs, vacancies, job search, AI, aggregator, Otklik",
-    "ogTitle": "Otklik.ai — AI job aggregator",
-    "ogDescription": "One smart search across dozens of job boards. Otklik.ai finds the right roles for you and helps you apply."
+    "titleDefault": "Proshli — AI job aggregator",
+    "titleTemplate": "%s · Proshli",
+    "description": "Proshli — smart job search across Russia and CIS. We aggregate vacancies from dozens of sources, filter them for you, and help you apply faster.",
+    "keywords": "jobs, vacancies, job search, AI, aggregator, Proshli",
+    "ogTitle": "Proshli — AI job aggregator",
+    "ogDescription": "One smart search across dozens of job boards. Proshli finds the right roles for you and helps you apply."
   },
   "header": {
-    "brandAriaLabel": "Otklik.ai — go to homepage",
+    "brandAriaLabel": "Proshli — go to homepage",
     "brandSubtitle": "AI job aggregator",
     "navAriaLabel": "Primary navigation",
     "navVacancies": "Vacancies",
@@ -46,14 +46,14 @@
     "linkForSeeker": "For candidates",
     "linkForEmployer": "For employers",
     "linkFeatures": "Features",
-    "copyright": "© {year} Otklik.ai · Made in Russia",
+    "copyright": "© {year} Proshli · Made in Russia",
     "version": "v0.1 · early access"
   },
   "landing": {
     "badge": "Beta · Russia-first",
     "heroTitleLead": "Land the role you want —",
     "heroTitleAccent": "while AI searches for you",
-    "heroSubtitle": "Otklik.ai pulls vacancies from every major job board in Russia and CIS, understands your search in plain language, and delivers the best matches to Telegram.",
+    "heroSubtitle": "Proshli pulls vacancies from every major job board in Russia and CIS, understands your search in plain language, and delivers the best matches to Telegram.",
     "ctaPrimary": "Get started free",
     "ctaSecondary": "Browse vacancies",
     "metricSourcesValue": "40+",
@@ -63,9 +63,9 @@
     "metricAvailabilityValue": "24/7",
     "metricAvailabilityLabel": "AI working for you",
     "featuresTitle": "One tool instead of ten browser tabs",
-    "featuresSubtitle": "Otklik handles the grind of job hunting — aggregation, filtering, notifications, and one-click apply.",
+    "featuresSubtitle": "Proshli handles the grind of job hunting — aggregation, filtering, notifications, and one-click apply.",
     "feature1Title": "AI search tuned to you",
-    "feature1Body": "Describe your ideal role in plain language — Otklik picks the right filters and surfaces matching vacancies.",
+    "feature1Body": "Describe your ideal role in plain language — Proshli picks the right filters and surfaces matching vacancies.",
     "feature2Title": "One unified job feed",
     "feature2Body": "We aggregate HeadHunter, SuperJob, Habr Career, Telegram channels, and dozens of niche sources.",
     "feature3Title": "Telegram delivery",
@@ -77,16 +77,16 @@
     "ctaSectionButton": "Sign up"
   },
   "aiChat": {
-    "kicker": "Otklik AI · try it",
+    "kicker": "Proshli AI · try it",
     "usageSuffix": "today",
     "placeholder": "e.g. looking for a remote middle Python role, 250k+",
-    "ariaLabel": "Otklik AI prompt",
+    "ariaLabel": "Proshli AI prompt",
     "buttonSubmit": "Search with AI",
     "buttonStreaming": "Streaming…",
     "statusIdle": "Describe your ideal vacancy in your own words.",
     "statusNeedsQuery": "Add a few words first — a sentence is plenty.",
     "statusNeedsAuth": "Sign in to run the AI search.",
-    "statusConnecting": "Connecting to Otklik AI…",
+    "statusConnecting": "Connecting to Proshli AI…",
     "statusFailure": "Couldn't reach the AI service.",
     "filtersHeader": "Extracted filters",
     "suggestionsHeader": "Related queries",
@@ -96,7 +96,7 @@
     "filterLocation": "Location"
   },
   "auth": {
-    "title": "Otklik.ai onboarding",
+    "title": "Proshli onboarding",
     "subtitle": "An HH-style entry flow with an AI-first twist — sign up and jump straight into smart filters and personalised matching.",
     "tabLogin": "Log in",
     "tabRegister": "Sign up",
@@ -111,7 +111,7 @@
     "statusSuccess": "Done — token saved in localStorage.",
     "statusErrorPrefix": "Error",
     "stateTitle": "Status",
-    "stateNote1": "JWT is stored in localStorage as `otklik_web_token`.",
+    "stateNote1": "JWT is stored in localStorage as `proshli_web_token`.",
     "stateNote2": "Next, head to `Vacancies` or `Candidates`.",
     "stateNote3": "For the employer flow, open the `Employers` page."
   },
@@ -145,7 +145,7 @@
   },
   "vacancies": {
     "feedTitle": "Vacancy feed",
-    "feedSubtitle": "Familiar HH-style search plus the Otklik twist — natural-language filter composer and prioritised promoted listings.",
+    "feedSubtitle": "Familiar HH-style search plus the Proshli twist — natural-language filter composer and prioritised promoted listings.",
     "filterLocation": "Location: Moscow / Remote",
     "filterStack": "Stack: Python, React, Data",
     "filterLevelAny": "Any level",
@@ -224,7 +224,7 @@
   },
   "employer": {
     "title": "Employer dashboard",
-    "subtitle": "Manage vacancies, archive, and promotion. Flow inspired by HH, monetisation and analytics done the Otklik way.",
+    "subtitle": "Manage vacancies, archive, and promotion. Flow inspired by HH, monetisation and analytics done the Proshli way.",
     "titleField": "Vacancy title",
     "companyField": "Company",
     "locationField": "Location",
