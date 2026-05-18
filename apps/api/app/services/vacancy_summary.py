@@ -91,12 +91,16 @@ class VacancySummaryGenerator:
     def __init__(
         self,
         *,
-        api_key: str = "",
-        model: str = "",
+        api_key: str | None = None,
+        model: str | None = None,
         max_tokens: int = 300,
     ) -> None:
-        self._api_key = api_key
-        self._model = model
+        # Fall back to settings when caller doesn't override. Production
+        # construction is parameter-less (``VacancySummaryGenerator()``)
+        # so the settings-injected defaults reach the SDK. Tests still
+        # pass an empty string to force the short-circuit path.
+        self._api_key = settings.anthropic_api_key if api_key is None else api_key
+        self._model = settings.anthropic_model if model is None else model
         self._max_tokens = max_tokens
         self._client: Any | None = None
 
