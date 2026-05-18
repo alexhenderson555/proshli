@@ -125,7 +125,16 @@ async def logout(response: Response) -> Response:
     return response
 
 
-@router.post("/telegram/link-code", response_model=TelegramLinkCodeOut)
+@router.post(
+    "/telegram/link-code",
+    response_model=TelegramLinkCodeOut,
+    dependencies=[
+        # User-facing endpoint: tight cap so a stolen JWT can't churn out
+        # hundreds of codes (each one invalidates the previous, so abuse
+        # would also lock the legit user out of linking).
+        Depends(RateLimit("auth-telegram-link-code", limit=5, window_seconds=60)),
+    ],
+)
 async def create_telegram_link_code(
     db: DbSession,
     current_user: User = Depends(get_current_user),
@@ -164,7 +173,17 @@ async def create_telegram_link_code(
     return TelegramLinkCodeOut(code=code, expires_at=expires_at)
 
 
-@router.post("/telegram/consume-link", response_model=TokenResponse)
+@router.post(
+    "/telegram/consume-link",
+    response_model=TokenResponse,
+    dependencies=[
+        # Defence-in-depth on top of the bot service key: if the key ever
+        # leaks, the 8-char alphanumeric code (~30 bits of entropy) is the
+        # only thing standing between an attacker and arbitrary account
+        # takeover, so cap brute-force throughput.
+        Depends(RateLimit("auth-telegram-consume", limit=30, window_seconds=60)),
+    ],
+)
 async def consume_telegram_link_code(
     payload: TelegramLinkConsumeRequest,
     response: Response,
@@ -235,7 +254,15 @@ async def consume_telegram_link_code(
     return TokenResponse(access_token=token)
 
 
-@router.delete("/telegram/link", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/telegram/link",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[
+        # Same rationale as consume-link: bot key is the primary auth but
+        # we throttle to limit damage if it leaks.
+        Depends(RateLimit("auth-telegram-unlink", limit=30, window_seconds=60)),
+    ],
+)
 async def unlink_telegram(
     payload: TelegramBotLoginRequest,
     db: DbSession,
@@ -271,7 +298,16 @@ async def unlink_telegram(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.post("/telegram/login", response_model=TokenResponse)
+@router.post(
+    "/telegram/login",
+    response_model=TokenResponse,
+    dependencies=[
+        # Loose cap (the bot calls this frequently during normal use) but
+        # still bounded so a leaked bot key can't be used to enumerate
+        # every linked telegram_user_id at line rate.
+        Depends(RateLimit("auth-telegram-login", limit=100, window_seconds=60)),
+    ],
+)
 async def login_by_telegram(
     payload: TelegramBotLoginRequest,
     response: Response,
