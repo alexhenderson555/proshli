@@ -14,15 +14,13 @@
 #   - HSTS on root, no preload (preload after a month of stable deploy)
 #   - X-Forwarded-For so FastAPI sees real client IP (combined with TRUSTED_PROXIES env)
 
-{$PROSHLI_DOMAIN}, www.{$PROSHLI_DOMAIN} {
+{$PROSHLI_DOMAIN} {
 	encode zstd gzip
 
 	# Strip /api prefix and forward to FastAPI.
 	handle_path /api/* {
 		reverse_proxy api:8000 {
 			header_up X-Real-IP {remote_host}
-			header_up X-Forwarded-For {remote_host}
-			header_up X-Forwarded-Proto {scheme}
 		}
 	}
 
@@ -34,8 +32,6 @@
 
 		reverse_proxy web:3000 {
 			header_up X-Real-IP {remote_host}
-			header_up X-Forwarded-For {remote_host}
-			header_up X-Forwarded-Proto {scheme}
 		}
 	}
 
