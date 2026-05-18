@@ -163,6 +163,9 @@ class Resume(Base):
     name: Mapped[str] = mapped_column(String(255))
     raw_text: Mapped[str] = mapped_column(Text)
     parsed_skills: Mapped[str] = mapped_column(Text, default="")
+    embedding: Mapped[list[float] | None] = mapped_column(
+        Vector(_EMBEDDING_DIM), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime, default=now_utc)
 
     owner: Mapped[User] = relationship(back_populates="resumes")
