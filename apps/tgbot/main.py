@@ -713,6 +713,85 @@ async def promo_info(query: CallbackQuery) -> None:
     await query.answer()
 
 
+async def _post_channel_decision(
+    http: httpx.AsyncClient, action: str, candidate_id: int, admin_message_id: int
+) -> tuple[int, dict | None]:
+    """POST to the bot-service channel-approval endpoint.
+
+    Returns ``(status_code, parsed_json | None)``. Network failures
+    surface as ``(0, None)`` so the caller can answer the callback
+    with a generic error toast without crashing the dispatcher.
+    """
+    payload = {
+        "candidate_id": candidate_id,
+        "admin_message_id": admin_message_id,
+    }
+    try:
+        resp = await http.post(
+            f"{API_URL}/internal/channel-approval/{action}",
+            json=payload,
+            headers=bot_service_headers(),
+        )
+    except httpx.HTTPError as exc:
+        logger.warning("channel_decision network failure: %s", exc)
+        return 0, None
+    body: dict | None = None
+    if "application/json" in resp.headers.get("content-type", ""):
+        try:
+            body = resp.json()
+        except ValueError:
+            body = None
+    return resp.status_code, body
+
+
+@dp.callback_query(F.data.startswith("ch_approve_"))
+async def channel_approve(query: CallbackQuery, http: httpx.AsyncClient) -> None:
+    """Admin hit ✅ on a channel candidate — hit the API and toast back."""
+    if not query.data or not query.message:
+        await query.answer()
+        return
+    try:
+        candidate_id = int(query.data.removeprefix("ch_approve_"))
+    except ValueError:
+        await query.answer("Bad callback")
+        return
+    status, body = await _post_channel_decision(
+        http, "approve", candidate_id, query.message.message_id
+    )
+    if status == 200 and isinstance(body, dict):
+        await query.answer(f"Запланировано: {body.get('detail', 'ok')}", show_alert=False)
+    elif status == 409:
+        await query.answer("Уже отклонено", show_alert=True)
+    elif status == 404:
+        await query.answer("Кандидат не найден", show_alert=True)
+    else:
+        await query.answer(f"Ошибка ({status})", show_alert=True)
+
+
+@dp.callback_query(F.data.startswith("ch_reject_"))
+async def channel_reject(query: CallbackQuery, http: httpx.AsyncClient) -> None:
+    """Admin hit ❌ on a channel candidate — flip status only."""
+    if not query.data or not query.message:
+        await query.answer()
+        return
+    try:
+        candidate_id = int(query.data.removeprefix("ch_reject_"))
+    except ValueError:
+        await query.answer("Bad callback")
+        return
+    status, body = await _post_channel_decision(
+        http, "reject", candidate_id, query.message.message_id
+    )
+    if status == 200 and isinstance(body, dict):
+        await query.answer(f"Отклонено: {body.get('detail', 'ok')}", show_alert=False)
+    elif status == 409:
+        await query.answer("Уже одобрено", show_alert=True)
+    elif status == 404:
+        await query.answer("Кандидат не найден", show_alert=True)
+    else:
+        await query.answer(f"Ошибка ({status})", show_alert=True)
+
+
 @dp.callback_query(F.data.startswith("f_"))
 async def set_quick_filter(query: CallbackQuery) -> None:
     if not await ensure_subscription_callback(query):

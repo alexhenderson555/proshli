@@ -31,6 +31,7 @@ from app.routes import (
     ai,
     auth,
     billing,
+    channel_approval,
     digest,
     health,
     ingest,
@@ -97,6 +98,7 @@ def create_app() -> FastAPI:
     app.include_router(admin.router)
     app.include_router(billing.router)
     app.include_router(webhooks.router)
+    app.include_router(channel_approval.router)
 
     return app
 

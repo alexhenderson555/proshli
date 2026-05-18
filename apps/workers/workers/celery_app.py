@@ -27,6 +27,7 @@ celery_app = Celery(
         "workers.tasks.billing",
         "workers.tasks.prefilter",
         "workers.tasks.publisher",
+        "workers.tasks.channel_approval",
     ],
 )
 
@@ -34,6 +35,7 @@ celery_app = Celery(
 # ``include=`` lazy-imports them only when the worker boots; for tests +
 # importers of ``celery_app`` we want the side-effect now.
 import workers.tasks.billing as _billing  # noqa: E402
+import workers.tasks.channel_approval as _channel_approval  # noqa: E402
 import workers.tasks.digest as _digest  # noqa: E402
 import workers.tasks.ingest as _ingest  # noqa: E402
 import workers.tasks.prefilter as _prefilter  # noqa: E402
@@ -42,7 +44,14 @@ import workers.tasks.publisher as _publisher  # noqa: E402
 # Mark modules referenced so static analysis sees the side-effect imports
 # as intentional. The task decorators register against ``celery_app`` at
 # import time — that's the whole point.
-_REGISTERED_TASK_MODULES = (_billing, _digest, _ingest, _prefilter, _publisher)
+_REGISTERED_TASK_MODULES = (
+    _billing,
+    _channel_approval,
+    _digest,
+    _ingest,
+    _prefilter,
+    _publisher,
+)
 
 celery_app.conf.update(
     task_acks_late=True,
@@ -94,6 +103,14 @@ celery_app.conf.update(
         "publish-pending-every-15-min": {
             "task": "workers.tasks.publisher.publish_pending_batch",
             "schedule": crontab(minute="3,18,33,48"),
+        },
+        # Phase 2 channel approval: daily 09:00 MSK = 06:00 UTC (no DST
+        # in Russia since 2014). Minute=7 to dodge the ingest/digest
+        # tasks that fire at minute=0/15, and to avoid the round-number
+        # hour where every consumer's cron is also firing.
+        "channel-approval-daily-06-utc": {
+            "task": "workers.tasks.channel_approval.score_and_notify_admin",
+            "schedule": crontab(hour=6, minute=7),
         },
     },
 )
