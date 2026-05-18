@@ -2,7 +2,7 @@
 # image that runs `next start`. Once Wave 10 lands, this can swap to the
 # standalone output (`output: 'standalone'`) for an even smaller image.
 
-FROM node:20-alpine AS base
+FROM node:22-alpine AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable
@@ -24,7 +24,7 @@ COPY . .
 RUN pnpm --filter @proshli/web build
 
 # ---------- runtime ----------
-FROM node:20-alpine AS runtime
+FROM node:22-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1
