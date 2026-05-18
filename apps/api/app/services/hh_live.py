@@ -65,7 +65,7 @@ async def fetch_live_hh_vacancies(
     if max_age_days is not None:
         params["period"] = max(1, min(max_age_days, 30))
 
-    headers = {"User-Agent": "Otklik/1.0 (job-aggregator)"}
+    headers = {"User-Agent": "Proshli/1.0 (job-aggregator)"}
     async with httpx.AsyncClient(timeout=20.0, headers=headers) as client:
         response = await client.get(f"{settings.hh_base_url}/vacancies", params=params)
         response.raise_for_status()

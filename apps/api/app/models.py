@@ -1,10 +1,25 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
+from pgvector.sqlalchemy import Vector  # type: ignore[import-untyped]
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
 from app.time_utils import now_utc
+
+# Mirrors ``app.services.embeddings.EMBEDDING_DIM``. Inlined here to avoid a
+# circular import (models is loaded before services in alembic's env.py).
+_EMBEDDING_DIM = 1024
 
 
 class User(Base):
@@ -23,10 +38,72 @@ class User(Base):
     )
     ai_usage_events: Mapped[list["AiUsageEvent"]] = relationship(back_populates="owner")
     seeker_profile: Mapped["SeekerProfile"] = relationship(back_populates="owner", uselist=False)
-    employer_profile: Mapped["EmployerProfile"] = relationship(back_populates="owner", uselist=False)
+    employer_profile: Mapped["EmployerProfile"] = relationship(
+        back_populates="owner", uselist=False
+    )
     resume_versions: Mapped[list["ResumeVersion"]] = relationship(back_populates="owner")
     employer_vacancies: Mapped[list["EmployerVacancy"]] = relationship(back_populates="owner")
     employer_actions: Mapped[list["EmployerActionLog"]] = relationship(back_populates="owner")
+    subscription: Mapped["Subscription | None"] = relationship(
+        back_populates="owner", uselist=False
+    )
+
+
+class Plan(Base):
+    """Billing tier definition.
+
+    Wave 2 seeds three rows via the alembic migration:
+
+    * ``free``     — 0 ₽ / mo, AI 5/day, no semantic search
+    * ``pro``      — 490 ₽ / mo, AI 50/day, semantic search on, daily digest
+    * ``employer`` — 2490 ₽ / mo, AI 100/day, semantic search on, daily digest
+
+    The row is intentionally lightweight: pricing + feature flags only. Per-user
+    state (renewal time, payment-method handle) lives on ``Subscription``.
+    """
+
+    __tablename__ = "plans"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    slug: Mapped[str] = mapped_column(String(32), unique=True, index=True)
+    name_ru: Mapped[str] = mapped_column(String(120))
+    price_rub: Mapped[int] = mapped_column(Integer, default=0)
+    ai_daily_limit: Mapped[int] = mapped_column(Integer, default=5)
+    semantic_search: Mapped[bool] = mapped_column(Boolean, default=False)
+    digest_frequency: Mapped[str] = mapped_column(String(20), default="weekly")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now_utc)
+
+
+class Subscription(Base):
+    """A user's current billing state.
+
+    1-to-1 with ``User``. ``yookassa_payment_method_id`` holds the saved
+    payment-method handle from the initial checkout (``save_payment_method=True``);
+    the hourly Celery beat task uses it to charge recurring renewals without
+    user interaction.
+
+    ``status`` transitions:
+
+    * ``pending``   — checkout created, awaiting ``payment.succeeded`` webhook
+    * ``active``    — paid, ``current_period_end`` in the future
+    * ``past_due``  — renewal charge failed, grace period before downgrade
+    * ``canceled``  — user opted out; access keeps until ``current_period_end``
+    """
+
+    __tablename__ = "subscriptions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), unique=True, index=True)
+    plan_id: Mapped[int] = mapped_column(ForeignKey("plans.id"), index=True)
+    yookassa_payment_method_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="pending", index=True)
+    current_period_end: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+    last_payment_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now_utc)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=now_utc, index=True)
+
+    owner: Mapped[User] = relationship(back_populates="subscription")
+    plan: Mapped[Plan] = relationship()
 
 
 class Vacancy(Base):
@@ -52,6 +129,29 @@ class Vacancy(Base):
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     is_promoted: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     promotion_expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Wave 4: semantic search. Nullable because old rows haven't been
+    # backfilled yet and the rule-based fallback intentionally leaves
+    # vectors blank (no semantic value). Indexed via IVFFLAT cosine ops
+    # in migration 0012; the index is declared at DDL level rather than
+    # via ORM hints so the build parameters (``lists = 100``) stay in
+    # one place.
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(_EMBEDDING_DIM), nullable=True)
+    # Phase 1 TG-publication routing — see migration 0014. ``topic_id`` is
+    # one of 1..28 (see ``app.services.tg_topics.TOPICS``); ``classified_at``
+    # is the timestamp of the last classifier run so re-classification can
+    # be triggered by age, not just nullability.
+    topic_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    classified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Wave 12: comma-separated extracted skill tokens (``"Python,FastAPI"``).
+    # Empty string when extraction hasn't run yet. The TG post renderer
+    # falls back to a title-derived placeholder if this is empty so old
+    # rows keep rendering until they're re-processed.
+    parsed_skills: Mapped[str] = mapped_column(Text, default="")
+    # Cached Claude-rendered 1-2 sentence summary for the TG post middle
+    # line. NULL means "not yet generated" — the renderer uses the
+    # deterministic first-sentence fallback in that case.
+    ai_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    summary_generated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     employer_links: Mapped[list["EmployerVacancy"]] = relationship(back_populates="vacancy")
 
 
@@ -187,7 +287,9 @@ class EmployerActionLog(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
-    vacancy_id: Mapped[int | None] = mapped_column(ForeignKey("vacancies.id"), nullable=True, index=True)
+    vacancy_id: Mapped[int | None] = mapped_column(
+        ForeignKey("vacancies.id"), nullable=True, index=True
+    )
     action: Mapped[str] = mapped_column(String(64), index=True)
     meta_json: Mapped[str] = mapped_column(Text, default="{}")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=now_utc, index=True)
@@ -206,6 +308,48 @@ class TelegramLinkCode(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=now_utc, index=True)
 
 
+class ProcessedWebhookEvent(Base):
+    """Replay-protection for external webhooks.
+
+    A row exists per ``(source, event_id)`` we've already processed. Webhook
+    handlers must ``INSERT`` here *before* touching billing state — the
+    unique-index violation on the second delivery short-circuits the rest
+    of the handler so re-deliveries from the provider (network blips,
+    retries, replay attacks) can't extend a subscription twice or grant
+    two refunds for the same payment.
+
+    Why ``object_id`` is captured too:
+
+    * For ЮKassa, ``event.object.id`` is the payment / refund identifier.
+      Logging it next to the event id makes audits cheap when investigating
+      a customer dispute.
+
+    The table is append-only — old rows can be pruned by ops at any time
+    (the uniqueness window only matters for the provider's retry horizon,
+    typically ≤24h), but pruning is intentionally not automated here so
+    a misconfigured cron can't accidentally enable replays.
+    """
+
+    __tablename__ = "processed_webhook_events"
+    # Atomicity hinge — see the class docstring. The webhook handler
+    # INSERTs first; a duplicate ``(source, event_id)`` pair raises
+    # ``IntegrityError`` and short-circuits with ``{"replay": True}``.
+    # Migration 0013 creates the matching index against a live DB;
+    # this constraint mirrors it for ``Base.metadata.create_all`` in
+    # the test fixture (without it the tests get a table that allows
+    # replays through, breaking ``test_webhook_replay_does_not_extend_period``).
+    __table_args__ = (
+        UniqueConstraint("source", "event_id", name="uq_processed_webhook_events_source_event"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    source: Mapped[str] = mapped_column(String(32), index=True)
+    event_id: Mapped[str] = mapped_column(String(128), index=True)
+    event_type: Mapped[str] = mapped_column(String(64))
+    object_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    processed_at: Mapped[datetime] = mapped_column(DateTime, default=now_utc, index=True)
+
+
 class TelegramAccountLink(Base):
     __tablename__ = "telegram_account_links"
 
@@ -216,3 +360,116 @@ class TelegramAccountLink(Base):
     telegram_username: Mapped[str | None] = mapped_column(String(128), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=now_utc)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=now_utc, index=True)
+
+
+class PublicationQueueItem(Base):
+    """One vacancy → one TG-surface post.
+
+    Phase 1 plumbing for the TG publication subsystem (see
+    ``docs/superpowers/specs/2026-05-18-tg-publication-design.md``). The
+    publisher worker reads rows where ``status == 'pending'`` and
+    ``scheduled_for <= now``, ordered by ``scheduled_for`` ASC.
+
+    The unique constraint on ``(vacancy_id, target)`` is the dedup hinge —
+    a vacancy can have at most one row per target surface
+    (``'group'`` or ``'channel'``). Re-enqueue is a deliberate admin
+    action (delete + insert), not a race-condition outcome.
+    """
+
+    __tablename__ = "publication_queue"
+    __table_args__ = (
+        UniqueConstraint(
+            "vacancy_id",
+            "target",
+            name="uq_publication_queue_vacancy_target",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, index=True)
+    vacancy_id: Mapped[int] = mapped_column(
+        ForeignKey("vacancies.id", ondelete="CASCADE"), index=True
+    )
+    # 'group' (28-topic forum supergroup) | 'channel' (curated facade).
+    target: Mapped[str] = mapped_column(String(16), index=True)
+    # 1..28 for ``target='group'``; NULL for ``target='channel'`` since
+    # the channel has no topic structure.
+    topic_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    rendered_text: Mapped[str] = mapped_column(Text)
+    # pending | published | failed | dismissed
+    status: Mapped[str] = mapped_column(String(16), default="pending", index=True)
+    scheduled_for: Mapped[datetime] = mapped_column(DateTime, default=now_utc, index=True)
+    published_message_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    failure_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now_utc)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class CompanyPrestige(Base):
+    """Per-company prestige score (0.0 – 1.0) used by channel-approval scoring.
+
+    Phase 2 of the TG-publication design. The score is hand-curated for
+    the top ~100 employers (Yandex, Tinkoff, Sber, Avito, ВКонтакте, etc.)
+    and defaults to ``0.0`` for everyone else — that gives the daily
+    scoring task a deterministic prestige signal without forcing an LLM
+    classifier in the request path.
+
+    The string column ``company_normalised`` is the lowercased, trimmed,
+    accent-stripped form of the company name — keeps the lookup stable
+    across "Яндекс" / "yandex" / "ЯНДЕКС".
+    """
+
+    __tablename__ = "company_prestige"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    company_normalised: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    score: Mapped[float] = mapped_column(Float, default=0.0)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=now_utc)
+
+
+class ChannelCandidate(Base):
+    """Daily top-N scored vacancy awaiting admin approval for @proshli channel.
+
+    Phase 2 flow: the daily 09:00 MSK scoring task picks the top N
+    candidates by composite score (salary + prestige + freshness +
+    topic-demand), inserts one row per candidate with ``status='pending'``,
+    and DMs the admin a single message containing inline ✅/❌ buttons
+    keyed by the candidate id. On ✅ the bot-side handler hits a
+    bot-service endpoint that flips ``status='approved'`` and inserts
+    a corresponding ``publication_queue`` row with
+    ``target='channel'``. ❌ flips to ``status='rejected'``.
+
+    Idempotency: ``(vacancy_id, batch_date)`` unique. The same vacancy
+    can re-appear on a future day if it wasn't acted on the first time.
+    """
+
+    __tablename__ = "channel_candidates"
+    __table_args__ = (
+        UniqueConstraint(
+            "vacancy_id",
+            "batch_date",
+            name="uq_channel_candidates_vacancy_batch",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, index=True)
+    vacancy_id: Mapped[int] = mapped_column(
+        ForeignKey("vacancies.id", ondelete="CASCADE"), index=True
+    )
+    # ISO date of the daily scoring run — used as the dedup key with
+    # ``vacancy_id``. Same row can be re-considered on a later day.
+    batch_date: Mapped[str] = mapped_column(String(10), index=True)
+    # Composite score in [0, 1]. Components live in ``score_breakdown``
+    # as a JSON-encoded text blob so the scoring weights can evolve
+    # without a migration.
+    score: Mapped[float] = mapped_column(Float, default=0.0, index=True)
+    score_breakdown: Mapped[str] = mapped_column(Text, default="{}")
+    # pending | approved | rejected
+    status: Mapped[str] = mapped_column(String(16), default="pending", index=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Telegram message_id of the admin DM that surfaced this candidate.
+    # Stored so the callback handler can edit the message text/markup
+    # to reflect the decision (strike-through + remove buttons).
+    admin_message_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now_utc)

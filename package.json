@@ -1,5 +1,5 @@
 {
-  "name": "otklik-monorepo",
+  "name": "proshli-monorepo",
   "version": "0.0.0",
   "private": true,
   "packageManager": "pnpm@11.1.2",
@@ -10,7 +10,7 @@
     "test": "turbo test",
     "type-check": "turbo type-check",
     "format": "prettier --write \"**/*.{ts,tsx,md,json,yml}\"",
-    "gen-types": "pnpm -F @otklik/shared-types gen",
+    "gen-types": "pnpm -F @proshli/shared-types gen",
     "clean": "turbo clean && rm -rf node_modules"
   },
   "devDependencies": {

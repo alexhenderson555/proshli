@@ -1,4 +1,4 @@
-"""Otklik.ai Celery workers package.
+"""Proshli Celery workers package.
 
 Two long-running processes run alongside the FastAPI app:
 

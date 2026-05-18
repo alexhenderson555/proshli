@@ -57,17 +57,17 @@ async def test_employer_profile_upsert(client: AsyncClient) -> None:
         upd = await client.put(
             "/profiles/employer",
             json={
-                "company_name": "Otklik",
-                "website": "https://otklik.ai",
+                "company_name": "Proshli",
+                "website": "https://proshli.ru",
                 "description": "Russian-language job aggregator",
             },
             headers=headers,
         )
         assert upd.status_code == 200
-        assert upd.json()["company_name"] == "Otklik"
+        assert upd.json()["company_name"] == "Proshli"
 
         fetch = await client.get("/profiles/employer", headers=headers)
-        assert fetch.json()["website"] == "https://otklik.ai"
+        assert fetch.json()["website"] == "https://proshli.ru"
     finally:
         await cleanup()
 

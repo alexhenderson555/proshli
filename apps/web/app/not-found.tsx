@@ -1,31 +1,40 @@
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+// Root-level 404 fallback. Reached only for paths the next-intl proxy
+// matcher excludes (the localized `app/[locale]/not-found.tsx` handles
+// the user-facing 404 for normal routes).
+//
+// We MUST NOT call `redirect("/")` here: a server-side redirect from a
+// not-found page yields a 307/308 followed by a 200, which causes
+// search engines to index the destination instead of recording a 404.
+// Rendering directly preserves Next's automatic 404 status for this
+// file and keeps the index clean.
 
-export default function NotFound() {
+import Link from "next/link";
+
+export const dynamic = "force-static";
+
+export default function GlobalNotFound() {
   return (
-    <div className="flex flex-col items-center justify-center gap-6 py-24 text-center">
-      <span className="font-mono text-6xl font-extrabold text-muted-foreground">404</span>
-      <h1 className="text-balance text-3xl font-extrabold tracking-tight sm:text-4xl">
-        Страница не найдена
-      </h1>
-      <p className="max-w-md text-sm text-muted-foreground">
-        Возможно, она переехала или ссылка устарела. Загляните на главную или в каталог вакансий.
-      </p>
-      <div className="flex gap-3">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:opacity-90"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          На главную
-        </Link>
-        <Link
-          href="/vacancies"
-          className="rounded-xl border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
-        >
-          К вакансиям
-        </Link>
-      </div>
-    </div>
+    <html lang="en" suppressHydrationWarning>
+      <body
+        style={{
+          margin: 0,
+          fontFamily: "system-ui, sans-serif",
+          display: "flex",
+          minHeight: "100vh",
+          alignItems: "center",
+          justifyContent: "center",
+          textAlign: "center",
+          padding: "1rem",
+        }}
+      >
+        <main>
+          <h1 style={{ fontSize: "2.5rem", margin: 0 }}>404</h1>
+          <p style={{ marginTop: "0.5rem" }}>Page not found · Страница не найдена</p>
+          <Link href="/" style={{ marginTop: "1rem", display: "inline-block" }}>
+            ← Home / На главную
+          </Link>
+        </main>
+      </body>
+    </html>
   );
 }

@@ -1,7 +1,7 @@
-// Public surface for ``@otklik/shared-types``.
+// Public surface for ``@proshli/shared-types``.
 //
 // The bulk of this package is generated from the live OpenAPI document
-// (`pnpm -F @otklik/shared-types gen`). Hand-written types live alongside
+// (`pnpm -F @proshli/shared-types gen`). Hand-written types live alongside
 // in named files so the generated bundle can be re-emitted without
 // trampling anything you wrote by hand.
 

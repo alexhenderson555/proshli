@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Поднять Otklik.ai на Yandex Cloud staging — Next.js 16 web + FastAPI async api + Celery workers + TG-бот в Turborepo-монорепо. CI green, Postgres+pgvector готов, Redis готов, дизайн-токены и Storybook живые, обсервабилити подключена. Готовый стартовый каркас для разработки Sprint 2-7.
+**Goal:** Поднять Proshli на Yandex Cloud staging — Next.js 16 web + FastAPI async api + Celery workers + TG-бот в Turborepo-монорепо. CI green, Postgres+pgvector готов, Redis готов, дизайн-токены и Storybook живые, обсервабилити подключена. Готовый стартовый каркас для разработки Sprint 2-7.
 
 **Architecture:** Turborepo monorepo с `apps/{web,api,workers,tgbot}` и `packages/{ui,shared-types,config}`. FastAPI на SQLAlchemy 2 async + asyncpg + pgvector. Next.js 16 (App Router) + Tailwind 4 + shadcn/ui + next-themes (4 темы) + next-intl (RU/EN) + Framer Motion. Деплой через Docker + GitHub Actions в Yandex Cloud Serverless Containers. Observability: Sentry + self-hosted Plausible.
 
@@ -14,17 +14,17 @@
 
 ## Pre-flight: домен и Yandex Cloud (вне основного потока разработки)
 
-### Pre-1: Регистрация домена otklik.ai
+### Pre-1: Регистрация домена proshli.ru
 
 - [ ] **Step 1: Проверить доступность домена**
 
-В браузере открыть https://www.namecheap.com или https://reg.ru, поиск `otklik.ai`. Если занят — fallback на `otklik.io`, потом `otklik.app`.
+В браузере открыть https://www.namecheap.com или https://reg.ru, поиск `proshli.ru`. Если занят — fallback на `proshli.io`, потом `proshli.app`.
 
 - [ ] **Step 2: Зарегистрировать домен на 2 года**
 
 Через namecheap или reg.ru. Сохранить креды регистратора в bitwarden/1password.
 
-- [ ] **Step 3: Дополнительно: занять otklik.ru, otklik.io для брендозащиты**
+- [ ] **Step 3: Дополнительно: занять proshli.ru, proshli.io для брендозащиты**
 
 Подождать решения о торговой марке (Task 0 ниже) — после может быть проще регистрировать.
 
@@ -32,7 +32,7 @@
 
 - [ ] **Step 1: Создать организацию и folder**
 
-В консоли https://console.yandex.cloud/: организация `otklik`, дефолтный folder `otklik-staging`. Привязать платёжный аккаунт.
+В консоли https://console.yandex.cloud/: организация `proshli`, дефолтный folder `proshli-staging`. Привязать платёжный аккаунт.
 
 - [ ] **Step 2: Установить yc CLI**
 
@@ -46,22 +46,22 @@ yc init
 - [ ] **Step 3: Создать VPC и подсеть**
 
 ```bash
-yc vpc network create --name otklik-staging
-yc vpc subnet create --name otklik-staging-default \
-  --zone ru-central1-a --network-name otklik-staging --range 10.0.1.0/24
+yc vpc network create --name proshli-staging
+yc vpc subnet create --name proshli-staging-default \
+  --zone ru-central1-a --network-name proshli-staging --range 10.0.1.0/24
 ```
 
 - [ ] **Step 4: Создать Managed Postgres 16 с pgvector**
 
 ```bash
 yc managed-postgresql cluster create \
-  --name otklik-staging-pg --environment production \
-  --network-name otklik-staging \
-  --host zone-id=ru-central1-a,subnet-name=otklik-staging-default \
+  --name proshli-staging-pg --environment production \
+  --network-name proshli-staging \
+  --host zone-id=ru-central1-a,subnet-name=proshli-staging-default \
   --resource-preset s2.micro --disk-size 20 --disk-type network-ssd \
   --postgresql-version 16 \
-  --user name=otklik,password=<STRONG_PWD> \
-  --database name=otklik,owner=otklik,extensions=vector
+  --user name=proshli,password=<STRONG_PWD> \
+  --database name=proshli,owner=proshli,extensions=vector
 ```
 
 Сохранить connection string в bitwarden как `YC_PG_DSN`.
@@ -70,9 +70,9 @@ yc managed-postgresql cluster create \
 
 ```bash
 yc managed-redis cluster create \
-  --name otklik-staging-redis --environment production \
-  --network-name otklik-staging \
-  --host zone=ru-central1-a,subnet-name=otklik-staging-default \
+  --name proshli-staging-redis --environment production \
+  --network-name proshli-staging \
+  --host zone=ru-central1-a,subnet-name=proshli-staging-default \
   --resource-preset hm1.nano --disk-size 16 --redis-version 7.2
 ```
 
@@ -81,7 +81,7 @@ yc managed-redis cluster create \
 - [ ] **Step 6: Создать Object Storage bucket**
 
 ```bash
-yc storage bucket create --name otklik-staging-uploads --max-size 10737418240
+yc storage bucket create --name proshli-staging-uploads --max-size 10737418240
 yc iam access-key create --service-account-name <SA_NAME>
 ```
 
@@ -90,7 +90,7 @@ yc iam access-key create --service-account-name <SA_NAME>
 - [ ] **Step 7: Создать Container Registry**
 
 ```bash
-yc container registry create --name otklik
+yc container registry create --name proshli
 ```
 
 Сохранить registry ID как `YC_REGISTRY_ID`.
@@ -98,45 +98,45 @@ yc container registry create --name otklik
 - [ ] **Step 8: Создать service account для деплоя**
 
 ```bash
-yc iam service-account create --name otklik-deployer
+yc iam service-account create --name proshli-deployer
 yc resource-manager folder add-access-binding <FOLDER_ID> \
   --role container-registry.admin \
   --subject serviceAccount:<SA_ID>
 yc resource-manager folder add-access-binding <FOLDER_ID> \
   --role serverless.containers.editor \
   --subject serviceAccount:<SA_ID>
-yc iam key create --service-account-name otklik-deployer -o yc-sa-key.json
+yc iam key create --service-account-name proshli-deployer -o yc-sa-key.json
 ```
 
 `yc-sa-key.json` сохранить как GitHub Actions secret `YC_SA_JSON_KEY`.
 
 ---
 
-## Task 0: Решение по переименованию репо jobskout → otklik
+## Task 0: Решение по переименованию репо jobskout → proshli
 
 **Files:** изменения в Git-настройках, не в коде.
 
 - [ ] **Step 1: Принять решение о моменте rename**
 
 Варианты:
-- (A) Переименовать GitHub-репо jobskout → otklik-ai сейчас, продолжить разработку в той же папке.
+- (A) Переименовать GitHub-репо jobskout → proshli-ai сейчас, продолжить разработку в той же папке.
 - (B) Оставить локальную папку `jobskout/` до конца Sprint 1, переименовать в Sprint 2.
 
 Рекомендация: **(B)** — локальная папка остаётся `jobskout/`, GitHub-репо тоже остаётся `jobskout` до Sprint 2. В Sprint 2 делается одновременный rename: github remote, local folder, all bookmarks. Это снижает риск ошибок в Sprint 1, когда монорепо ещё нестабильно.
 
 - [ ] **Step 2: Обновить README заголовок (намерение)**
 
-Поправить `README.md`, заменить заголовок на `# Otklik.ai (codename: jobskout)` и добавить блок:
+Поправить `README.md`, заменить заголовок на `# Proshli (codename: jobskout)` и добавить блок:
 
 ```markdown
-> **Бренд:** продукт ребрендируется в **Otklik.ai**. Кодовое имя репо `jobskout` сохраняется до Sprint 2 ради стабильности Sprint 1 разработки.
+> **Бренд:** продукт ребрендируется в **Proshli**. Кодовое имя репо `jobskout` сохраняется до Sprint 2 ради стабильности Sprint 1 разработки.
 ```
 
 - [ ] **Step 3: Commit**
 
 ```bash
 git add README.md
-git commit -m "docs: signal upcoming rebrand to Otklik.ai"
+git commit -m "docs: signal upcoming rebrand to Proshli"
 ```
 
 ---
@@ -162,7 +162,7 @@ turbo --version  # ожидается 2.x
 
 ```json
 {
-  "name": "otklik-monorepo",
+  "name": "proshli-monorepo",
   "version": "0.0.0",
   "private": true,
   "packageManager": "pnpm@11.1.2",
@@ -302,7 +302,7 @@ git mv web apps/web
 
 ```json
 {
-  "name": "@otklik/web",
+  "name": "@proshli/web",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -340,7 +340,7 @@ git mv web apps/web
 NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
 NEXT_PUBLIC_SITE_URL=http://127.0.0.1:3000
 NEXT_PUBLIC_SENTRY_DSN=
-NEXT_PUBLIC_PLAUSIBLE_DOMAIN=staging.otklik.ai
+NEXT_PUBLIC_PLAUSIBLE_DOMAIN=staging.proshli.ru
 
 # Server-only
 SENTRY_AUTH_TOKEN=
@@ -358,7 +358,7 @@ cat apps/web/AGENTS.md
 
 ```bash
 pnpm install
-pnpm --filter @otklik/web dev
+pnpm --filter @proshli/web dev
 ```
 
 Открыть http://127.0.0.1:3000 — должна отдаваться текущая стартовая страница без ошибок.
@@ -367,7 +367,7 @@ pnpm --filter @otklik/web dev
 
 ```bash
 git add apps/web pnpm-lock.yaml
-git commit -m "refactor(web): move into apps/web with @otklik/web scope"
+git commit -m "refactor(web): move into apps/web with @proshli/web scope"
 ```
 
 ---
@@ -400,9 +400,9 @@ git mv backend apps/api
 
 ```toml
 [project]
-name = "otklik-api"
+name = "proshli-api"
 version = "0.1.0"
-description = "Otklik.ai backend API"
+description = "Proshli backend API"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "fastapi>=0.115.0",
@@ -468,7 +468,7 @@ APP_ENV=development
 APP_LOG_LEVEL=INFO
 
 # Database
-DATABASE_URL=postgresql+asyncpg://otklik:otklik@localhost:5432/otklik
+DATABASE_URL=postgresql+asyncpg://proshli:proshli@localhost:5432/proshli
 
 # Redis
 REDIS_URL=redis://localhost:6379/0
@@ -662,10 +662,10 @@ settings = get_settings()
 - [ ] **Step 6: Поднять локальный Postgres + pgvector для тестов**
 
 ```bash
-docker run -d --name otklik-pg -p 5432:5432 \
-  -e POSTGRES_USER=otklik -e POSTGRES_PASSWORD=otklik \
-  -e POSTGRES_DB=otklik pgvector/pgvector:pg16
-docker exec -it otklik-pg psql -U otklik -d otklik -c "CREATE EXTENSION IF NOT EXISTS vector;"
+docker run -d --name proshli-pg -p 5432:5432 \
+  -e POSTGRES_USER=proshli -e POSTGRES_PASSWORD=proshli \
+  -e POSTGRES_DB=proshli pgvector/pgvector:pg16
+docker exec -it proshli-pg psql -U proshli -d proshli -c "CREATE EXTENSION IF NOT EXISTS vector;"
 ```
 
 - [ ] **Step 7: Запустить тесты — должны пройти**
@@ -798,7 +798,7 @@ Expected: `vector` extension установлен.
 - [ ] **Step 4: Smoke-тест pgvector**
 
 ```bash
-docker exec -it otklik-pg psql -U otklik -d otklik \
+docker exec -it proshli-pg psql -U proshli -d proshli \
   -c "SELECT '[1,2,3]'::vector <-> '[3,2,1]'::vector;"
 ```
 
@@ -831,9 +831,9 @@ git mv bot apps/tgbot
 
 ```toml
 [project]
-name = "otklik-tgbot"
+name = "proshli-tgbot"
 version = "0.1.0"
-description = "Otklik.ai Telegram bot"
+description = "Proshli Telegram bot"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "aiogram>=3.14.0",
@@ -888,9 +888,9 @@ touch apps/workers/workers/__init__.py apps/workers/workers/tasks/__init__.py
 
 ```toml
 [project]
-name = "otklik-workers"
+name = "proshli-workers"
 version = "0.1.0"
-description = "Otklik.ai background workers (Celery)"
+description = "Proshli background workers (Celery)"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "celery[redis]>=5.4.0",
@@ -924,7 +924,7 @@ REDIS_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/1")
 RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/2")
 
 celery_app = Celery(
-    "otklik",
+    "proshli",
     broker=REDIS_URL,
     backend=RESULT_BACKEND,
     include=[
@@ -982,7 +982,7 @@ from workers.tasks.parse_hh import parse_hh_recent
 
 def test_celery_app_exists():
     assert celery_app is not None
-    assert celery_app.main == "otklik"
+    assert celery_app.main == "proshli"
 
 
 def test_parse_hh_task_registered():
@@ -1030,7 +1030,7 @@ git commit -m "feat(workers): scaffold Celery app with parse_hh stub task"
 
 ```json
 {
-  "name": "@otklik/config",
+  "name": "@proshli/config",
   "version": "0.0.0",
   "private": true,
   "exports": {
@@ -1146,7 +1146,7 @@ export default {
 
 ```json
 {
-  "extends": "@otklik/config/tsconfig/nextjs",
+  "extends": "@proshli/config/tsconfig/nextjs",
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
@@ -1158,13 +1158,13 @@ export default {
 }
 ```
 
-В `apps/web/package.json` добавить в devDependencies: `"@otklik/config": "workspace:*"`.
+В `apps/web/package.json` добавить в devDependencies: `"@proshli/config": "workspace:*"`.
 
 - [ ] **Step 8: pnpm install + type-check**
 
 ```bash
 pnpm install
-pnpm --filter @otklik/web type-check
+pnpm --filter @proshli/web type-check
 ```
 
 Expected: type-check PASS.
@@ -1173,7 +1173,7 @@ Expected: type-check PASS.
 
 ```bash
 git add packages/config apps/web/tsconfig.json apps/web/package.json pnpm-lock.yaml
-git commit -m "feat(config): share eslint/tsconfig/prettier via @otklik/config"
+git commit -m "feat(config): share eslint/tsconfig/prettier via @proshli/config"
 ```
 
 ---
@@ -1194,7 +1194,7 @@ git commit -m "feat(config): share eslint/tsconfig/prettier via @otklik/config"
 
 ```json
 {
-  "name": "@otklik/shared-types",
+  "name": "@proshli/shared-types",
   "version": "0.0.0",
   "private": true,
   "main": "./src/index.ts",
@@ -1207,7 +1207,7 @@ git commit -m "feat(config): share eslint/tsconfig/prettier via @otklik/config"
     "lint": "echo 'no source to lint yet'"
   },
   "devDependencies": {
-    "@otklik/config": "workspace:*",
+    "@proshli/config": "workspace:*",
     "typescript": "^5"
   }
 }
@@ -1217,7 +1217,7 @@ git commit -m "feat(config): share eslint/tsconfig/prettier via @otklik/config"
 
 ```json
 {
-  "extends": "@otklik/config/tsconfig/base",
+  "extends": "@proshli/config/tsconfig/base",
   "include": ["src/**/*"],
   "exclude": ["node_modules"]
 }
@@ -1352,7 +1352,7 @@ export * from "./application";
 ```json
 "dependencies": {
   ...
-  "@otklik/shared-types": "workspace:*"
+  "@proshli/shared-types": "workspace:*"
 }
 ```
 
@@ -1360,8 +1360,8 @@ export * from "./application";
 
 ```bash
 pnpm install
-pnpm --filter @otklik/shared-types type-check
-pnpm --filter @otklik/web type-check
+pnpm --filter @proshli/shared-types type-check
+pnpm --filter @proshli/web type-check
 ```
 
 Expected: оба PASS.
@@ -1395,7 +1395,7 @@ git commit -m "feat(shared-types): domain types for Vacancy, User, Application"
 
 ```json
 {
-  "name": "@otklik/ui",
+  "name": "@proshli/ui",
   "version": "0.0.0",
   "private": true,
   "main": "./src/index.ts",
@@ -1422,7 +1422,7 @@ git commit -m "feat(shared-types): domain types for Vacancy, User, Application"
     "react-dom": "^19"
   },
   "devDependencies": {
-    "@otklik/config": "workspace:*",
+    "@proshli/config": "workspace:*",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "typescript": "^5"
@@ -1434,7 +1434,7 @@ git commit -m "feat(shared-types): domain types for Vacancy, User, Application"
 
 ```json
 {
-  "extends": "@otklik/config/tsconfig/base",
+  "extends": "@proshli/config/tsconfig/base",
   "compilerOptions": {
     "lib": ["DOM", "ES2022"],
     "jsx": "preserve",
@@ -1744,7 +1744,7 @@ export { cn } from "./lib/utils";
 
 ```bash
 pnpm install
-pnpm --filter @otklik/ui type-check
+pnpm --filter @proshli/ui type-check
 ```
 
 Expected: PASS.
@@ -1753,17 +1753,17 @@ Expected: PASS.
 
 ```bash
 git add packages/ui pnpm-lock.yaml
-git commit -m "feat(ui): scaffold @otklik/ui with tokens, themes, base components"
+git commit -m "feat(ui): scaffold @proshli/ui with tokens, themes, base components"
 ```
 
 ---
 
-## Task 11: Подключить @otklik/ui в apps/web + добавить next-themes + next-intl
+## Task 11: Подключить @proshli/ui в apps/web + добавить next-themes + next-intl
 
 **Files:**
 - Modify: `apps/web/package.json`
 - Modify: `apps/web/app/layout.tsx`
-- Modify: `apps/web/app/globals.css` (импорт из @otklik/ui)
+- Modify: `apps/web/app/globals.css` (импорт из @proshli/ui)
 - Create: `apps/web/messages/ru.json`
 - Create: `apps/web/messages/en.json`
 - Create: `apps/web/i18n.ts`
@@ -1778,8 +1778,8 @@ git commit -m "feat(ui): scaffold @otklik/ui with tokens, themes, base component
 ```json
 "dependencies": {
   ...
-  "@otklik/ui": "workspace:*",
-  "@otklik/shared-types": "workspace:*",
+  "@proshli/ui": "workspace:*",
+  "@proshli/shared-types": "workspace:*",
   "next-intl": "^3.25.0"
 }
 ```
@@ -1817,7 +1817,7 @@ export default getRequestConfig(async ({ requestLocale }) => {
 ```json
 {
   "common": {
-    "appName": "Otklik.ai",
+    "appName": "Proshli",
     "tagline": "Отклик, который услышат"
   },
   "nav": {
@@ -1840,7 +1840,7 @@ export default getRequestConfig(async ({ requestLocale }) => {
 ```json
 {
   "common": {
-    "appName": "Otklik.ai",
+    "appName": "Proshli",
     "tagline": "Applications that get a real response"
   },
   "nav": {
@@ -1870,7 +1870,7 @@ const withNextIntl = createNextIntlPlugin("./i18n.ts");
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  transpilePackages: ["@otklik/ui", "@otklik/shared-types"],
+  transpilePackages: ["@proshli/ui", "@proshli/shared-types"],
   experimental: {
     typedRoutes: true,
   },
@@ -1913,12 +1913,12 @@ git mv apps/web/app/page.tsx apps/web/app/[locale]/page.tsx
 `apps/web/app/[locale]/layout.tsx`:
 
 ```tsx
-import "@otklik/ui/styles";
+import "@proshli/ui/styles";
 import "../globals.css";
 import type { Metadata } from "next";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages } from "next-intl/server";
-import { ThemeProvider } from "@otklik/ui";
+import { ThemeProvider } from "@proshli/ui";
 import { Inter, Manrope } from "next/font/google";
 
 const inter = Inter({
@@ -1934,8 +1934,8 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "Otklik.ai",
-  description: "Otklik that gets a real response",
+  title: "Proshli",
+  description: "Proshli that gets a real response",
 };
 
 export default async function RootLayout({
@@ -1967,7 +1967,7 @@ export default async function RootLayout({
 
 ```tsx
 import { useTranslations } from "next-intl";
-import { Button, Card, CardContent, Badge } from "@otklik/ui";
+import { Button, Card, CardContent, Badge } from "@proshli/ui";
 
 export default function HomePage() {
   const t = useTranslations("common");
@@ -1992,7 +1992,7 @@ export default function HomePage() {
 - [ ] **Step 9: Тест в dev**
 
 ```bash
-pnpm --filter @otklik/web dev
+pnpm --filter @proshli/web dev
 ```
 
 Открыть:
@@ -2006,7 +2006,7 @@ pnpm --filter @otklik/web dev
 
 ```bash
 git add apps/web pnpm-lock.yaml
-git commit -m "feat(web): wire @otklik/ui, themes, next-intl (ru/en)"
+git commit -m "feat(web): wire @proshli/ui, themes, next-intl (ru/en)"
 ```
 
 ---
@@ -2165,7 +2165,7 @@ export const AllVariants: StoryObj<typeof Badge> = {
 - [ ] **Step 6: Запустить Storybook**
 
 ```bash
-pnpm --filter @otklik/ui storybook
+pnpm --filter @proshli/ui storybook
 ```
 
 Открыть http://localhost:6006 — увидеть Button / Card / Badge stories в трёх темах.
@@ -2347,7 +2347,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Otklik.ai API",
+    title="Proshli API",
     version="0.1.0",
     docs_url="/docs",
     redoc_url=None,
@@ -2367,7 +2367,7 @@ app.include_router(health.router)
 
 @app.get("/")
 async def root() -> dict[str, str]:
-    return {"service": "otklik-api", "version": "0.1.0"}
+    return {"service": "proshli-api", "version": "0.1.0"}
 ```
 
 - [ ] **Step 6: Запустить тесты — должны пройти**
@@ -2423,15 +2423,15 @@ services:
   postgres:
     image: pgvector/pgvector:pg16
     environment:
-      POSTGRES_USER: otklik
-      POSTGRES_PASSWORD: otklik
-      POSTGRES_DB: otklik
+      POSTGRES_USER: proshli
+      POSTGRES_PASSWORD: proshli
+      POSTGRES_DB: proshli
     ports:
       - "5432:5432"
     volumes:
       - pg_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U otklik"]
+      test: ["CMD-SHELL", "pg_isready -U proshli"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -2520,7 +2520,7 @@ FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
 COPY . .
-RUN pnpm --filter @otklik/web build
+RUN pnpm --filter @proshli/web build
 
 FROM base AS runtime
 ENV NODE_ENV=production
@@ -2570,7 +2570,7 @@ Expected: 3 контейнера healthy.
 cd apps/api && uv run uvicorn app.main:app --reload
 
 # Terminal 2
-pnpm --filter @otklik/web dev
+pnpm --filter @proshli/web dev
 ```
 
 Открыть http://127.0.0.1:3000/ru — рабочий веб. Открыть http://127.0.0.1:8000/health/ready — `database: ok`.
@@ -2623,9 +2623,9 @@ jobs:
       postgres:
         image: pgvector/pgvector:pg16
         env:
-          POSTGRES_USER: otklik
-          POSTGRES_PASSWORD: otklik
-          POSTGRES_DB: otklik
+          POSTGRES_USER: proshli
+          POSTGRES_PASSWORD: proshli
+          POSTGRES_DB: proshli
         ports: ["5432:5432"]
         options: >-
           --health-cmd pg_isready
@@ -2642,7 +2642,7 @@ jobs:
         run: uv sync --all-groups
       - working-directory: apps/api
         env:
-          DATABASE_URL: postgresql+asyncpg://otklik:otklik@localhost:5432/otklik
+          DATABASE_URL: postgresql+asyncpg://proshli:proshli@localhost:5432/proshli
           JWT_SECRET: ci-only-secret
         run: |
           uv run alembic upgrade head
@@ -2725,8 +2725,8 @@ jobs:
           file: apps/${{ matrix.service }}/Dockerfile
           push: true
           tags: |
-            cr.yandex/${{ secrets.YC_REGISTRY_ID }}/otklik-${{ matrix.service }}:${{ github.sha }}
-            cr.yandex/${{ secrets.YC_REGISTRY_ID }}/otklik-${{ matrix.service }}:latest
+            cr.yandex/${{ secrets.YC_REGISTRY_ID }}/proshli-${{ matrix.service }}:${{ github.sha }}
+            cr.yandex/${{ secrets.YC_REGISTRY_ID }}/proshli-${{ matrix.service }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 ```
@@ -2764,12 +2764,12 @@ git commit -m "ci: build & push Docker images to Yandex Container Registry"
 - [ ] **Step 1: Деплой через yc CLI вручную (один раз)**
 
 ```bash
-yc serverless container create --name otklik-api-staging
-yc serverless container create --name otklik-web-staging
+yc serverless container create --name proshli-api-staging
+yc serverless container create --name proshli-web-staging
 
 yc serverless container revision deploy \
-  --container-name otklik-api-staging \
-  --image cr.yandex/<ID>/otklik-api:latest \
+  --container-name proshli-api-staging \
+  --image cr.yandex/<ID>/proshli-api:latest \
   --cores 1 --memory 512MB \
   --service-account-id <SA_ID> \
   --environment DATABASE_URL=<PG_DSN> \
@@ -2777,11 +2777,11 @@ yc serverless container revision deploy \
   --environment SENTRY_DSN=<DSN>
 
 yc serverless container revision deploy \
-  --container-name otklik-web-staging \
-  --image cr.yandex/<ID>/otklik-web:latest \
+  --container-name proshli-web-staging \
+  --image cr.yandex/<ID>/proshli-web:latest \
   --cores 1 --memory 512MB \
   --service-account-id <SA_ID> \
-  --environment NEXT_PUBLIC_API_URL=https://api-staging.otklik.ai
+  --environment NEXT_PUBLIC_API_URL=https://api-staging.proshli.ru
 ```
 
 Сохранить container IDs.
@@ -2811,9 +2811,9 @@ jobs:
       - uses: yc-actions/yc-sls-container-deploy@v3
         with:
           yc-sa-json-credentials: ${{ secrets.YC_SA_JSON_KEY }}
-          container-name: otklik-${{ matrix.service }}-staging
+          container-name: proshli-${{ matrix.service }}-staging
           revision-service-account-id: ${{ secrets.YC_DEPLOY_SA_ID }}
-          revision-image-url: cr.yandex/${{ secrets.YC_REGISTRY_ID }}/otklik-${{ matrix.service }}:${{ github.sha }}
+          revision-image-url: cr.yandex/${{ secrets.YC_REGISTRY_ID }}/proshli-${{ matrix.service }}:${{ github.sha }}
           revision-cores: 1
           revision-memory: 512MB
 ```
@@ -2821,16 +2821,16 @@ jobs:
 - [ ] **Step 3: Привязать домены через Yandex Cloud → API Gateway или CDN**
 
 В консоли Yandex Cloud → создать API Gateway:
-- `/api/*` → otklik-api-staging container
-- `/*` → otklik-web-staging container
+- `/api/*` → proshli-api-staging container
+- `/*` → proshli-web-staging container
 
-Привязать домен `staging.otklik.ai` к gateway, выпустить SSL через managed certs.
+Привязать домен `staging.proshli.ru` к gateway, выпустить SSL через managed certs.
 
 - [ ] **Step 4: Smoke-тест**
 
 ```bash
-curl https://staging.otklik.ai/api/health/live
-curl https://staging.otklik.ai/  # должна вернуться Next.js страница
+curl https://staging.proshli.ru/api/health/live
+curl https://staging.proshli.ru/  # должна вернуться Next.js страница
 ```
 
 - [ ] **Step 5: Commit & push**
@@ -2860,7 +2860,7 @@ git commit -m "ci: deploy staging via Yandex Serverless Containers"
 - [ ] **Step 2: Установить @sentry/nextjs**
 
 ```bash
-pnpm --filter @otklik/web add @sentry/nextjs
+pnpm --filter @proshli/web add @sentry/nextjs
 ```
 
 - [ ] **Step 3: Wizard**
@@ -2879,7 +2879,7 @@ pnpm dlx @sentry/wizard@latest -i nextjs
 ```tsx
 "use client";
 
-import { Button } from "@otklik/ui";
+import { Button } from "@proshli/ui";
 
 export default function SentryTestPage() {
   return (
@@ -2940,13 +2940,13 @@ git commit -m "feat(observability): wire Sentry/GlitchTip on web and api"
 mkdir ~/plausible && cd ~/plausible
 curl -sSL https://github.com/plausible/community-edition/raw/master/docker-compose.yml -o docker-compose.yml
 curl -sSL https://github.com/plausible/community-edition/raw/master/plausible-conf.env.example -o plausible-conf.env
-# заполнить SECRET_KEY_BASE, BASE_URL=https://plausible.otklik.ai
+# заполнить SECRET_KEY_BASE, BASE_URL=https://plausible.proshli.ru
 docker compose up -d
 ```
 
 - [ ] **Step 2: Создать site в Plausible UI**
 
-`staging.otklik.ai` — получить script tag.
+`staging.proshli.ru` — получить script tag.
 
 - [ ] **Step 3: Подключить в layout**
 
@@ -2957,15 +2957,15 @@ import Script from "next/script";
 
 // внутри <head>
 <Script
-  src="https://plausible.otklik.ai/js/script.js"
-  data-domain="staging.otklik.ai"
+  src="https://plausible.proshli.ru/js/script.js"
+  data-domain="staging.proshli.ru"
   strategy="afterInteractive"
 />
 ```
 
 - [ ] **Step 4: Smoke-тест**
 
-Открыть `https://staging.otklik.ai/ru`, проверить в Plausible Dashboard — visit зарегистрировался.
+Открыть `https://staging.proshli.ru/ru`, проверить в Plausible Dashboard — visit зарегистрировался.
 
 - [ ] **Step 5: Commit**
 
@@ -2987,7 +2987,7 @@ git commit -m "feat(observability): Plausible self-hosted analytics"
 `README.md` (целиком переписать):
 
 ```markdown
-# Otklik.ai (codename: jobskout)
+# Proshli (codename: jobskout)
 
 Премиум job-search SaaS для IT-аудитории РФ/СНГ. Парсит вакансии из HH, Habr Career, Telegram-каналов и корп. сайтов; сортирует по «шансу взятия»; генерит резюме под вакансию через AI; находит контакты компаний в открытых источниках; ведёт канбан откликов с автотрекингом через email.
 
@@ -3027,14 +3027,14 @@ cp .env.example .env
 uv run alembic upgrade head
 
 # 4. В двух терминалах
-pnpm --filter @otklik/web dev      # http://127.0.0.1:3000
+pnpm --filter @proshli/web dev      # http://127.0.0.1:3000
 cd apps/api && uv run uvicorn app.main:app --reload   # http://127.0.0.1:8000
 \`\`\`
 
 ## Storybook
 
 \`\`\`bash
-pnpm --filter @otklik/ui storybook   # http://localhost:6006
+pnpm --filter @proshli/ui storybook   # http://localhost:6006
 \`\`\`
 
 ## CI / Деплой
@@ -3094,7 +3094,7 @@ git commit -m "docs: rewrite README + CONTRIBUTING for monorepo"
 
 ```bash
 docker compose up -d
-pnpm --filter @otklik/web dev &
+pnpm --filter @proshli/web dev &
 cd apps/api && uv run uvicorn app.main:app --reload &
 ```
 
@@ -3117,8 +3117,8 @@ Expected: 5 успешных run-ов на main.
 - [ ] **Step 3: Staging deploy работает**
 
 ```bash
-curl -sSL https://staging.otklik.ai/api/health/live
-curl -sSL https://staging.otklik.ai/ru | head -20
+curl -sSL https://staging.proshli.ru/api/health/live
+curl -sSL https://staging.proshli.ru/ru | head -20
 ```
 
 Expected: API возвращает `{"status":"ok"}`, web возвращает HTML с Next.js.
@@ -3149,7 +3149,7 @@ Expected: API возвращает `{"status":"ok"}`, web возвращает H
 - [x] CI: lint + type-check + tests (3 job)
 - [x] Build & Push в Yandex Container Registry
 - [x] Деплой в Yandex Serverless Containers (staging)
-- [x] Домен staging.otklik.ai + SSL
+- [x] Домен staging.proshli.ru + SSL
 - [x] Sentry / GlitchTip self-hosted
 - [x] Plausible self-hosted
 
@@ -3181,7 +3181,7 @@ git push origin v0.1.0-sprint-1
 
 **Placeholder scan:** ✅ нет TODO/TBD/«fill in details» — каждый шаг имеет код или точную команду.
 
-**Type consistency:** ✅ Vacancy / User / Application типы определены один раз в `@otklik/shared-types`, переиспользуются. Имена snake_case в Python и camelCase в TS — конверсия делается на API-границе (будет в Sprint 3).
+**Type consistency:** ✅ Vacancy / User / Application типы определены один раз в `@proshli/shared-types`, переиспользуются. Имена snake_case в Python и camelCase в TS — конверсия делается на API-границе (будет в Sprint 3).
 
 **Известные риски Sprint 1:**
 

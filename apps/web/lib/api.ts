@@ -32,11 +32,18 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   if (options.body !== undefined) {
     headers["Content-Type"] = "application/json";
   }
+  // ``credentials: "include"`` so the ``proshli_access`` HttpOnly cookie
+  // (set by the backend on register/login — F8) travels cross-origin from
+  // localhost:3000 → localhost:8000 in dev and from the app domain → the
+  // API domain in prod. The bearer ``Authorization`` header still wins
+  // when ``options.token`` is supplied (transition state — we keep the
+  // explicit-token call sites until the FE is fully cookie-only).
   const response = await fetch(endpoint, {
     method: options.method ?? "GET",
     headers,
     body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
     cache: "no-store",
+    credentials: "include",
   });
   if (!response.ok) {
     let detail = `HTTP ${response.status}`;
@@ -64,6 +71,15 @@ export const api = {
     return request<TokenResponse>("/auth/login", {
       method: "POST",
       body: { email, password },
+    });
+  },
+  async logout(): Promise<void> {
+    // Server-side cookie expiry (F8). The 204 response carries no JSON so
+    // we short-circuit the JSON parse in ``request``.
+    await fetch(`${API_BASE}/auth/logout`, {
+      method: "POST",
+      credentials: "include",
+      cache: "no-store",
     });
   },
   me(token: string) {

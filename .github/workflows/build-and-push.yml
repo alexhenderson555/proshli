@@ -1,0 +1,64 @@
+name: Build & Push
+
+# Builds and pushes one image per app (api / web / workers) to the Yandex
+# Container Registry on every merge to main. Requires two repo secrets:
+#   YC_SA_JSON_KEY  — yc-sa-key.json contents (service-account deployer)
+#   YC_REGISTRY_ID  — the target Container Registry ID
+# Without those secrets the job exits cleanly at the gate step so PR CI
+# from forks doesn't fail noisily.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      has_secrets: ${{ steps.check.outputs.has_secrets }}
+    steps:
+      - id: check
+        env:
+          KEY: ${{ secrets.YC_SA_JSON_KEY }}
+          REG: ${{ secrets.YC_REGISTRY_ID }}
+        run: |
+          if [[ -n "$KEY" && -n "$REG" ]]; then
+            echo "has_secrets=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_secrets=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::YC_SA_JSON_KEY and/or YC_REGISTRY_ID not set; skipping image push."
+          fi
+
+  build-and-push:
+    needs: gate
+    if: ${{ needs.gate.outputs.has_secrets == 'true' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [api, web, workers]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to Yandex Container Registry
+        uses: yc-actions/yc-cr-login@v3
+        with:
+          yc-sa-json-credentials: ${{ secrets.YC_SA_JSON_KEY }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build and push ${{ matrix.service }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/${{ matrix.service }}/Dockerfile
+          push: true
+          tags: |
+            cr.yandex/${{ secrets.YC_REGISTRY_ID }}/proshli-${{ matrix.service }}:${{ github.sha }}
+            cr.yandex/${{ secrets.YC_REGISTRY_ID }}/proshli-${{ matrix.service }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

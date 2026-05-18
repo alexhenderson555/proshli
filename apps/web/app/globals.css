@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /* ---------------------------------------------------------------------------
- * Otklik.ai design system.
+ * Proshli design system.
  *
  * Tokens live as `--*` CSS custom properties so dark mode is a single
  * class toggle on <html>. Tailwind v4 picks them up via `@theme inline`
@@ -19,7 +19,7 @@
   --popover: 0 0% 100%;
   --popover-foreground: 222 47% 11%;
 
-  --primary: 221 83% 53%; /* otklik blue */
+  --primary: 221 83% 53%; /* proshli blue */
   --primary-foreground: 0 0% 100%;
 
   --secondary: 210 40% 96.1%;
@@ -28,7 +28,7 @@
   --muted: 210 40% 96.1%;
   --muted-foreground: 215 16% 47%;
 
-  --accent: 162 73% 38%; /* otklik green */
+  --accent: 162 73% 38%; /* proshli green */
   --accent-foreground: 0 0% 100%;
 
   --destructive: 0 84% 60%;
@@ -72,6 +72,40 @@
   --border: 217 33% 17%;
   --input: 217 33% 17%;
   --ring: 217 91% 60%;
+}
+
+/* True-black / OLED variant. Same palette family as `.dark` but with the
+   neutral surfaces pinned to 0% lightness so OLED panels can power
+   individual pixels off. Primary / accent are nudged brighter than the
+   dark theme so they still pop against the pure-black background. */
+.oled {
+  --background: 0 0% 0%;
+  --foreground: 0 0% 98%;
+
+  --card: 0 0% 0%;
+  --card-foreground: 0 0% 98%;
+
+  --popover: 0 0% 0%;
+  --popover-foreground: 0 0% 98%;
+
+  --primary: 217 95% 66%;
+  --primary-foreground: 0 0% 0%;
+
+  --secondary: 0 0% 10%;
+  --secondary-foreground: 0 0% 98%;
+
+  --muted: 0 0% 10%;
+  --muted-foreground: 0 0% 65%;
+
+  --accent: 162 80% 55%;
+  --accent-foreground: 0 0% 0%;
+
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 98%;
+
+  --border: 0 0% 12%;
+  --input: 0 0% 12%;
+  --ring: 217 95% 66%;
 }
 
 @theme inline {

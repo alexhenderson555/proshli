@@ -1,7 +1,7 @@
 [project]
-name = "otklik-workers"
+name = "proshli-workers"
 version = "0.1.0"
-description = "Otklik.ai Celery workers (ingest + digest)"
+description = "Proshli Celery workers (ingest + digest)"
 requires-python = ">=3.12,<3.13"
 # The workers reuse the API's SQLAlchemy models, services and connectors.
 # We re-declare the runtime deps the API touches (sqlalchemy, asyncpg, etc.)
@@ -20,6 +20,7 @@ dependencies = [
     "feedparser>=6.0.11",
     "passlib[bcrypt]>=1.7.4",
     "python-jose[cryptography]>=3.3.0",
+    "yookassa>=3.5.0",
 ]
 
 [dependency-groups]
@@ -46,6 +47,8 @@ ignore = ["E501"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
 testpaths = ["tests"]
 
 [tool.mypy]
@@ -77,4 +80,8 @@ ignore_errors = true
 
 [[tool.mypy.overrides]]
 module = ["feedparser"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["yookassa", "yookassa.*"]
 ignore_missing_imports = true

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
 from sqlalchemy import select
 
 from app.auth import get_current_user
@@ -62,6 +62,29 @@ async def get_digest_preferences(
     current_user: User = Depends(get_current_user),
 ) -> DigestPreference:
     return await _get_or_create_preference(db, current_user.id)
+
+
+@router.delete("/preferences", status_code=status.HTTP_204_NO_CONTENT)
+async def disable_digest(
+    db: DbSession,
+    current_user: User = Depends(get_current_user),
+) -> None:
+    """Turn off the digest entirely for the current user.
+
+    Bot calls this from ``/digest_off`` so the seeker can opt out without
+    knowing the channel/frequency knobs. We keep the row (so we don't
+    lose ``telegram_chat_id`` for if they re-enable later) and just flip
+    both transports off — this is semantically what the worker checks
+    before sending.
+    """
+    pref = await db.scalar(
+        select(DigestPreference).where(DigestPreference.user_id == current_user.id)
+    )
+    if pref is not None:
+        pref.via_telegram = False
+        pref.via_email = False
+        pref.updated_at = now_utc()
+        await db.commit()
 
 
 @router.get("/preview", response_model=DigestPreviewOut)

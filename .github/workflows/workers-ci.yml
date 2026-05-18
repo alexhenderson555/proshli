@@ -16,6 +16,30 @@ jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # Wave 2 introduced ``test_billing_renewal.py`` which exercises the
+    # renewal task end-to-end against the real DB (shared with the api
+    # service in compose). Workers don't ship alembic of their own — the
+    # test uses ``Base.metadata.create_all`` — but it still needs the
+    # pgvector extension because ``app.models`` declares a ``Vector``
+    # column for semantic search.
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: proshli
+          POSTGRES_PASSWORD: proshli
+          POSTGRES_DB: proshli
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U proshli -d proshli"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql+asyncpg://proshli:proshli@localhost:5432/proshli
+      JWT_SECRET: test-secret
+      APP_ENV: test
     defaults:
       run:
         working-directory: apps/workers
@@ -34,6 +58,13 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-extras
 
+      - name: Enable pgvector extension
+        env:
+          PGPASSWORD: proshli
+        run: |
+          sudo apt-get update && sudo apt-get install -y postgresql-client
+          psql -h localhost -U proshli -d proshli -c "CREATE EXTENSION IF NOT EXISTS vector;"
+
       - name: Ruff lint
         run: uv run ruff check workers tests
 
@@ -41,7 +72,7 @@ jobs:
         run: uv run mypy workers
 
       - name: Smoke tests
-        # The smoke tests touch ``settings.redis_url`` (default
-        # ``redis://localhost:6379/0``) which is fine — they don't actually
-        # connect, they just inspect the Celery app object.
+        # ``test_smoke`` just inspects the Celery app object (no Redis
+        # connection). ``test_billing_renewal`` hits the postgres
+        # service declared above for real state transitions.
         run: uv run pytest -q

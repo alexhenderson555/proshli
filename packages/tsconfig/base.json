@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
-  "display": "Otklik base",
+  "display": "Proshli base",
   "compilerOptions": {
     "target": "ES2022",
     "lib": ["ES2023"],

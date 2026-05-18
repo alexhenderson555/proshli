@@ -4,7 +4,15 @@ packages:
 
 # pnpm 11 requires explicit allowlisting of packages whose
 # postinstall scripts may run. Without this, `pnpm install --frozen-lockfile`
-# errors with ERR_PNPM_IGNORED_BUILDS in CI.
+# errors with ERR_PNPM_IGNORED_BUILDS in CI. pnpm 11 may auto-inject
+# `allowBuilds:` placeholder entries when a new build-script package
+# is added — replace `set this to true or false` with `true` and add
+# the package name to `onlyBuiltDependencies` below.
+allowBuilds:
+  "@parcel/watcher": true
+  "@swc/core": true
+  esbuild: true
+
 onlyBuiltDependencies:
   - sharp
   - unrs-resolver

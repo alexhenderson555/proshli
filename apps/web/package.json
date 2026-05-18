@@ -1,5 +1,5 @@
 {
-  "name": "@otklik/web",
+  "name": "@proshli/web",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -12,17 +12,22 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@proshli/shared-types": "workspace:*",
+    "@proshli/ui": "workspace:*",
     "@t3-oss/env-nextjs": "^0.13.11",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.460.0",
     "next": "16.2.1",
+    "next-intl": "^4.12.0",
+    "next-themes": "^0.4.6",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "tailwind-merge": "^2.6.1",
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@proshli/tsconfig": "workspace:*",
     "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",

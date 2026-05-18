@@ -2,32 +2,32 @@
 # localhost. Healthchecks gate the dependency edges so the api/worker
 # don't start before Postgres+Redis are actually accepting connections.
 #
-# Image names use the `otklik-*` prefix so they don't collide with whatever
+# Image names use the `proshli-*` prefix so they don't collide with whatever
 # else you have running locally.
 
-name: otklik
+name: proshli
 
 services:
   pg:
     image: pgvector/pgvector:pg16
-    container_name: otklik-pg
+    container_name: proshli-pg
     environment:
-      POSTGRES_USER: otklik
-      POSTGRES_PASSWORD: otklik
-      POSTGRES_DB: otklik
+      POSTGRES_USER: proshli
+      POSTGRES_PASSWORD: proshli
+      POSTGRES_DB: proshli
     volumes:
-      - otklik-pg-data:/var/lib/postgresql/data
+      - proshli-pg-data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U otklik -d otklik"]
+      test: ["CMD-SHELL", "pg_isready -U proshli -d proshli"]
       interval: 5s
       timeout: 3s
       retries: 10
 
   redis:
     image: redis:7-alpine
-    container_name: otklik-redis
+    container_name: proshli-redis
     ports:
       - "6379:6379"
     healthcheck:
@@ -36,13 +36,34 @@ services:
       timeout: 3s
       retries: 10
 
+  # Keyword search experiment (Sprint 1 plan §docker setup).
+  # The API doesn't index against Meili yet — pgvector covers semantic
+  # ranking — but the local container lets us prototype the keyword
+  # surface without touching production code paths.
+  meilisearch:
+    image: getmeili/meilisearch:v1.11
+    container_name: proshli-meili
+    environment:
+      MEILI_ENV: development
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:-proshli-dev-master-key}
+      MEILI_NO_ANALYTICS: "true"
+    volumes:
+      - proshli-meili-data:/meili_data
+    ports:
+      - "7700:7700"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:7700/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
   api:
     build:
       context: ./apps/api
-    container_name: otklik-api
+    container_name: proshli-api
     environment:
       APP_ENV: development
-      DATABASE_URL: postgresql+asyncpg://otklik:otklik@pg:5432/otklik
+      DATABASE_URL: postgresql+asyncpg://proshli:proshli@pg:5432/proshli
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/1
       CELERY_RESULT_BACKEND: redis://redis:6379/2
@@ -67,11 +88,11 @@ services:
     build:
       context: .
       dockerfile: ./apps/workers/Dockerfile
-    container_name: otklik-worker
+    container_name: proshli-worker
     command: ["celery", "-A", "workers.celery_app", "worker", "--loglevel=INFO", "--concurrency=2"]
     environment:
       APP_ENV: development
-      DATABASE_URL: postgresql+asyncpg://otklik:otklik@pg:5432/otklik
+      DATABASE_URL: postgresql+asyncpg://proshli:proshli@pg:5432/proshli
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/1
       CELERY_RESULT_BACKEND: redis://redis:6379/2
@@ -87,11 +108,11 @@ services:
     build:
       context: .
       dockerfile: ./apps/workers/Dockerfile
-    container_name: otklik-beat
+    container_name: proshli-beat
     command: ["celery", "-A", "workers.celery_app", "beat", "--loglevel=INFO"]
     environment:
       APP_ENV: development
-      DATABASE_URL: postgresql+asyncpg://otklik:otklik@pg:5432/otklik
+      DATABASE_URL: postgresql+asyncpg://proshli:proshli@pg:5432/proshli
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/1
       CELERY_RESULT_BACKEND: redis://redis:6379/2
@@ -107,7 +128,7 @@ services:
     build:
       context: .
       dockerfile: ./apps/web/Dockerfile
-    container_name: otklik-web
+    container_name: proshli-web
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8000
       NODE_ENV: production
@@ -118,4 +139,5 @@ services:
         condition: service_healthy
 
 volumes:
-  otklik-pg-data:
+  proshli-pg-data:
+  proshli-meili-data:

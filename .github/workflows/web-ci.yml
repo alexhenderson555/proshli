@@ -47,18 +47,18 @@ jobs:
         run: pnpm -r --parallel run type-check
 
       - name: Lint
-        run: pnpm -F @otklik/web lint
+        run: pnpm -F @proshli/web lint
 
       - name: Build
-        run: pnpm -F @otklik/web build
+        run: pnpm -F @proshli/web build
         env:
           NEXT_PUBLIC_API_URL: http://localhost:8000
 
       - name: Install Playwright browsers
-        run: pnpm -F @otklik/web exec playwright install --with-deps chromium
+        run: pnpm -F @proshli/web exec playwright install --with-deps chromium
 
       - name: Playwright tests
-        run: pnpm -F @otklik/web test
+        run: pnpm -F @proshli/web test
         env:
           NEXT_PUBLIC_API_URL: http://localhost:8000
 

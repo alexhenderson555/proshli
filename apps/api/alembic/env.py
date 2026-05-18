@@ -1,4 +1,4 @@
-"""Alembic env for Otklik.ai — async-mode.
+"""Alembic env for Proshli — async-mode.
 
 Pattern adapted from ``reference-vault/backend-python/fastapi-clean-example``:
 online mode uses ``async_engine_from_config`` + ``asyncio.run`` so the engine
@@ -78,6 +78,13 @@ async def _run_async_migrations() -> None:
     )
     async with connectable.connect() as connection:
         await connection.run_sync(_do_run_migrations)
+        # asyncpg-backed AsyncConnection won't auto-commit DDL on close;
+        # the inner ``context.begin_transaction()`` opens/commits an Alembic
+        # *logical* transaction but the outer SQLAlchemy transaction stays
+        # open until we explicitly commit. Without this every DDL silently
+        # rolls back on connection close — leaving alembic_version + zero
+        # tables.
+        await connection.commit()
     await connectable.dispose()
 
 

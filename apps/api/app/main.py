@@ -1,4 +1,4 @@
-"""FastAPI application factory — Otklik.ai backend.
+"""FastAPI application factory — Proshli backend.
 
 Sprint 1 wave 7 wires the production-readiness stack on top of the
 fully-async route surface:
@@ -30,6 +30,8 @@ from app.routes import (
     admin,
     ai,
     auth,
+    billing,
+    channel_approval,
     digest,
     health,
     ingest,
@@ -37,6 +39,7 @@ from app.routes import (
     resumes,
     users,
     vacancies,
+    webhooks,
 )
 from app.sentry import init_sentry
 
@@ -62,7 +65,7 @@ def create_app() -> FastAPI:
     init_sentry()
 
     app = FastAPI(
-        title="Otklik.ai API",
+        title="Proshli API",
         version="0.1.0",
         description="Russian-language job aggregator — backend API.",
         generate_unique_id_function=custom_generate_unique_id,
@@ -93,6 +96,9 @@ def create_app() -> FastAPI:
     app.include_router(digest.router)
     app.include_router(ai.router)
     app.include_router(admin.router)
+    app.include_router(billing.router)
+    app.include_router(webhooks.router)
+    app.include_router(channel_approval.router)
 
     return app
 

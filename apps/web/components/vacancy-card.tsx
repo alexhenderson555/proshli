@@ -1,14 +1,28 @@
-import Link from "next/link";
+"use client";
+
+// Compact card used in the vacancy feed and similar-list. Translations
+// come from `vacancyCard.*`; the keyword-detection (`remote`/`удален`) is
+// a content-detection heuristic on the upstream description and stays
+// hard-coded so it works regardless of UI locale.
+
+import { useLocale, useTranslations } from "next-intl";
 
 import { Badge, Button } from "@/components/ui";
+import { Link } from "@/i18n/navigation";
 import type { Vacancy } from "@/lib/types";
 
 export function VacancyCard({ vacancy }: { vacancy: Vacancy }) {
+  const t = useTranslations("vacancyCard");
+  const locale = useLocale();
+  const intlTag = locale === "ru" ? "ru-RU" : "en-US";
+
   const salary =
     vacancy.salary_from || vacancy.salary_to
-      ? `от ${vacancy.salary_from?.toLocaleString("ru-RU") ?? "—"} до ${vacancy.salary_to?.toLocaleString("ru-RU") ?? "—"} ${vacancy.currency}`
-      : "Зарплата не указана";
-  const published = new Date(vacancy.published_at).toLocaleDateString("ru-RU", {
+      ? `${t("salaryFrom")} ${vacancy.salary_from?.toLocaleString(intlTag) ?? "—"} ${t(
+          "salaryTo",
+        )} ${vacancy.salary_to?.toLocaleString(intlTag) ?? "—"} ${vacancy.currency}`
+      : t("salaryNotSet");
+  const published = new Date(vacancy.published_at).toLocaleDateString(intlTag, {
     day: "2-digit",
     month: "long",
   });
@@ -16,13 +30,13 @@ export function VacancyCard({ vacancy }: { vacancy: Vacancy }) {
   const modeLabel = (() => {
     const hay = `${vacancy.location} ${vacancy.description}`.toLowerCase();
     if (hay.includes("remote") || hay.includes("удален")) {
-      return "Удаленно";
+      return t("modeRemote");
     }
     if (hay.includes("hybrid") || hay.includes("гибрид")) {
-      return "Гибрид";
+      return t("modeHybrid");
     }
     if (hay.includes("office") || hay.includes("офис")) {
-      return "Офис";
+      return t("modeOffice");
     }
     return null;
   })();
@@ -40,23 +54,27 @@ export function VacancyCard({ vacancy }: { vacancy: Vacancy }) {
         {vacancy.company} • {vacancy.location}
       </p>
       <p className="mt-3 rounded-xl bg-[var(--surface-alt)] px-3 py-2 text-[13px] text-[var(--text-muted)] line-clamp-3">
-        {vacancy.description || "Описание не указано"}
+        {vacancy.description || t("descriptionEmpty")}
       </p>
       <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-[var(--text-muted)]">
         <span className="rounded-full bg-emerald-50 px-2.5 py-1 font-semibold text-emerald-700">{salary}</span>
         <span>•</span>
-        <span>Откликов: {vacancy.applications_count}</span>
+        <span>
+          {t("applications")}: {vacancy.applications_count}
+        </span>
       </div>
       <div className="mt-4 flex items-center justify-between">
-        <span className="text-xs text-[var(--text-muted)]">Опубликовано: {published}</span>
+        <span className="text-xs text-[var(--text-muted)]">
+          {t("published")}: {published}
+        </span>
         <div className="flex items-center gap-2">
           {vacancy.external_url ? (
             <a href={vacancy.external_url} target="_blank" rel="noreferrer">
-              <Button variant="ghost">Открыть на HH</Button>
+              <Button variant="ghost">{t("openExternal")}</Button>
             </a>
           ) : null}
           <Link href={`/vacancies/${vacancy.id}`}>
-            <Button>Открыть</Button>
+            <Button>{t("open")}</Button>
           </Link>
         </div>
       </div>

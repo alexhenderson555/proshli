@@ -10,10 +10,17 @@ from __future__ import annotations
 import secrets
 from datetime import timedelta
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
 from sqlalchemy import select
 
-from app.auth import create_access_token, get_current_user, hash_password, verify_password
+from app.auth import (
+    clear_access_cookie,
+    create_access_token,
+    get_current_user,
+    hash_password,
+    set_access_cookie,
+    verify_password,
+)
 from app.config import settings
 from app.deps import DbSession
 from app.middleware.rate_limit import RateLimit
@@ -53,7 +60,9 @@ async def _require_bot_service_key(
         Depends(RateLimit("auth-register", limit=5, window_seconds=60)),
     ],
 )
-async def register(payload: RegisterRequest, db: DbSession) -> TokenResponse:
+async def register(
+    payload: RegisterRequest, response: Response, db: DbSession
+) -> TokenResponse:
     existing = await db.scalar(select(User).where(User.email == payload.email))
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -78,7 +87,9 @@ async def register(payload: RegisterRequest, db: DbSession) -> TokenResponse:
     )
     await db.commit()
 
-    return TokenResponse(access_token=create_access_token(str(user.id)))
+    token = create_access_token(str(user.id))
+    set_access_cookie(response, token)
+    return TokenResponse(access_token=token)
 
 
 @router.post(
@@ -88,14 +99,42 @@ async def register(payload: RegisterRequest, db: DbSession) -> TokenResponse:
         Depends(RateLimit("auth-login", limit=10, window_seconds=60)),
     ],
 )
-async def login(payload: LoginRequest, db: DbSession) -> TokenResponse:
+async def login(
+    payload: LoginRequest, response: Response, db: DbSession
+) -> TokenResponse:
     user = await db.scalar(select(User).where(User.email == payload.email))
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    return TokenResponse(access_token=create_access_token(str(user.id)))
+    token = create_access_token(str(user.id))
+    set_access_cookie(response, token)
+    return TokenResponse(access_token=token)
 
 
-@router.post("/telegram/link-code", response_model=TelegramLinkCodeOut)
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+async def logout(response: Response) -> Response:
+    """Clear the HttpOnly access cookie.
+
+    Stateless logout: the JWT itself can't be revoked server-side without
+    introducing a denylist (a Sprint 3 concern). What we *can* do is tell
+    the browser to drop the cookie so the next request doesn't carry it.
+    Bearer-token clients have no cookie to clear; they just stop sending
+    the header.
+    """
+    clear_access_cookie(response)
+    response.status_code = status.HTTP_204_NO_CONTENT
+    return response
+
+
+@router.post(
+    "/telegram/link-code",
+    response_model=TelegramLinkCodeOut,
+    dependencies=[
+        # User-facing endpoint: tight cap so a stolen JWT can't churn out
+        # hundreds of codes (each one invalidates the previous, so abuse
+        # would also lock the legit user out of linking).
+        Depends(RateLimit("auth-telegram-link-code", limit=5, window_seconds=60)),
+    ],
+)
 async def create_telegram_link_code(
     db: DbSession,
     current_user: User = Depends(get_current_user),
@@ -134,9 +173,20 @@ async def create_telegram_link_code(
     return TelegramLinkCodeOut(code=code, expires_at=expires_at)
 
 
-@router.post("/telegram/consume-link", response_model=TokenResponse)
+@router.post(
+    "/telegram/consume-link",
+    response_model=TokenResponse,
+    dependencies=[
+        # Defence-in-depth on top of the bot service key: if the key ever
+        # leaks, the 8-char alphanumeric code (~30 bits of entropy) is the
+        # only thing standing between an attacker and arbitrary account
+        # takeover, so cap brute-force throughput.
+        Depends(RateLimit("auth-telegram-consume", limit=30, window_seconds=60)),
+    ],
+)
 async def consume_telegram_link_code(
     payload: TelegramLinkConsumeRequest,
+    response: Response,
     db: DbSession,
     _: None = Depends(_require_bot_service_key),
 ) -> TokenResponse:
@@ -199,12 +249,68 @@ async def consume_telegram_link_code(
 
     link_code.used_at = now
     await db.commit()
-    return TokenResponse(access_token=create_access_token(str(user.id)))
+    token = create_access_token(str(user.id))
+    set_access_cookie(response, token)
+    return TokenResponse(access_token=token)
 
 
-@router.post("/telegram/login", response_model=TokenResponse)
+@router.delete(
+    "/telegram/link",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[
+        # Same rationale as consume-link: bot key is the primary auth but
+        # we throttle to limit damage if it leaks.
+        Depends(RateLimit("auth-telegram-unlink", limit=30, window_seconds=60)),
+    ],
+)
+async def unlink_telegram(
+    payload: TelegramBotLoginRequest,
+    db: DbSession,
+    _: None = Depends(_require_bot_service_key),
+) -> Response:
+    """Drop the ``TelegramAccountLink`` for the given Telegram identity.
+
+    Bot calls this from ``/unlink`` so the user can revoke the bot's
+    access without going back to the website. We also flip the digest
+    transport off so the worker stops sending to a chat that may no
+    longer be the user's. The actual ``User`` row is untouched — the
+    user keeps their email/password account.
+    """
+    link = await db.scalar(
+        select(TelegramAccountLink).where(
+            TelegramAccountLink.telegram_user_id == payload.telegram_user_id
+        )
+    )
+    if link is None:
+        # Idempotent: unlinking an already-unlinked identity is a no-op.
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    pref = await db.scalar(
+        select(DigestPreference).where(DigestPreference.user_id == link.user_id)
+    )
+    if pref is not None:
+        pref.via_telegram = False
+        pref.telegram_chat_id = None
+        pref.updated_at = now_utc()
+
+    await db.delete(link)
+    await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/telegram/login",
+    response_model=TokenResponse,
+    dependencies=[
+        # Loose cap (the bot calls this frequently during normal use) but
+        # still bounded so a leaked bot key can't be used to enumerate
+        # every linked telegram_user_id at line rate.
+        Depends(RateLimit("auth-telegram-login", limit=100, window_seconds=60)),
+    ],
+)
 async def login_by_telegram(
     payload: TelegramBotLoginRequest,
+    response: Response,
     db: DbSession,
     _: None = Depends(_require_bot_service_key),
 ) -> TokenResponse:
@@ -233,4 +339,6 @@ async def login_by_telegram(
         pref.updated_at = now
 
     await db.commit()
-    return TokenResponse(access_token=create_access_token(str(user.id)))
+    token = create_access_token(str(user.id))
+    set_access_cookie(response, token)
+    return TokenResponse(access_token=token)

@@ -1,0 +1,27 @@
+# Reference manifest for `proshli-workers-staging` Serverless Container.
+# Note: Celery beat + worker normally run as two long-lived processes,
+# but YC Serverless Containers are request-driven. For staging we
+# trigger the worker periodically via `yc serverless trigger` and let
+# beat run as a separate cron-triggered container. Production should
+# move to a Compute VM or Managed Kubernetes once load justifies it.
+
+container: proshli-workers-staging
+image: cr.yandex/${YC_REGISTRY_ID}/proshli-workers
+resources:
+  cores: 1
+  memory: 512MB
+  execution_timeout: 600s  # digest batches can be slow
+  concurrency: 1
+service_account_id: ${YC_DEPLOY_SA_ID}
+environment:
+  APP_ENV: staging
+  DATABASE_URL: ${YC_PG_DSN}
+  REDIS_URL: ${YC_REDIS_URL}
+  CELERY_BROKER_URL: ${YC_REDIS_URL}/1
+  CELERY_RESULT_BACKEND: ${YC_REDIS_URL}/2
+  JWT_SECRET: ${JWT_SECRET}
+  BOT_SERVICE_KEY: ${BOT_SERVICE_KEY}
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+  YOOKASSA_SHOP_ID: ${YOOKASSA_SHOP_ID}
+  YOOKASSA_SECRET_KEY: ${YOOKASSA_SECRET_KEY}
+  SENTRY_DSN: ${SENTRY_DSN_WORKERS}

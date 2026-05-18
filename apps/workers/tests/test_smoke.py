@@ -11,7 +11,7 @@ from workers.celery_app import celery_app
 
 
 def test_celery_app_name() -> None:
-    assert celery_app.main == "otklik"
+    assert celery_app.main == "proshli"
 
 
 def test_expected_tasks_registered() -> None:
@@ -19,6 +19,7 @@ def test_expected_tasks_registered() -> None:
         "workers.tasks.ingest.ingest_source",
         "workers.tasks.ingest.run_all_connectors",
         "workers.tasks.digest.send_digests",
+        "workers.tasks.billing.renew_expiring_subscriptions",
     }
     registered = set(celery_app.tasks.keys())
     missing = expected - registered
@@ -30,6 +31,7 @@ def test_beat_schedule_entries() -> None:
     assert "ingest-every-10-min" in schedule
     assert "daily-digest-09-utc" in schedule
     assert "weekly-digest-mon-09-utc" in schedule
+    assert "renew-subscriptions-hourly" in schedule
     assert schedule["daily-digest-09-utc"]["kwargs"] == {"frequency": "daily"}
 
 

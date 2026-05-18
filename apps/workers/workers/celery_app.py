@@ -18,20 +18,40 @@ from celery import Celery
 from celery.schedules import crontab
 
 celery_app = Celery(
-    "otklik",
+    "proshli",
     broker=settings.redis_url,
     backend=settings.redis_url,
     include=[
         "workers.tasks.ingest",
         "workers.tasks.digest",
+        "workers.tasks.billing",
+        "workers.tasks.prefilter",
+        "workers.tasks.publisher",
+        "workers.tasks.channel_approval",
     ],
 )
 
 # Eagerly import task modules so they register on the canonical app object.
 # ``include=`` lazy-imports them only when the worker boots; for tests +
 # importers of ``celery_app`` we want the side-effect now.
-import workers.tasks.digest  # noqa: E402
-import workers.tasks.ingest  # noqa: E402, F401
+import workers.tasks.billing as _billing  # noqa: E402
+import workers.tasks.channel_approval as _channel_approval  # noqa: E402
+import workers.tasks.digest as _digest  # noqa: E402
+import workers.tasks.ingest as _ingest  # noqa: E402
+import workers.tasks.prefilter as _prefilter  # noqa: E402
+import workers.tasks.publisher as _publisher  # noqa: E402
+
+# Mark modules referenced so static analysis sees the side-effect imports
+# as intentional. The task decorators register against ``celery_app`` at
+# import time — that's the whole point.
+_REGISTERED_TASK_MODULES = (
+    _billing,
+    _channel_approval,
+    _digest,
+    _ingest,
+    _prefilter,
+    _publisher,
+)
 
 celery_app.conf.update(
     task_acks_late=True,
@@ -61,6 +81,36 @@ celery_app.conf.update(
             "task": "workers.tasks.digest.send_digests",
             "schedule": crontab(hour=9, minute=15, day_of_week="mon"),
             "kwargs": {"frequency": "weekly"},
+        },
+        # Wave 2: hourly autopayment renewal. Skewed off the :00 mark so we
+        # don't pile onto ЮKassa's own minute-zero spike.
+        "renew-subscriptions-hourly": {
+            "task": "workers.tasks.billing.renew_expiring_subscriptions",
+            "schedule": crontab(minute=7),
+        },
+        # TG prefilter: scan ingest output every 10 min, classify, and
+        # push survivors into ``publication_queue``. Offset from the
+        # ingest cron (every 10 min on the dot) by 5 minutes so we
+        # consistently process the latest batch.
+        "prefilter-every-10-min": {
+            "task": "workers.tasks.prefilter.prefilter_pending_vacancies",
+            "schedule": crontab(minute="5,15,25,35,45,55"),
+        },
+        # TG publication firehose: drain ``publication_queue`` every 15 min.
+        # Skewed off ``*/15`` exact-quarter-hour to avoid colliding with the
+        # ingest task at minute 0 — keeps the worker prefetch=1 contention
+        # from queueing the publisher behind a long-running ingest.
+        "publish-pending-every-15-min": {
+            "task": "workers.tasks.publisher.publish_pending_batch",
+            "schedule": crontab(minute="3,18,33,48"),
+        },
+        # Phase 2 channel approval: daily 09:00 MSK = 06:00 UTC (no DST
+        # in Russia since 2014). Minute=7 to dodge the ingest/digest
+        # tasks that fire at minute=0/15, and to avoid the round-number
+        # hour where every consumer's cron is also firing.
+        "channel-approval-daily-06-utc": {
+            "task": "workers.tasks.channel_approval.score_and_notify_admin",
+            "schedule": crontab(hour=6, minute=7),
         },
     },
 )

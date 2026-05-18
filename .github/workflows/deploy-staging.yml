@@ -1,0 +1,61 @@
+name: Deploy staging
+
+# Promotes the just-built images to the staging Serverless Containers.
+# Triggered automatically when the Build & Push workflow succeeds on main.
+# Requires three repo secrets (in addition to the build-and-push ones):
+#   YC_DEPLOY_SA_ID    — service-account id the containers run as
+#   YC_PG_DSN          — managed Postgres DSN
+#   YC_REDIS_URL       — managed Redis URL
+# plus the app-specific secrets surfaced via env below.
+
+on:
+  workflow_run:
+    workflows: ["Build & Push"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      has_secrets: ${{ steps.check.outputs.has_secrets }}
+    steps:
+      - id: check
+        env:
+          KEY: ${{ secrets.YC_SA_JSON_KEY }}
+          REG: ${{ secrets.YC_REGISTRY_ID }}
+          SA: ${{ secrets.YC_DEPLOY_SA_ID }}
+        run: |
+          if [[ -n "$KEY" && -n "$REG" && -n "$SA" ]]; then
+            echo "has_secrets=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_secrets=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Yandex Cloud secrets not set; skipping deploy."
+          fi
+
+  deploy:
+    needs: gate
+    if: >
+      ${{ needs.gate.outputs.has_secrets == 'true' &&
+          (github.event_name == 'workflow_dispatch' ||
+           github.event.workflow_run.conclusion == 'success') }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [api, web, workers]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: yc-actions/yc-sls-container-deploy@v3
+        with:
+          yc-sa-json-credentials: ${{ secrets.YC_SA_JSON_KEY }}
+          container-name: proshli-${{ matrix.service }}-staging
+          revision-service-account-id: ${{ secrets.YC_DEPLOY_SA_ID }}
+          revision-image-url: cr.yandex/${{ secrets.YC_REGISTRY_ID }}/proshli-${{ matrix.service }}:${{ github.sha }}
+          revision-cores: 1
+          revision-memory: 512MB

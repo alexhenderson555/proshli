@@ -18,7 +18,7 @@ async def test_liveness_always_ok(client: AsyncClient) -> None:
     assert resp.status_code == 200
     body = resp.json()
     assert body["status"] == "ok"
-    assert body["service"] == "otklik-api"
+    assert body["service"] == "proshli-api"
 
 
 @pytest.mark.asyncio

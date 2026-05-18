@@ -29,6 +29,8 @@ from app.deps import DbSession
 from app.models import (
     EmployerActionLog,
     EmployerVacancy,
+    Plan,
+    Subscription,
     User,
     Vacancy,
 )
@@ -41,8 +43,10 @@ from app.schemas import (
     VacancyPromoteRequest,
     VacancyUpdateRequest,
 )
+from app.services.embeddings import get_embedding_service
 from app.services.employer import log_employer_action, require_employer_ownership
 from app.services.hh_live import fetch_live_hh_vacancies
+from app.services.semantic_search import embed_vacancy, search_vacancies_semantic
 from app.time_utils import now_utc
 
 router = APIRouter(prefix="/vacancies", tags=["vacancies"])
@@ -53,6 +57,23 @@ _SORT_FIELDS = {
     "applications_count": Vacancy.applications_count,
     "title": Vacancy.title,
 }
+
+
+async def _user_has_semantic_search(db: DbSession, user: User) -> bool:
+    """Return True if the user's active plan grants semantic search.
+
+    Resolved via the same Subscription → Plan join used by the AI quota
+    code (``app/services/ai_guardrails.py::_resolve_daily_limit``). Users
+    without a Subscription row (legacy / unfinished onboarding) fall back
+    to the ``semantic_search=False`` of the implicit free tier — that's
+    the conservative default for a paid feature.
+    """
+    plan = await db.scalar(
+        select(Plan)
+        .join(Subscription, Subscription.plan_id == Plan.id)
+        .where(Subscription.user_id == user.id)
+    )
+    return bool(plan is not None and plan.semantic_search)
 
 
 async def _expire_promotions(db: DbSession) -> None:
@@ -96,6 +117,10 @@ async def create_vacancy(
         action="vacancy_created",
         meta={"title": vacancy.title},
     )
+    # Wave 4: index the freshly-published row so semantic search picks it
+    # up immediately. Failure is non-fatal — see ``embed_vacancy`` for the
+    # degrade-to-NULL behaviour.
+    await embed_vacancy(db, vacancy, get_embedding_service())
     return vacancy
 
 
@@ -371,6 +396,41 @@ async def export_my_vacancy_actions_csv(
         media_type="text/csv",
         headers={"Content-Disposition": 'attachment; filename="employer-actions.csv"'},
     )
+
+
+@router.get("/search/semantic", response_model=list[VacancyOut])
+async def search_semantic(
+    db: DbSession,
+    q: str = Query(..., min_length=1, max_length=512, description="Search text"),
+    limit: int = Query(default=20, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+) -> list[VacancyOut]:
+    """Semantic vacancy search via pgvector cosine distance.
+
+    Gated on ``plan.semantic_search`` (Pro and Employer plans only). Free
+    tier callers get 402 ``payment_required`` so the FE can prompt for an
+    upgrade rather than silently degrade to keyword search — that would
+    mask why results look "worse" than the user expected.
+
+    The route accepts a single ``q`` plus a ``limit`` and returns up to
+    ``limit`` rows ordered by cosine distance. Filters that the keyword
+    endpoint exposes (``location``, ``level``, ``stack``) are deliberately
+    omitted here — the whole point of semantic search is that the
+    embedding model handles those signals natively. A composite endpoint
+    that combines both ranking modes can come in a later wave.
+    """
+    if not await _user_has_semantic_search(db, current_user):
+        raise HTTPException(
+            status_code=402,
+            detail=(
+                "Семантический поиск доступен на тарифах Pro и Работодатель."
+            ),
+        )
+
+    rows = await search_vacancies_semantic(
+        db, q, get_embedding_service(), limit=limit
+    )
+    return [VacancyOut.model_validate(row) for row in rows]
 
 
 @router.get("/{vacancy_id}", response_model=VacancyOut)

@@ -30,7 +30,7 @@ log = structlog.get_logger(__name__)
 @router.get("/health")
 async def health() -> dict[str, str]:
     """Liveness — always 200 unless the process is wedged."""
-    return {"status": "ok", "service": "otklik-api"}
+    return {"status": "ok", "service": "proshli-api"}
 
 
 @router.get("/health/ready")

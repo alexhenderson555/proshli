@@ -1,5 +1,5 @@
 {
-  "name": "@otklik/shared-types",
+  "name": "@proshli/shared-types",
   "version": "0.0.0",
   "private": true,
   "license": "UNLICENSED",
@@ -16,7 +16,7 @@
     "type-check": "tsc --noEmit"
   },
   "devDependencies": {
-    "@otklik/tsconfig": "workspace:*",
+    "@proshli/tsconfig": "workspace:*",
     "openapi-typescript": "^7.4.4",
     "typescript": "^5"
   }

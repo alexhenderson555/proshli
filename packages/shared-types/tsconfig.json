@@ -1,5 +1,5 @@
 {
-  "extends": "@otklik/tsconfig/base.json",
+  "extends": "@proshli/tsconfig/base.json",
   "compilerOptions": {
     "noEmit": true,
     "rootDir": "src"

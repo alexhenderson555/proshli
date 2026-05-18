@@ -1,10 +1,9 @@
-// Re-export of the `cn` helper. Local copy because the workspace import
-// from `@otklik/ui` isn't fully wired through Next.js' build pipeline yet
-// (transpilePackages config lands in a follow-up). Functionally identical.
+// Re-export of `cn` from the workspace UI package. We keep this stub so
+// existing call sites (`@/lib/cn`) don't need to change all at once —
+// new code should import directly from `@proshli/ui`.
+//
+// Wave 9 wired `transpilePackages: ["@proshli/ui", "@proshli/shared-types"]`
+// in `next.config.ts` so the raw-`.ts(x)` workspace sources compile
+// through the Next.js pipeline correctly.
 
-import { type ClassValue, clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
-
-export function cn(...inputs: ClassValue[]): string {
-  return twMerge(clsx(inputs));
-}
+export { cn } from "@proshli/ui";
