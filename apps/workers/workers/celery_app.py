@@ -25,6 +25,7 @@ celery_app = Celery(
         "workers.tasks.ingest",
         "workers.tasks.digest",
         "workers.tasks.billing",
+        "workers.tasks.prefilter",
         "workers.tasks.publisher",
     ],
 )
@@ -35,12 +36,13 @@ celery_app = Celery(
 import workers.tasks.billing as _billing  # noqa: E402
 import workers.tasks.digest as _digest  # noqa: E402
 import workers.tasks.ingest as _ingest  # noqa: E402
+import workers.tasks.prefilter as _prefilter  # noqa: E402
 import workers.tasks.publisher as _publisher  # noqa: E402
 
 # Mark modules referenced so static analysis sees the side-effect imports
 # as intentional. The task decorators register against ``celery_app`` at
 # import time — that's the whole point.
-_REGISTERED_TASK_MODULES = (_billing, _digest, _ingest, _publisher)
+_REGISTERED_TASK_MODULES = (_billing, _digest, _ingest, _prefilter, _publisher)
 
 celery_app.conf.update(
     task_acks_late=True,
@@ -76,6 +78,14 @@ celery_app.conf.update(
         "renew-subscriptions-hourly": {
             "task": "workers.tasks.billing.renew_expiring_subscriptions",
             "schedule": crontab(minute=7),
+        },
+        # TG prefilter: scan ingest output every 10 min, classify, and
+        # push survivors into ``publication_queue``. Offset from the
+        # ingest cron (every 10 min on the dot) by 5 minutes so we
+        # consistently process the latest batch.
+        "prefilter-every-10-min": {
+            "task": "workers.tasks.prefilter.prefilter_pending_vacancies",
+            "schedule": crontab(minute="5,15,25,35,45,55"),
         },
         # TG publication firehose: drain ``publication_queue`` every 15 min.
         # Skewed off ``*/15`` exact-quarter-hour to avoid colliding with the
