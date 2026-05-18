@@ -12,6 +12,8 @@ export type {
   EmployerActionLogOut,
   EmployerVacancyAnalyticsOut,
   EmployerVacancyPageOut,
+  MatchScoreOut,
+  MatchTier,
   RoleType,
   SeekerProfileOut,
   TokenResponse,

@@ -13,6 +13,12 @@
     "errorGeneric": "Something went wrong",
     "errorUnknown": "Unknown error"
   },
+  "matchScore": {
+    "strong": "Strong match",
+    "decent": "Decent match",
+    "stretch": "Stretch",
+    "longshot": "Long shot"
+  },
   "metadata": {
     "titleDefault": "Proshli — AI job aggregator",
     "titleTemplate": "%s · Proshli",

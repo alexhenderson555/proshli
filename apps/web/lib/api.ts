@@ -2,6 +2,7 @@ import type {
   EmployerActionLogOut,
   EmployerVacancyAnalyticsOut,
   EmployerVacancyPageOut,
+  MatchScoreOut,
   SeekerProfileOut,
   TokenResponse,
   UserOut,
@@ -90,6 +91,9 @@ export const api = {
   },
   vacancy(id: number) {
     return request<Vacancy>(`/vacancies/${id}`);
+  },
+  matchScore(token: string, vacancyId: number) {
+    return request<MatchScoreOut>(`/vacancies/${vacancyId}/match-score`, { token });
   },
   seekerProfile(token: string) {
     return request<SeekerProfileOut>("/profiles/seeker", { token });

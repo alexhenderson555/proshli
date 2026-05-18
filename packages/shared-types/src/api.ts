@@ -50,7 +50,19 @@ export type EmployerProfileUpdate = Schemas["EmployerProfileUpdate"];
 // Vacancies
 // ---------------------------------------------------------------------
 
-export type Vacancy = Schemas["VacancyOut"];
+export type MatchTier = "strong" | "decent" | "stretch" | "longshot";
+export interface MatchScoreOut {
+  score: number;
+  tier: MatchTier;
+}
+
+// VacancyOut from the backend now also carries the match-score fields
+// (added 2026-05-18). The OpenAPI bundle hasn't been regenerated yet —
+// when it is, this intersection becomes redundant and can be deleted.
+export type Vacancy = Schemas["VacancyOut"] & {
+  match_score?: number | null;
+  match_tier?: MatchTier | null;
+};
 export type VacancyCreateRequest = Schemas["VacancyCreateRequest"];
 export type VacancyUpdateRequest = Schemas["VacancyUpdateRequest"];
 export type VacancyPromoteRequest = Schemas["VacancyPromoteRequest"];
