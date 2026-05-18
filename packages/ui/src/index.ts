@@ -8,6 +8,12 @@ export { Card, type CardProps } from "./components/card";
 export { Container, type ContainerProps } from "./components/container";
 export { fieldClass, Input, type InputProps } from "./components/input";
 export {
+  FadeIn,
+  type FadeInProps,
+  Stagger,
+  type StaggerProps,
+} from "./components/motion";
+export {
   Select,
   type SelectOption,
   type SelectProps,
