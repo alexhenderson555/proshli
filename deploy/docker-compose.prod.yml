@@ -1,0 +1,164 @@
+# Proshli — production docker-compose.
+#
+# Brings up the full stack on a single VPS:
+#   - postgres + redis (internal only, no exposed ports)
+#   - api (FastAPI, internal)
+#   - workers (Celery beat + worker, no exposed ports)
+#   - tgbot (aiogram polling, no exposed ports)
+#   - web (Next.js, internal)
+#   - caddy (TLS terminator + reverse proxy on 80/443)
+#
+# All public traffic enters via Caddy on 80/443.
+# Internal services talk over the `proshli` bridge network by name.
+#
+# Bring up:    docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+# Logs:        docker compose -f docker-compose.prod.yml logs -f api
+# Migrations:  docker compose -f docker-compose.prod.yml exec api uv run alembic upgrade head
+# Seed:        docker compose -f docker-compose.prod.yml exec api uv run python -m scripts.seed_company_prestige
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: proshli-pg
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-proshli}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-proshli}
+    volumes:
+      - proshli-pg-data:/var/lib/postgresql/data
+    networks:
+      - proshli
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: proshli-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --save 60 1
+    volumes:
+      - proshli-redis-data:/data
+    networks:
+      - proshli
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  api:
+    build:
+      context: ../apps/api
+      dockerfile: Dockerfile
+    container_name: proshli-api
+    restart: unless-stopped
+    env_file: .env.prod
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-proshli}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-proshli}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      APP_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - proshli
+    expose:
+      - "8000"
+
+  workers:
+    build:
+      context: ../apps/workers
+      dockerfile: Dockerfile
+    container_name: proshli-workers
+    restart: unless-stopped
+    env_file: .env.prod
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-proshli}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-proshli}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      APP_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - proshli
+    # Run beat + worker in one container via `-B`. For >1 worker
+    # split into separate services (one beat, N workers).
+    command: ["uv", "run", "celery", "-A", "workers.celery_app", "worker", "-B", "--loglevel=info", "--concurrency=2"]
+
+  tgbot:
+    build:
+      context: ../apps/tgbot
+      dockerfile: Dockerfile
+    container_name: proshli-tgbot
+    restart: unless-stopped
+    env_file: .env.prod
+    environment:
+      PROSHLI_API_URL: http://api:8000
+      PROSHLI_REDIS_URL: redis://redis:6379/3
+    depends_on:
+      - api
+      - redis
+    networks:
+      - proshli
+
+  web:
+    build:
+      context: ../apps/web
+      dockerfile: Dockerfile
+    container_name: proshli-web
+    restart: unless-stopped
+    env_file: .env.prod
+    environment:
+      NODE_ENV: production
+      # The web container talks to the API by Docker service name.
+      # NEXT_PUBLIC_API_URL is what the browser sees (public domain).
+      NEXT_PUBLIC_API_URL: https://${PROSHLI_DOMAIN}/api
+      API_URL_INTERNAL: http://api:8000
+    depends_on:
+      - api
+    networks:
+      - proshli
+    expose:
+      - "3000"
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: proshli-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"  # HTTP/3
+    environment:
+      PROSHLI_DOMAIN: ${PROSHLI_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - proshli-caddy-data:/data
+      - proshli-caddy-config:/config
+    depends_on:
+      - api
+      - web
+    networks:
+      - proshli
+
+networks:
+  proshli:
+    driver: bridge
+
+volumes:
+  proshli-pg-data:
+  proshli-redis-data:
+  proshli-caddy-data:
+  proshli-caddy-config:

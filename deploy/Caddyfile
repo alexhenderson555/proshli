@@ -1,0 +1,57 @@
+# Proshli — Caddy reverse-proxy + TLS.
+#
+# Caddy auto-issues Let's Encrypt certificates for the listed domains.
+# Cloudflare is in front (proxied), so the cert chain still works because
+# CF connects to origin via TLS too (set SSL/TLS mode = Full strict).
+#
+# Layout: single domain.
+#   /            → Next.js  (proshli-web:3000)
+#   /api/*       → FastAPI  (proshli-api:8000)  — strip /api prefix before forwarding
+#
+# Production tweaks:
+#   - Gzip + zstd compression
+#   - Long cache for /_next/static
+#   - HSTS on root, no preload (preload after a month of stable deploy)
+#   - X-Forwarded-For so FastAPI sees real client IP (combined with TRUSTED_PROXIES env)
+
+{$PROSHLI_DOMAIN}, www.{$PROSHLI_DOMAIN} {
+	encode zstd gzip
+
+	# Strip /api prefix and forward to FastAPI.
+	handle_path /api/* {
+		reverse_proxy api:8000 {
+			header_up X-Real-IP {remote_host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+		}
+	}
+
+	# Everything else → Next.js.
+	handle {
+		# Long-cache Next's immutable static bundle.
+		@nextstatic path /_next/static/*
+		header @nextstatic Cache-Control "public, max-age=31536000, immutable"
+
+		reverse_proxy web:3000 {
+			header_up X-Real-IP {remote_host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+		}
+	}
+
+	# Security headers.
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		# Tell CF to cache statics aggressively.
+		-Server
+	}
+}
+
+# www → apex redirect (Caddy issues a cert for both because they're in
+# the site block above; the redirect happens at the handler level).
+www.{$PROSHLI_DOMAIN} {
+	redir https://{$PROSHLI_DOMAIN}{uri} permanent
+}
