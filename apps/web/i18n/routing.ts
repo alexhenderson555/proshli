@@ -22,7 +22,7 @@ export const routing = defineRouting({
   // Use a cookie to remember explicit user choice; falls back to
   // Accept-Language when no cookie is set.
   localeCookie: {
-    name: "OTKLIK_LOCALE",
+    name: "PROSHLI_LOCALE",
     sameSite: "lax",
     maxAge: 60 * 60 * 24 * 365,
   },

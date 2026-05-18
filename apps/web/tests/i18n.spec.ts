@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 // `as-needed` strategy: RU is at `/`, EN is at `/en`.
 //
-// The locale cookie (`OTKLIK_LOCALE`) is sticky — if a previous test
+// The locale cookie (`PROSHLI_LOCALE`) is sticky — if a previous test
 // leaves it set to `en`, hitting `/` would redirect to `/en/...`. We
 // clear cookies in `beforeEach` so each test starts from the default-
 // locale state.

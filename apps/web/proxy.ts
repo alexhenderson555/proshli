@@ -3,7 +3,7 @@
 // On every request, `createMiddleware` decides which locale should serve
 // the response by combining (in order):
 //   1. URL prefix (e.g. `/en/...`),
-//   2. the `OTKLIK_LOCALE` cookie (set by the language switcher),
+//   2. the `PROSHLI_LOCALE` cookie (set by the language switcher),
 //   3. the browser's Accept-Language header.
 //
 // Even though the next-intl factory is still called `createMiddleware`,

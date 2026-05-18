@@ -4,7 +4,7 @@
 //
 // Uses next-intl's locale-aware navigation so swapping locale preserves
 // the current pathname. The middleware persists the new locale into the
-// `OTKLIK_LOCALE` cookie (config in `i18n/routing.ts`) so server-rendered
+// `PROSHLI_LOCALE` cookie (config in `i18n/routing.ts`) so server-rendered
 // requests on subsequent navigation keep the choice.
 
 import { useTransition } from "react";

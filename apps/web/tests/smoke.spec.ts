@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 // Smoke tests assert against the RU strings on the default-locale URLs
 // (`/auth`, `/vacancies`, ...). `as-needed` localePrefix means RU has
 // no prefix, but the proxy still picks a locale per request — falling
-// back to `Accept-Language` when no `OTKLIK_LOCALE` cookie is set.
+// back to `Accept-Language` when no `PROSHLI_LOCALE` cookie is set.
 // Playwright Chromium's default `Accept-Language` is `en-US`, so we
 // pin the suite locale to `ru-RU` to keep cold sessions on RU.
 test.use({ locale: "ru-RU" });
