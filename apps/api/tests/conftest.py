@@ -15,6 +15,7 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 
 import pytest_asyncio
+from sqlalchemy.ext.asyncio import AsyncSession
 
 # Importing ``app.models`` ensures every mapper is registered on ``Base.metadata``
 # before ``create_all`` runs.
@@ -38,3 +39,16 @@ async def client() -> AsyncIterator[AsyncClient]:
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as ac:
         yield ac
+
+
+@pytest_asyncio.fixture
+async def db_session() -> AsyncIterator[AsyncSession]:
+    """Provide a bare AsyncSession for unit tests that touch models directly.
+
+    Each test gets its own session; changes are rolled back after the test
+    completes so the shared test DB stays clean between runs.
+    """
+    from app.db import async_session_factory
+
+    async with async_session_factory() as session:
+        yield session
