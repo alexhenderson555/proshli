@@ -6,7 +6,7 @@ export { Badge, type BadgeProps, type BadgeTone } from "./components/badge";
 export { Button, type ButtonProps, buttonVariants } from "./components/button";
 export { Card, type CardProps } from "./components/card";
 export { Container, type ContainerProps } from "./components/container";
-export { Input, fieldClass, type InputProps } from "./components/input";
+export { fieldClass, Input, type InputProps } from "./components/input";
 export {
   Select,
   type SelectOption,
