@@ -140,13 +140,21 @@ services:
       # Build context = repo root.
       context: ..
       dockerfile: apps/web/Dockerfile
+      # `NEXT_PUBLIC_*` env vars are inlined by Next.js at *build* time.
+      # The runtime `environment:` block below is too late — the value is
+      # already baked into the static JS chunks. Pass the public API URL
+      # as a build arg so the browser bundle calls `https://proshli.ru/api`
+      # instead of the dev fallback `127.0.0.1:8000`.
+      args:
+        NEXT_PUBLIC_API_URL: https://${PROSHLI_DOMAIN}/api
     container_name: proshli-web
     restart: unless-stopped
     env_file: .env.prod
     environment:
       NODE_ENV: production
-      # The web container talks to the API by Docker service name.
-      # NEXT_PUBLIC_API_URL is what the browser sees (public domain).
+      # Mirror NEXT_PUBLIC_API_URL at runtime too — server-rendered routes
+      # that call the API from inside the container read `process.env`
+      # at request time.
       NEXT_PUBLIC_API_URL: https://${PROSHLI_DOMAIN}/api
       API_URL_INTERNAL: http://api:8000
     depends_on:

@@ -18,6 +18,13 @@ RUN pnpm install --frozen-lockfile
 # ---------- build ----------
 FROM base AS build
 WORKDIR /repo
+# `NEXT_PUBLIC_*` env vars are inlined by Next.js at *build* time — the
+# runtime container's env is too late, the value is already baked into
+# the static JS chunks. We accept the API URL as a build arg, default
+# it to the prod canonical, and re-export it as an env so `next build`
+# picks it up. compose passes the real value via `build.args`.
+ARG NEXT_PUBLIC_API_URL=https://proshli.ru/api
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 # Stage the source first, then layer the installed node_modules on top
 # so the deps-stage installs (including symlinks into packages/*) survive
 # the COPY. Without this `COPY . .` would land *after* the modules copy
