@@ -18,6 +18,9 @@ RUN uv sync --frozen --no-dev --no-install-project
 COPY app ./app
 COPY alembic ./alembic
 COPY alembic.ini ./alembic.ini
+# Operational scripts (seed_company_prestige etc) — invoked via
+# `uv run python -m scripts.<name>` from inside the container.
+COPY scripts ./scripts
 
 ENV PATH="/app/.venv/bin:$PATH"
 EXPOSE 8000
