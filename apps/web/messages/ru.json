@@ -185,6 +185,7 @@
     "emptyState": "Пусто. Нажми \"Найти вакансии\", чтобы загрузить подборку.",
     "errorSearch": "Ошибка поиска",
     "errorAi": "AI ошибка",
+    "noResumeCta": "Загрузи резюме — увидишь match-score",
     "detail": {
       "salary": "Зарплата",
       "salaryNotSet": "Не указана",
@@ -214,7 +215,8 @@
       "similarTitle": "Похожие вакансии",
       "similarEmpty": "Пока нет похожих вакансий.",
       "quickApply": "Быстрый отклик",
-      "quickApplyHh": "Быстрый отклик на HH"
+      "quickApplyHh": "Быстрый отклик на HH",
+      "matchTitle": "Совпадение с резюме"
     }
   },
   "seeker": {

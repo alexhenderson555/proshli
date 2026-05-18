@@ -13,8 +13,10 @@
 import { useLocale, useTranslations } from "next-intl";
 
 import { Badge, Button } from "@/components/ui";
+import { MatchPill } from "@/components/match-pill";
 import { Link } from "@/i18n/navigation";
 import type { Vacancy } from "@/lib/types";
+import type { MatchTier } from "@/lib/types";
 
 export function VacancyCard({ vacancy }: { vacancy: Vacancy }) {
   const t = useTranslations("vacancyCard");
@@ -59,6 +61,12 @@ export function VacancyCard({ vacancy }: { vacancy: Vacancy }) {
     <article className="group relative border-b border-border px-2 py-4 row-hover -mx-2 rounded-sm">
       {/* Header line: badges + published date, lighter visual weight than title */}
       <div className="flex flex-wrap items-center gap-1.5 text-text-tertiary">
+        {vacancy.match_score != null && vacancy.match_tier ? (
+          <MatchPill
+            score={vacancy.match_score}
+            tier={vacancy.match_tier as MatchTier}
+          />
+        ) : null}
         <Badge text={sourceLabel} />
         {modeLabel ? <Badge text={modeLabel} tone="neutral" /> : null}
         {vacancy.is_promoted ? <Badge text="PROMO" tone="brand" /> : null}

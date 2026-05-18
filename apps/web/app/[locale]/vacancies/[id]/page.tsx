@@ -9,11 +9,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 
 import { Badge, Button } from "@/components/ui";
+import { MatchPill } from "@/components/match-pill";
 import { VacancyCard } from "@/components/vacancy-card";
 import { FadeIn } from "@proshli/ui";
 import { Link } from "@/i18n/navigation";
 import { api } from "@/lib/api";
-import type { Vacancy } from "@/lib/types";
+import { getToken } from "@/lib/session";
+import type { MatchScoreOut, Vacancy } from "@/lib/types";
 
 export default function VacancyDetailsPage() {
   const t = useTranslations("vacancies.detail");
@@ -24,6 +26,7 @@ export default function VacancyDetailsPage() {
   const [error, setError] = useState("");
   const [vacancy, setVacancy] = useState<Vacancy | null>(null);
   const [related, setRelated] = useState<Vacancy[]>([]);
+  const [match, setMatch] = useState<MatchScoreOut | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -71,6 +74,16 @@ export default function VacancyDetailsPage() {
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id]);
+
+  useEffect(() => {
+    const token = getToken();
+    if (!token || !vacancy) return;
+    let cancelled = false;
+    api.matchScore(token, vacancy.id)
+      .then((res) => { if (!cancelled) setMatch(res); })
+      .catch(() => { /* swallow — 401/404 just means we render nothing */ });
+    return () => { cancelled = true; };
+  }, [vacancy]);
 
   const salaryLabel = useMemo(() => {
     if (!vacancy) return "—";
@@ -201,6 +214,13 @@ export default function VacancyDetailsPage() {
 
       {/* Sticky aside — salary callout + key facts + skills */}
       <aside className="self-start lg:sticky lg:top-20 flex flex-col gap-3">
+        {match ? (
+          <section className="rounded border border-border bg-surface p-3">
+            <div className="kicker mb-1.5">{t("matchTitle")}</div>
+            <MatchPill score={match.score} tier={match.tier} />
+          </section>
+        ) : null}
+
         <section className="rounded border border-border-strong bg-elevated p-4">
           <div className="kicker">{t("salary")}</div>
           <p className="mt-1 text-[22px] font-[580] tabular-nums leading-tight text-text-primary">

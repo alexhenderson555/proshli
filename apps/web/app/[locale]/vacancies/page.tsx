@@ -15,6 +15,7 @@ import { useTranslations } from "next-intl";
 import { VacancyCard } from "@/components/vacancy-card";
 import { Button, Input, Select, Textarea } from "@/components/ui";
 import { Stagger } from "@proshli/ui";
+import { Link } from "@/i18n/navigation";
 import { api } from "@/lib/api";
 import { getToken } from "@/lib/session";
 import type { Vacancy } from "@/lib/types";
@@ -40,9 +41,16 @@ export default function VacanciesPage() {
     [vacancies],
   );
 
+  const hasToken = typeof window !== "undefined" && Boolean(getToken());
+  const allMissingScore =
+    hasToken &&
+    orderedVacancies.length > 0 &&
+    orderedVacancies.every((v) => v.match_score == null);
+
   const search = useCallback(async () => {
     setLoading(true);
     try {
+      const token = getToken();
       const data = await api.vacancies({
         location,
         stack,
@@ -50,6 +58,7 @@ export default function VacanciesPage() {
         source,
         work_mode: workMode,
         min_salary: minSalary ? Number(minSalary) : undefined,
+        include_match: token ? true : undefined,
       });
       setVacancies(data);
     } catch (error) {
@@ -187,11 +196,21 @@ export default function VacanciesPage() {
             {t("emptyState")}
           </div>
         ) : (
-          <Stagger step={0.03} immediate className="flex flex-col">
-            {orderedVacancies.map((vacancy) => (
-              <VacancyCard key={vacancy.id} vacancy={vacancy} />
-            ))}
-          </Stagger>
+          <>
+            {allMissingScore ? (
+              <Link
+                href="/resume"
+                className="mb-2 inline-flex w-fit items-center gap-1 rounded border border-accent/30 bg-accent/10 px-2 py-1 text-[12px] font-[510] text-accent transition-colors hover:bg-accent/15"
+              >
+                {t("noResumeCta")} →
+              </Link>
+            ) : null}
+            <Stagger step={0.03} immediate className="flex flex-col">
+              {orderedVacancies.map((vacancy) => (
+                <VacancyCard key={vacancy.id} vacancy={vacancy} />
+              ))}
+            </Stagger>
+          </>
         )}
       </section>
     </div>

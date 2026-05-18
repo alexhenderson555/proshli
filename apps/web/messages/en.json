@@ -185,6 +185,7 @@
     "emptyState": "Empty. Tap \"Search vacancies\" to load the feed.",
     "errorSearch": "Search error",
     "errorAi": "AI error",
+    "noResumeCta": "Upload your resume to see match-score",
     "detail": {
       "salary": "Salary",
       "salaryNotSet": "Not specified",
@@ -214,7 +215,8 @@
       "similarTitle": "Similar vacancies",
       "similarEmpty": "No similar vacancies yet.",
       "quickApply": "Quick apply",
-      "quickApplyHh": "Quick apply on HH"
+      "quickApplyHh": "Quick apply on HH",
+      "matchTitle": "Resume match"
     }
   },
   "seeker": {
