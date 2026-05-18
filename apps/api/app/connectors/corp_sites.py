@@ -74,10 +74,10 @@ def _fetch_greenhouse(client: httpx.Client, slug: str, company: str) -> list[Vac
         out.append(
             VacancyPayload(
                 source="company_sites",
-                external_id=_ext_id(company, absolute_url or title),
+                external_id=_ext_id(company, absolute_url or title)[:128],
                 title=title[:255],
                 company=company[:255],
-                location=location[:255],
+                location=location[:128],
                 employment_type="full-time",
                 experience_level="middle",
                 salary_from=None,
@@ -115,10 +115,10 @@ def _fetch_yandex(client: httpx.Client) -> list[VacancyPayload]:
         out.append(
             VacancyPayload(
                 source="company_sites",
-                external_id=_ext_id("Yandex", url_field or title),
+                external_id=_ext_id("Yandex", url_field or title)[:128],
                 title=title[:255],
                 company="Yandex",
-                location=location[:255],
+                location=location[:128],
                 employment_type="full-time",
                 experience_level="middle",
                 salary_from=None,
@@ -155,10 +155,10 @@ def _fetch_avito(client: httpx.Client) -> list[VacancyPayload]:
         out.append(
             VacancyPayload(
                 source="company_sites",
-                external_id=_ext_id("Avito", url_field or title),
+                external_id=_ext_id("Avito", url_field or title)[:128],
                 title=title[:255],
                 company="Avito",
-                location=location[:255],
+                location=location[:128],
                 employment_type="full-time",
                 experience_level="middle",
                 salary_from=None,
@@ -200,7 +200,7 @@ def _fetch_html_generic(
         out.append(
             VacancyPayload(
                 source="company_sites",
-                external_id=_ext_id(company, link or title),
+                external_id=_ext_id(company, link or title)[:128],
                 title=title[:255],
                 company=company[:255],
                 location="Unknown",

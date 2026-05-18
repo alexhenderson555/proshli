@@ -164,10 +164,10 @@ class HhConnector(SourceConnector):
 
         return VacancyPayload(
             source=self.source_name,
-            external_id=str(item.get("id") or ""),
+            external_id=str(item.get("id") or "")[:128],
             title=str(item.get("name") or "Unknown title")[:255],
             company=str(employer.get("name") or "Unknown company")[:255],
-            location=str(area.get("name") or "Unknown")[:255],
+            location=str(area.get("name") or "Unknown")[:128],
             employment_type=str(schedule.get("id") or "full-time"),
             experience_level=str(experience.get("id") or "middle"),
             salary_from=salary.get("from") if isinstance(salary.get("from"), int) else None,
@@ -184,7 +184,14 @@ class HhConnector(SourceConnector):
     def _fetch_live(self) -> list[VacancyPayload]:
         seen_ids: set[str] = set()
         mapped: list[VacancyPayload] = []
-        headers = {"User-Agent": "Proshli/1.0 (job-aggregator; +https://proshli.ru)"}
+        # HH.ru requires a User-Agent with a contact, per their API TOS — bare
+        # generic UAs are 403'd from RU cloud IP ranges.
+        # https://api.hh.ru/openapi/redoc#section/Obshaya-informaciya/Trebovaniya-k-User-Agent
+        headers = {
+            "User-Agent": "Proshli/1.0 (proshli.ru; contact@proshli.ru)",
+            "Accept": "application/json",
+            "HH-User-Agent": "Proshli/1.0 (proshli.ru; contact@proshli.ru)",
+        }
 
         with httpx.Client(timeout=20.0, headers=headers) as client:
             for query in self._queries:

@@ -80,7 +80,7 @@ class HabrCareerConnector(SourceConnector):
             items.append(
                 VacancyPayload(
                     source=self.source_name,
-                    external_id=external_id,
+                    external_id=external_id[:128],
                     title=title[:255],
                     company=company[:255],
                     location="Unknown",
