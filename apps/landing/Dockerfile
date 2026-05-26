@@ -9,23 +9,31 @@ WORKDIR /workspace
 # pnpm via corepack
 RUN corepack enable && corepack prepare pnpm@10.10.0 --activate
 
-# Copy lockfile + workspace config
+# Use hoisted node_modules layout in Docker to avoid pnpm symlink issues.
+RUN echo "node-linker=hoisted" > .npmrc
+
+# Copy workspace root files
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
 
-# Copy dependent packages
+# Copy ALL JS/TS workspace package.json files so the lockfile resolves.
 COPY packages/design-tokens/package.json packages/design-tokens/
 COPY packages/tsconfig/package.json packages/tsconfig/
-
-# Copy landing
+COPY packages/ui-v2/package.json packages/ui-v2/
+COPY packages/ui/package.json packages/ui/
+COPY packages/shared-types/package.json packages/shared-types/
+COPY packages/eslint-config/package.json packages/eslint-config/
 COPY apps/landing/package.json apps/landing/
+COPY apps/web/package.json apps/web/
 
-# Install
-RUN pnpm install --frozen-lockfile --filter @proshli/landing...
+# Install with hoisted layout — no symlink resolution issues.
+RUN pnpm install --frozen-lockfile
 
-# Copy source and build
-COPY packages packages
+# Copy only the sources we need for the landing build.
+COPY packages/design-tokens packages/design-tokens
+COPY packages/tsconfig packages/tsconfig
 COPY apps/landing apps/landing
 
+# Build design-tokens first (landing depends on its dist/), then landing.
 RUN pnpm --filter @proshli/design-tokens build && \
     pnpm --filter @proshli/landing build
 
