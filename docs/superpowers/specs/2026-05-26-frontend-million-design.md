@@ -514,12 +514,12 @@ async def channel_approve(query: CallbackQuery, http: httpx.AsyncClient) -> None
 
 Все недели — solo dev, ~10-15 часов/неделя.
 
-### Phase 0 — Foundation (Week 1)
+### Phase 0 — Foundation (Week 1) ✅ COMPLETED 2026-05-26
 
-1. `packages/design-tokens` — токены + build script
-2. `packages/ui-v2` — skeleton, первые 5 primitives (Button, Input, Dialog, Sheet, Tooltip)
-3. Caddy config с subdomain routing (`app.proshli.ru`, `proshli.ru`)
-4. Adjacent fix A (AI guardrails whitelist) — quick win, разлочивает English queries сразу
+1. ✅ `packages/design-tokens` — токены + build script (commits `62eb7c7`, `a7b5fe9`, `df7ee21`)
+2. ✅ `packages/ui-v2` — skeleton, первые 5 primitives (Button, Input, Dialog, Sheet, Tooltip) — 13 tests passing (`c31a35f`, `c9b550d`)
+3. ✅ Caddy config с subdomain routing (`app.proshli.ru`) — блок добавлен, активируется когда DNS-запись будет создана (`514a305`)
+4. ✅ Adjacent fix A (AI guardrails whitelist) — 17 → 110 keywords, English IT-роли разлочены, **деплой в прод выполнен**, smoke-test PASS (`65c12a0`)
 
 ### Phase 1 — Astro landing (Weeks 2-3)
 
