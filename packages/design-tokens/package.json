@@ -14,6 +14,7 @@
   },
   "scripts": {
     "build": "tsx build.ts",
+    "lint": "eslint src",
     "type-check": "tsc --noEmit"
   },
   "devDependencies": {
