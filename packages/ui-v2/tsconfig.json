@@ -1,0 +1,5 @@
+{
+  "extends": "@proshli/tsconfig/react-library.json",
+  "include": ["src/**/*", "vitest.config.ts", "vitest.setup.ts"],
+  "exclude": ["node_modules", "dist", "tailwind.config.ts"]
+}
