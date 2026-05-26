@@ -1,0 +1,36 @@
+---
+const links = [
+  { href: "/pricing", label: "Тарифы" },
+  { href: "/employers", label: "Работодателям" },
+  { href: "/blog", label: "Блог" },
+  { href: "/about", label: "О проекте" },
+];
+const currentLocale = Astro.currentLocale || "ru";
+---
+
+<header class="fixed top-0 left-0 right-0 z-40 border-b border-white/5 bg-landing-bg-primary/70 backdrop-blur-xl">
+  <div class="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
+    <a href="/" class="flex items-center gap-2 font-bold tracking-tight">
+      <span class="text-18">Proshli</span>
+    </a>
+    <nav class="hidden items-center gap-6 md:flex">
+      {links.map((l) => (
+        <a href={l.href} class="text-13 text-landing-text-muted hover:text-landing-text-primary transition-colors">
+          {l.label}
+        </a>
+      ))}
+    </nav>
+    <div class="flex items-center gap-3">
+      <a href={currentLocale === "ru" ? "/en/" : "/"} class="text-12 text-landing-text-muted hover:text-landing-text-primary">
+        {currentLocale === "ru" ? "EN" : "RU"}
+      </a>
+      <a href="https://app.proshli.ru/auth/login" class="text-13 text-landing-text-muted hover:text-landing-text-primary">Войти</a>
+      <a
+        href="https://app.proshli.ru/auth/register"
+        class="rounded-md bg-gradient-to-r from-landing-accent-start to-landing-accent-end px-3 h-8 inline-flex items-center text-13 font-medium text-white shadow-glow"
+      >
+        Регистрация
+      </a>
+    </div>
+  </div>
+</header>

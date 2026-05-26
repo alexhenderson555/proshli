@@ -1,0 +1,145 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import HeroAiDemo from "../components/HeroAiDemo.tsx";
+import HeroBackdrop from "../components/HeroBackdrop.tsx";
+import PricingCard from "../components/PricingCard.astro";
+import FaqItem from "../components/FaqItem.astro";
+import { tiers } from "../lib/tiers";
+---
+
+<BaseLayout title="Proshli — AI читает вакансии, ты не читаешь" description="AI-поиск IT-вакансий. Опиши что ищешь словами — AI найдёт матчи по резюме и пришлёт дайджест в Telegram.">
+  <!-- ═══ Hero: асимметричный layout ═══ -->
+  <section class="relative min-h-[calc(100vh-3.5rem)] flex items-center px-6 overflow-hidden">
+    <HeroBackdrop client:load />
+    <div class="mx-auto max-w-6xl w-full grid md:grid-cols-[1fr_1.2fr] gap-12 md:gap-16 items-center py-24">
+      <div>
+        <p class="text-13 font-mono text-landing-text-muted mb-4 tracking-wide">12 847 вакансий · 50+ источников · обновление каждый час</p>
+        <h1 class="text-32 md:text-48 lg:text-72 font-extrabold tracking-tight leading-tight">
+          AI читает вакансии,<br class="hidden md:block" />
+          <span class="bg-clip-text text-transparent bg-gradient-to-r from-white to-purple-300">ты не читаешь</span>
+        </h1>
+        <p class="mt-6 text-16 text-landing-text-muted leading-loose max-w-md">
+          Я задолбался листать hh каждый день и сделал AI, который читает за меня.
+          Опиши что ищешь — получишь матчи по резюме. Дайджест в Telegram каждое утро.
+        </p>
+        <div class="mt-8 flex items-center gap-4">
+          <a
+            href="https://app.proshli.ru/auth/register"
+            class="inline-flex items-center h-10 px-5 rounded-lg bg-gradient-to-r from-landing-accent-start to-landing-accent-end text-14 font-medium text-white shadow-glow"
+          >
+            Попробовать бесплатно
+          </a>
+          <a href="#how-it-works" class="text-13 text-landing-text-muted hover:text-landing-text-primary transition-colors">
+            Как это работает &darr;
+          </a>
+        </div>
+      </div>
+      <div class="relative">
+        <div class="text-11 font-mono text-landing-text-muted mb-3 tracking-wide">Попробуй прямо сейчас — это демо, не тратит AI-бюджет</div>
+        <HeroAiDemo client:load />
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ How it works: асимметричный, без emoji-иконок ═══ -->
+  <section id="how-it-works" class="py-32 px-6 border-t border-white/5">
+    <div class="mx-auto max-w-6xl">
+      <h2 class="text-24 md:text-32 font-bold tracking-tight mb-16">Три шага от резюме до первого матча</h2>
+
+      <div class="grid md:grid-cols-[2fr_1fr] gap-12 items-start mb-12">
+        <!-- Большой блок слева — шаг 1 -->
+        <div class="rounded-xl border border-white/8 bg-white/[0.02] p-8">
+          <span class="text-11 font-mono text-landing-text-muted tracking-wider">01</span>
+          <h3 class="text-18 font-semibold mt-2 mb-3">Загрузи резюме</h3>
+          <p class="text-14 text-landing-text-muted leading-loose">
+            PDF или текст. AI извлекает скиллы, опыт и желаемый стек за 5 секунд.
+            Считает embedding — 1024-мерный вектор, который описывает твой профиль
+            точнее любых чекбоксов.
+          </p>
+        </div>
+        <!-- Маленький блок справа — шаг 2 -->
+        <div class="rounded-xl border border-white/8 bg-white/[0.02] p-8">
+          <span class="text-11 font-mono text-landing-text-muted tracking-wider">02</span>
+          <h3 class="text-18 font-semibold mt-2 mb-3">Получи матчи</h3>
+          <p class="text-14 text-landing-text-muted leading-loose">
+            Cosine similarity между твоим вектором и вакансиями. Топ-10 по убыванию.
+            Без ручного перебора.
+          </p>
+        </div>
+      </div>
+
+      <!-- Широкий блок на всю ширину — шаг 3 -->
+      <div class="rounded-xl border border-white/8 bg-white/[0.02] p-8 md:max-w-lg">
+        <span class="text-11 font-mono text-landing-text-muted tracking-wider">03</span>
+        <h3 class="text-18 font-semibold mt-2 mb-3">Дайджест в Telegram</h3>
+        <p class="text-14 text-landing-text-muted leading-loose">
+          Каждое утро новые матчи в чате. Без push-спама, без писем в почту.
+          Можно поставить на паузу одной кнопкой.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ Числа (editorial-момент, не секция карточек) ═══ -->
+  <section class="py-20 px-6 border-t border-white/5">
+    <div class="mx-auto max-w-6xl grid grid-cols-2 md:grid-cols-4 gap-8">
+      <div>
+        <div class="text-32 font-bold font-mono">12 847</div>
+        <div class="text-13 text-landing-text-muted mt-1">вакансий в базе</div>
+      </div>
+      <div>
+        <div class="text-32 font-bold font-mono">50+</div>
+        <div class="text-13 text-landing-text-muted mt-1">источников</div>
+      </div>
+      <div>
+        <div class="text-32 font-bold font-mono">1024</div>
+        <div class="text-13 text-landing-text-muted mt-1">мерный embedding</div>
+      </div>
+      <div>
+        <div class="text-32 font-bold font-mono">&lt;800ms</div>
+        <div class="text-13 text-landing-text-muted mt-1">до первого токена AI</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ Pricing ═══ -->
+  <section id="pricing" class="py-32 px-6 border-t border-white/5">
+    <div class="mx-auto max-w-6xl">
+      <h2 class="text-24 md:text-32 font-bold tracking-tight mb-3">Тарифы</h2>
+      <p class="text-14 text-landing-text-muted mb-12">Без скрытых платежей, без минимального срока. Отмена в один клик.</p>
+      <div class="grid md:grid-cols-3 gap-5">
+        {tiers.map((t) => <PricingCard {...t} />)}
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ FAQ ═══ -->
+  <section id="faq" class="py-32 px-6 border-t border-white/5">
+    <div class="mx-auto max-w-3xl">
+      <h2 class="text-24 md:text-32 font-bold tracking-tight mb-12">Частые вопросы</h2>
+      <div class="space-y-3">
+        <FaqItem question="Какие источники вакансий?">
+          HeadHunter, Habr Career, ~50 проверенных IT Telegram-каналов, корпоративные сайты.
+          Парсинг каждый час, дедупликация по нормализованным заголовкам.
+        </FaqItem>
+        <FaqItem question="AI правда читает мои данные?">
+          Резюме обрабатывается embedding-моделью для семантического поиска. Текст не отправляется
+          третьим сторонам кроме Anthropic (при запросах к AI-ассистенту). Удалить аккаунт —
+          одна кнопка в настройках.
+        </FaqItem>
+        <FaqItem question="Чем отличаетесь от hh.ru?">
+          Не пытаемся заменить hh — аккумулируем вакансии из десятков источников и ранжируем
+          по совпадению с резюме. Ты не листаешь — AI делает first-pass и присылает топ-10 в Telegram.
+        </FaqItem>
+        <FaqItem question="Можно отменить подписку?">
+          В любой момент. Никаких автопродлений без согласия. После отмены оставшиеся
+          дни оплаченного периода остаются доступны.
+        </FaqItem>
+        <FaqItem question="А если я работодатель?">
+          Есть тариф Employer — публикация вакансий + доступ к кандидатам с AI-скринингом.
+          <a href="/employers" class="text-landing-accent-start hover:underline ml-1">Подробнее</a>.
+        </FaqItem>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

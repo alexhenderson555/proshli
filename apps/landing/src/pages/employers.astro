@@ -1,0 +1,54 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="Для работодателей — Proshli" description="AI-скрининг кандидатов. Видишь только тех, кто реально подходит — без ручной разборки сотен резюме.">
+  <section class="py-32 px-6">
+    <div class="mx-auto max-w-6xl">
+      <h1 class="text-32 md:text-48 font-extrabold tracking-tight mb-3">Для работодателей</h1>
+      <p class="text-18 text-landing-text-muted mb-16 max-w-2xl">
+        AI делает first-pass за HR. Ты видишь только тех, кто реально подходит.
+      </p>
+
+      <!-- Асимметричный layout: большой блок + два маленьких -->
+      <div class="grid md:grid-cols-[1.5fr_1fr] gap-5 mb-12">
+        <div class="rounded-xl border border-white/8 bg-white/[0.02] p-8">
+          <span class="text-11 font-mono text-landing-text-muted tracking-wider">Главное</span>
+          <h3 class="text-20 font-semibold mt-2 mb-3">Кандидаты с match-score</h3>
+          <p class="text-14 text-landing-text-muted leading-loose">
+            Видишь сразу процент совпадения между требованиями вакансии и резюме кандидата.
+            AI считает cosine similarity между embedding-ами — это точнее ключевых слов.
+            Порог 80%+ — high match, 60-80% — relevant. Ниже не показываем.
+          </p>
+        </div>
+        <div class="space-y-5">
+          <div class="rounded-xl border border-white/8 bg-white/[0.02] p-6">
+            <span class="text-11 font-mono text-landing-text-muted tracking-wider">Скорость</span>
+            <h3 class="text-16 font-semibold mt-2 mb-2">Скрининг за минуту</h3>
+            <p class="text-13 text-landing-text-muted leading-loose">
+              AI отсеивает явно нерелевантных, оставляет топ-5. Ты смотришь только их.
+            </p>
+          </div>
+          <div class="rounded-xl border border-white/8 bg-white/[0.02] p-6">
+            <span class="text-11 font-mono text-landing-text-muted tracking-wider">Команда</span>
+            <h3 class="text-16 font-semibold mt-2 mb-2">До 5 человек</h3>
+            <p class="text-13 text-landing-text-muted leading-loose">
+              Включено в тариф Employer. Дополнительные места — ₽490 за каждого.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="rounded-xl bg-gradient-to-br from-landing-accent-start/12 to-landing-accent-end/5 border border-landing-accent-start/40 p-10 shadow-glow">
+        <h2 class="text-24 font-bold mb-3">₽4 900 / месяц</h2>
+        <p class="text-14 text-landing-text-muted mb-6">14 дней бесплатно. Без карты на старте. Отмена в один клик.</p>
+        <a
+          href="https://app.proshli.ru/employer/onboarding"
+          class="inline-flex items-center h-10 px-6 rounded-lg bg-gradient-to-r from-landing-accent-start to-landing-accent-end text-14 font-medium text-white"
+        >
+          Начать триал
+        </a>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

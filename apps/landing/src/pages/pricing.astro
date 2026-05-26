@@ -1,0 +1,36 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import PricingCard from "../components/PricingCard.astro";
+import FaqItem from "../components/FaqItem.astro";
+import { tiers } from "../lib/tiers";
+---
+
+<BaseLayout title="Тарифы — Proshli" description="Простые тарифы. Free навсегда, Pro за ₽490/мес, Employer за ₽4 900/мес. Без скрытых платежей.">
+  <section class="py-32 px-6">
+    <div class="mx-auto max-w-6xl">
+      <h1 class="text-32 md:text-48 font-extrabold tracking-tight mb-3">Тарифы</h1>
+      <p class="text-16 text-landing-text-muted mb-16 max-w-xl">Без скрытых платежей, отмена в один клик. Оплата через ЮKassa — карты, СБП, ЮMoney.</p>
+      <div class="grid md:grid-cols-3 gap-5 mb-24">
+        {tiers.map((t) => <PricingCard {...t} />)}
+      </div>
+
+      <div class="border-t border-white/5 pt-16">
+        <h2 class="text-20 font-semibold mb-8">Часто задают про оплату</h2>
+        <div class="space-y-3 max-w-3xl">
+          <FaqItem question="Что входит в Free?">
+            3 AI-запроса в день, еженедельный дайджест, базовый match-score. Без ограничения по времени.
+          </FaqItem>
+          <FaqItem question="Как работает биллинг?">
+            Через ЮKassa. Принимаем карты, СБП, ЮMoney. Чек на email автоматически.
+          </FaqItem>
+          <FaqItem question="Возврат?">
+            В течение 14 дней — полный возврат. После — пропорционально оставшимся дням.
+          </FaqItem>
+          <FaqItem question="Есть триал для Pro?">
+            Пока нет отдельного триала — Free-тариф и есть триал. Попробуй, и если 3 запросов мало — переходи на Pro.
+          </FaqItem>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

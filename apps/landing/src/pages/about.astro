@@ -1,0 +1,55 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="О Proshli" description="Solo-проект для решения job-search fatigue в IT. Стек, история, контакты.">
+  <section class="py-32 px-6">
+    <div class="mx-auto max-w-3xl">
+      <h1 class="text-32 md:text-48 font-extrabold tracking-tight mb-12">О проекте</h1>
+
+      <div class="space-y-8 text-16 text-landing-text-muted leading-loose">
+        <p>
+          Proshli — это попытка решить «job-search fatigue» в IT. Слишком много вакансий,
+          слишком много шума, слишком много copy-paste-описаний. AI-фильтр читает вакансии
+          за тебя и шлёт только релевантные матчи.
+        </p>
+
+        <p>
+          Сейчас это solo-проект. Привет, я Alex. Делаю в свободное время по вечерам
+          и выходным. Задолбался листать hh каждый день — сделал инструмент для себя,
+          потом решил открыть для всех.
+        </p>
+      </div>
+
+      <div class="mt-16 pt-12 border-t border-white/5">
+        <h2 class="text-20 font-semibold mb-6">Технически</h2>
+        <div class="text-14 text-landing-text-muted leading-loose space-y-3">
+          <p>
+            <span class="font-mono text-12 text-white/50">backend</span> —
+            Python, FastAPI 0.115, async SQLAlchemy 2, Celery 5, Postgres + pgvector
+          </p>
+          <p>
+            <span class="font-mono text-12 text-white/50">frontend</span> —
+            Astro 5 (лендинг), Next.js 16 (приложение), Tailwind, React 19
+          </p>
+          <p>
+            <span class="font-mono text-12 text-white/50">ai</span> —
+            Anthropic Claude, embedding 1024-dim, cosine similarity для match-score
+          </p>
+          <p>
+            <span class="font-mono text-12 text-white/50">infra</span> —
+            один VPS, Caddy, Docker Compose, GitHub Actions CI
+          </p>
+        </div>
+      </div>
+
+      <div class="mt-16 pt-12 border-t border-white/5">
+        <h2 class="text-20 font-semibold mb-6">Контакты</h2>
+        <p class="text-14 text-landing-text-muted leading-loose">
+          Баги, идеи, вопросы — пиши в Telegram:
+          <a href="https://t.me/proshli_contact" class="text-landing-accent-start hover:underline">@proshli_contact</a>.
+        </p>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

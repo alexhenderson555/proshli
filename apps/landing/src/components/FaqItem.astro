@@ -1,0 +1,16 @@
+---
+interface Props { question: string }
+const { question } = Astro.props;
+---
+
+<details class="group rounded-lg border border-white/8 bg-white/[0.02] open:border-landing-accent-start/30 transition-colors">
+  <summary class="flex items-center justify-between cursor-pointer list-none p-5 text-14 font-medium select-none">
+    <span>{question}</span>
+    <svg class="w-4 h-4 text-landing-text-muted transition-transform group-open:rotate-180 shrink-0 ml-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M6 9l6 6 6-6" />
+    </svg>
+  </summary>
+  <div class="px-5 pb-5 text-13 text-landing-text-muted leading-loose">
+    <slot />
+  </div>
+</details>
