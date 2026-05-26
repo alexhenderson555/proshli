@@ -52,3 +52,6 @@ yc-sa-key.json
 
 # Postgres backups (created by ops/backup-db.ps1)
 backups/
+
+# Superpowers brainstorming session artifacts
+.superpowers/
