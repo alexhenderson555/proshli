@@ -4,9 +4,9 @@
 # Cloudflare is in front (proxied), so the cert chain still works because
 # CF connects to origin via TLS too (set SSL/TLS mode = Full strict).
 #
-# Layout: single domain.
-#   /            → Next.js  (proshli-web:3000)
-#   /api/*       → FastAPI  (proshli-api:8000)  — strip /api prefix before forwarding
+# Layout: split-host.
+#   proshli.ru   → Astro landing (proshli-landing:80)  + /api/* → FastAPI
+#   app.proshli.ru → Next.js (proshli-web:3000)        + /api/* → FastAPI
 #
 # Production tweaks:
 #   - Gzip + zstd compression
@@ -24,13 +24,9 @@
 		}
 	}
 
-	# Everything else → Next.js.
+	# Everything else → Astro landing (static, served by nginx).
 	handle {
-		# Long-cache Next's immutable static bundle.
-		@nextstatic path /_next/static/*
-		header @nextstatic Cache-Control "public, max-age=31536000, immutable"
-
-		reverse_proxy web:3000 {
+		reverse_proxy landing:80 {
 			header_up X-Real-IP {remote_host}
 		}
 	}
@@ -52,19 +48,9 @@ www.{$PROSHLI_DOMAIN} {
 	redir https://{$PROSHLI_DOMAIN}{uri} permanent
 }
 
-# app.proshli.ru — подготовительный блок для будущего host-split.
-#
-# Phase 1 (Astro landing) подменит верхний блок: proshli.ru начнёт
-# указывать на новый контейнер proshli-landing, а этот блок останется
-# на текущем Next.js. Так пользователи не теряют сессию в момент
-# переключения DNS — JWT cookie на app.proshli.ru продолжает работать.
-#
-# Phase 2 (Next.js app rewrite) поменяет образ web на новый, но host
-# тот же.
-#
-# Пока DNS-запись app.proshli.ru не создана, этот блок просто не
-# принимает трафик — Caddy stays idle. Активируется когда оператор
-# вручную добавит A-запись на VPS IP.
+# app.proshli.ru — Next.js application (authenticated screens).
+# JWT cookie lives on this subdomain. Phase 2 will rewrite the app shell
+# but the host stays the same.
 app.proshli.ru {
 	encode zstd gzip
 

@@ -1,6 +1,6 @@
 name: Build & Push
 
-# Builds and pushes one image per app (api / web / workers) to the Yandex
+# Builds and pushes one image per app (api / web / workers / landing) to the Yandex
 # Container Registry on every merge to main. Requires two repo secrets:
 #   YC_SA_JSON_KEY  — yc-sa-key.json contents (service-account deployer)
 #   YC_REGISTRY_ID  — the target Container Registry ID
@@ -40,7 +40,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        service: [api, web, workers]
+        service: [api, web, workers, landing]
     steps:
       - uses: actions/checkout@v4
 

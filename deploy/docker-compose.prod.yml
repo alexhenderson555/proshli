@@ -6,6 +6,7 @@
 #   - workers (Celery beat + worker, no exposed ports)
 #   - tgbot (aiogram polling, no exposed ports)
 #   - web (Next.js, internal)
+#   - landing (Astro static, nginx, internal)
 #   - caddy (TLS terminator + reverse proxy on 80/443)
 #
 # All public traffic enters via Caddy on 80/443.
@@ -164,6 +165,20 @@ services:
     expose:
       - "3000"
 
+  landing:
+    image: ${LANDING_IMAGE:-proshli-landing:latest}
+    container_name: proshli-landing
+    restart: unless-stopped
+    networks:
+      - proshli
+    expose:
+      - "80"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
   caddy:
     image: caddy:2-alpine
     container_name: proshli-caddy
@@ -181,6 +196,7 @@ services:
     depends_on:
       - api
       - web
+      - landing
     networks:
       - proshli
 
