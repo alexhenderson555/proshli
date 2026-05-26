@@ -51,3 +51,43 @@
 www.{$PROSHLI_DOMAIN} {
 	redir https://{$PROSHLI_DOMAIN}{uri} permanent
 }
+
+# app.proshli.ru — подготовительный блок для будущего host-split.
+#
+# Phase 1 (Astro landing) подменит верхний блок: proshli.ru начнёт
+# указывать на новый контейнер proshli-landing, а этот блок останется
+# на текущем Next.js. Так пользователи не теряют сессию в момент
+# переключения DNS — JWT cookie на app.proshli.ru продолжает работать.
+#
+# Phase 2 (Next.js app rewrite) поменяет образ web на новый, но host
+# тот же.
+#
+# Пока DNS-запись app.proshli.ru не создана, этот блок просто не
+# принимает трафик — Caddy stays idle. Активируется когда оператор
+# вручную добавит A-запись на VPS IP.
+app.proshli.ru {
+	encode zstd gzip
+
+	handle_path /api/* {
+		reverse_proxy api:8000 {
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	handle {
+		@nextstatic path /_next/static/*
+		header @nextstatic Cache-Control "public, max-age=31536000, immutable"
+
+		reverse_proxy web:3000 {
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+}
