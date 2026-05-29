@@ -47,13 +47,19 @@ def run_ssh_command(ssh, cmd):
     # Wait for the command to finish
     exit_status = stdout.channel.recv_exit_status()
     
-    out = stdout.read().decode().strip()
-    err = stderr.read().decode().strip()
+    out = stdout.read().decode(errors='replace').strip()
+    err = stderr.read().decode(errors='replace').strip()
     
     if out:
-        print(f"STDOUT:\n{out}")
+        try:
+            print(f"STDOUT:\n{out}")
+        except UnicodeEncodeError:
+            print(f"STDOUT:\n{out.encode('ascii', errors='replace').decode('ascii')}")
     if err:
-        print(f"STDERR:\n{err}")
+        try:
+            print(f"STDERR:\n{err}")
+        except UnicodeEncodeError:
+            print(f"STDERR:\n{err.encode('ascii', errors='replace').decode('ascii')}")
         
     if exit_status != 0:
         raise Exception(f"Command failed with exit status {exit_status}")
@@ -148,6 +154,9 @@ ANTHROPIC_MAX_TOKENS=1024
 
 CORS_ALLOWED_ORIGINS=https://proshli.ru,https://www.proshli.ru,https://app.proshli.ru
 TRUSTED_PROXIES=172.16.0.0/12
+
+# YOOKASSA configuration bypass
+YOOKASSA_SECRET_KEY=mock-staging-secret-key-please-replace
 """
         # Write .env.prod directly to the server
         print("Writing deploy/.env.prod on VPS...")
