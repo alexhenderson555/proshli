@@ -219,7 +219,7 @@ export default function HeroAiDemo() {
           >
             <span className="text-12 text-white/50">Хочешь получать такие вакансии каждое утро?</span>
             <a
-              href="https://app.proshli.ru/auth/register"
+              href="https://app.proshli.ru/auth?mode=register"
               className="inline-flex items-center gap-1.5 text-12 font-semibold text-landing-accent-start hover:text-landing-accent-end hover:underline transition-colors"
             >
               Зарегистрируйся бесплатно

@@ -115,7 +115,7 @@ export default function TimeCalculator() {
               </div>
             </div>
             <a
-              href="https://app.proshli.ru/auth/register"
+              href="https://app.proshli.ru/auth?mode=register"
               className="text-12 font-bold text-white bg-landing-accent-start hover:opacity-95 px-4 h-9 inline-flex items-center rounded-lg shadow-glow active:scale-[0.98] transition-all duration-200"
             >
               Забрать выгоду

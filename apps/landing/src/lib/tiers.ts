@@ -19,7 +19,7 @@ export const tiers: Tier[] = [
       "Базовый match-score",
     ],
     cta: "Начать",
-    ctaHref: "https://app.proshli.ru/auth/register",
+    ctaHref: "https://app.proshli.ru/auth?mode=register",
   },
   {
     name: "Pro",

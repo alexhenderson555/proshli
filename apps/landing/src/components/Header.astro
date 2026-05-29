@@ -40,9 +40,9 @@ const currentLocale = Astro.currentLocale || "ru";
       <a href={currentLocale === "ru" ? "/en/" : "/"} class="text-12 text-landing-text-muted hover:text-landing-text-primary hidden sm:block">
         {currentLocale === "ru" ? "EN" : "RU"}
       </a>
-      <a href="https://app.proshli.ru/auth/login" class="text-13 text-landing-text-muted hover:text-landing-text-primary hidden sm:block">Войти</a>
+      <a href="https://app.proshli.ru/auth" class="text-13 text-landing-text-muted hover:text-landing-text-primary hidden sm:block">Войти</a>
       <a
-        href="https://app.proshli.ru/auth/register"
+        href="https://app.proshli.ru/auth?mode=register"
         class="rounded-md bg-gradient-to-r from-landing-accent-start to-landing-accent-end px-3 h-8 inline-flex items-center text-13 font-medium text-white shadow-glow hidden sm:inline-flex"
       >
         Регистрация
@@ -80,9 +80,9 @@ const currentLocale = Astro.currentLocale || "ru";
         </a>
       ))}
       <div class="pt-3 mt-3 border-t border-white/5 flex items-center gap-4">
-        <a href="https://app.proshli.ru/auth/login" class="text-14 text-landing-text-muted hover:text-landing-text-primary">Войти</a>
+        <a href="https://app.proshli.ru/auth" class="text-14 text-landing-text-muted hover:text-landing-text-primary">Войти</a>
         <a
-          href="https://app.proshli.ru/auth/register"
+          href="https://app.proshli.ru/auth?mode=register"
           class="rounded-md bg-gradient-to-r from-landing-accent-start to-landing-accent-end px-4 h-9 inline-flex items-center text-13 font-medium text-white shadow-glow"
         >
           Регистрация

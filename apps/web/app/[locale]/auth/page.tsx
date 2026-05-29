@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import { KeyRound, ShieldAlert } from "lucide-react";
 
 import { Button, Input, Select } from "@/components/ui";
@@ -16,7 +17,12 @@ type Mode = "login" | "register";
 export default function AuthPage() {
   const t = useTranslations("auth");
   const tCommon = useTranslations("common");
-  const [mode, setMode] = useState<Mode>("login");
+  // Лендинг линкует «Регистрация» как /auth?mode=register, «Войти» — как /auth.
+  // Без этого обе кнопки приводят на login-форму и юзеру приходится кликать
+  // toggle вручную — мелочь, но первое впечатление портит.
+  const searchParams = useSearchParams();
+  const initialMode: Mode = searchParams?.get("mode") === "register" ? "register" : "login";
+  const [mode, setMode] = useState<Mode>(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"seeker" | "employer">("seeker");
