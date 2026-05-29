@@ -6,11 +6,14 @@ import type {
   EmployerVacancyAnalyticsOut,
   EmployerVacancyPageOut,
   MatchScoreOut,
+  PlanOut,
   SeekerProfileOut,
+  SubscriptionOut,
   TokenResponse,
   UserOut,
   Vacancy,
   VacancyStatsOut,
+  CheckoutResponse,
 } from "@/lib/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
@@ -171,6 +174,30 @@ export const api = {
       body: payload,
     });
   },
+  resumeVersions(token: string) {
+    return request<import("./types").ResumeVersionOut[]>("/resumes/versions", { token });
+  },
+  createResumeVersion(
+    token: string,
+    payload: { name: string; target_role: string; content: Record<string, unknown> }
+  ) {
+    return request<import("./types").ResumeVersionOut>("/resumes/versions", {
+      method: "POST",
+      token,
+      body: payload,
+    });
+  },
+  improveResumeVersion(
+    token: string,
+    versionId: number,
+    payload: import("./types").ResumeImproveRequest
+  ) {
+    return request<import("./types").ResumeImproveResponse>(`/resumes/versions/${versionId}/improve`, {
+      method: "POST",
+      token,
+      body: payload,
+    });
+  },
   employerVacanciesPage(
     token: string,
     query: { status: string; sort_by: string; order: string; page: number; page_size: number },
@@ -246,5 +273,24 @@ export const api = {
         body: { message },
       },
     );
+  },
+  listPlans() {
+    return request<PlanOut[]>("/billing/plans");
+  },
+  mySubscription(token: string) {
+    return request<SubscriptionOut>("/billing/me", { token });
+  },
+  checkout(token: string, planSlug: string, returnUrl: string) {
+    return request<CheckoutResponse>("/billing/checkout", {
+      method: "POST",
+      token,
+      body: { plan_slug: planSlug, return_url: returnUrl },
+    });
+  },
+  cancelSubscription(token: string) {
+    return request<SubscriptionOut>("/billing/cancel", {
+      method: "POST",
+      token,
+    });
   },
 };

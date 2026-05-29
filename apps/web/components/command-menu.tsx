@@ -23,12 +23,10 @@ import {
 import { Dialog, DialogContent } from "@proshli/ui-v2";
 import { api } from "@/lib/api";
 import type { Vacancy } from "@/lib/types";
-import { usePathname } from "@/i18n/navigation";
 
 export function CommandMenu() {
   const t = useTranslations("commandMenu");
   const router = useRouter();
-  const pathname = usePathname();
   const { setTheme } = useTheme();
   
   const [open, setOpen] = useState(false);
@@ -50,13 +48,12 @@ export function CommandMenu() {
 
   // Debounced search for vacancies
   useEffect(() => {
-    if (!search.trim()) {
-      setVacancies([]);
-      return;
-    }
-    
     const handler = setTimeout(() => {
       startTransition(async () => {
+        if (!search.trim()) {
+          setVacancies([]);
+          return;
+        }
         try {
           // Pass the query as stack filter to search title/description
           const results = await api.vacancies({ stack: search });

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
-import { Bot, Sparkles, Loader2, X, Send, ArrowRight } from "lucide-react";
+import { Bot, Loader2, Send, ArrowRight } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@proshli/ui-v2";
@@ -115,14 +115,14 @@ export function AiPanel() {
         setMessages((prev) => [
           ...prev,
           {
-            id: `error-${Date.now()}`,
+            id: `error-${crypto.randomUUID()}`,
             role: "assistant",
             content: `Ошибка: ${event.message}`,
           },
         ]);
         break;
     }
-  }, [t]);
+  }, []);
 
   const sendMessage = async (textToSend: string) => {
     const trimmed = textToSend.trim();
@@ -132,7 +132,7 @@ export function AiPanel() {
     if (!token) {
       setMessages((prev) => [
         ...prev,
-        { id: `err-auth-${Date.now()}`, role: "assistant", content: t("statusNeedsAuth") },
+        { id: `err-auth-${crypto.randomUUID()}`, role: "assistant", content: t("statusNeedsAuth") },
       ]);
       return;
     }
@@ -142,7 +142,7 @@ export function AiPanel() {
     abortRef.current = controller;
 
     // Add user message
-    const userMsgId = `user-${Date.now()}`;
+    const userMsgId = `user-${crypto.randomUUID()}`;
     setMessages((prev) => [
       ...prev,
       { id: userMsgId, role: "user", content: trimmed },
@@ -150,7 +150,7 @@ export function AiPanel() {
     setInput("");
 
     // Setup placeholder for assistant response
-    const assistantMsgId = `assistant-${Date.now()}`;
+    const assistantMsgId = `assistant-${crypto.randomUUID()}`;
     setMessages((prev) => [
       ...prev,
       { id: assistantMsgId, role: "assistant", content: "" },

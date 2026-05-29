@@ -17,10 +17,39 @@ export type {
   EmployerVacancyPageOut,
   MatchScoreOut,
   MatchTier,
+  PlanOut,
   RoleType,
   SeekerProfileOut,
+  SubscriptionOut,
   TokenResponse,
   UserOut,
   Vacancy,
   VacancyStatsOut,
 } from "@proshli/shared-types";
+
+export interface CheckoutResponse {
+  confirmation_url: string;
+  payment_id: string;
+  status: string;
+}
+
+export interface ResumeVersionOut {
+  id: number;
+  name: string;
+  target_role: string;
+  content: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface ResumeImproveRequest {
+  target_role?: string;
+  focus?: string;
+}
+
+export interface ResumeImproveResponse {
+  summary: string;
+  suggestions: string[];
+  used_today: number;
+  limit: number;
+  backend: string;
+}

@@ -101,9 +101,8 @@ the batch.
 
 ## Next milestones
 
-1. Production deploy on Yandex Cloud (managed Postgres + Redis,
-   container registry, staging environment).
-2. Self-hosted GlitchTip / Plausible to replace SaaS observability.
+1. Production deploy on a single VPS (Docker Compose, Postgres + pgvector, Redis, Traefik/Caddy for routing).
+2. Self-hosted GlitchTip / Plausible to replace SaaS observability on the same VPS.
 3. Framer Motion for the marketing surfaces called out in the design
    spec.
 4. Storybook for `packages/ui` and a visual-regression suite.

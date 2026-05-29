@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Sparkles, SlidersHorizontal, Cpu, Eye } from "lucide-react";
+import { Sparkles, SlidersHorizontal, Cpu } from "lucide-react";
 
 import { VacancyCard } from "@/components/vacancy-card";
 import { Button, Input, Select, Textarea } from "@/components/ui";
@@ -60,7 +60,8 @@ export default function VacanciesPage() {
   }, [level, location, minSalary, source, stack, workMode, t]);
 
   useEffect(() => {
-    void search();
+    const t = setTimeout(() => void search(), 0);
+    return () => clearTimeout(t);
   }, [search]);
 
   async function runAiComposer() {

@@ -3,11 +3,9 @@
 // yet; the CTAs route to /auth (free) or surface contact info (team).
 // Pro will swap its CTA over to a checkout flow once ЮKassa is wired in.
 
-import { Check } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-
-import { Link } from "@/i18n/navigation";
-import { FadeIn, Stagger } from "@proshli/ui";
+import { FadeIn } from "@proshli/ui";
+import { BillingPlans } from "@/components/billing-plans";
 
 type PlanKey = "free" | "pro" | "team";
 
@@ -97,67 +95,11 @@ export default async function BillingPage({
       </FadeIn>
 
       {/* Plans */}
-      <Stagger step={0.07} immediate className="grid gap-4 sm:grid-cols-3">
-        {plans.map((plan) => {
-          const isMailto = plan.href.startsWith("mailto:");
-          const ctaClass = plan.highlight
-            ? "inline-flex w-full items-center justify-center rounded bg-accent px-3 py-2 text-[13px] font-[510] text-white transition-colors hover:bg-accent-hover active:bg-accent-active"
-            : "inline-flex w-full items-center justify-center rounded border border-border bg-elevated px-3 py-2 text-[13px] font-[510] text-text-primary transition-colors hover:border-border-strong";
-          return (
-            <article
-              key={plan.key}
-              className={
-                "relative flex flex-col gap-5 rounded border bg-surface p-5 " +
-                (plan.highlight ? "border-accent" : "border-border")
-              }
-            >
-              {plan.highlight ? (
-                <span className="absolute -top-2 left-4 inline-flex items-center rounded-sm border border-accent bg-canvas px-1.5 py-px text-[10px] font-[510] uppercase tracking-[0.1em] text-accent">
-                  {t("planProBadge")}
-                </span>
-              ) : null}
-
-              <div className="flex flex-col gap-2">
-                <div className="kicker">{plan.name}</div>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-[32px] font-[580] tabular-nums leading-none tracking-[-0.02em] text-text-primary">
-                    {plan.price}
-                  </span>
-                  <span className="text-[12px] font-[510] text-text-tertiary">
-                    {plan.period}
-                  </span>
-                </div>
-                <p className="text-[13px] leading-[1.55] text-text-secondary">{plan.desc}</p>
-              </div>
-
-              <div className="flex flex-col gap-2 border-t border-border pt-4">
-                <div className="kicker">{t("featuresHeader")}</div>
-                <ul className="flex flex-col gap-1.5">
-                  {plan.features.map((feature) => (
-                    <li
-                      key={feature}
-                      className="flex items-start gap-2 text-[13px] leading-[1.5] text-text-secondary"
-                    >
-                      <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent" aria-hidden="true" />
-                      <span>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {isMailto ? (
-                <a href={plan.href} className={ctaClass}>
-                  {plan.cta}
-                </a>
-              ) : (
-                <Link href={plan.href} className={ctaClass}>
-                  {plan.cta}
-                </Link>
-              )}
-            </article>
-          );
-        })}
-      </Stagger>
+      <BillingPlans 
+        plans={plans}
+        featuresHeader={t("featuresHeader")}
+        planProBadge={t("planProBadge")}
+      />
 
       {/* FAQ — bordered list, no fancy accordion */}
       <section className="mx-auto flex w-full max-w-2xl flex-col gap-3">
