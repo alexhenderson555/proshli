@@ -31,13 +31,19 @@ from typing import Any
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
+from sqlalchemy import desc, select
 
 from app.auth import get_current_user
 from app.config import settings
 from app.deps import DbSession
 from app.middleware.rate_limit import RateLimit
-from app.models import User
-from app.schemas import AiChatRequest, AiChatResponse
+from app.models import Resume, SeekerProfile, User, Vacancy
+from app.schemas import (
+    AiChatRequest,
+    AiChatResponse,
+    CoverLetterRequest,
+    CoverLetterResponse,
+)
 from app.services.ai_guardrails import (
     can_use_ai_today,
     extract_basic_filters,
@@ -300,4 +306,106 @@ async def ai_chat_stream(
             "X-Accel-Buffering": "no",
             "Connection": "keep-alive",
         },
+    )
+
+
+# ---------------------------------------------------------------------------
+# Cover letter draft (single-shot JSON; uses the same daily AI budget)
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/cover-letter",
+    response_model=CoverLetterResponse,
+    dependencies=[
+        # Slightly tighter than /ai/chat — cover letters are heavier prompts
+        # (full resume + JD) so we don't want one client draining the budget.
+        Depends(RateLimit("ai-cover-letter", limit=5, window_seconds=60)),
+    ],
+)
+async def cover_letter(
+    payload: CoverLetterRequest,
+    db: DbSession,
+    current_user: User = Depends(get_current_user),
+) -> CoverLetterResponse:
+    """Draft a tailored cover letter for one vacancy.
+
+    Seeker-only; counts against the same per-day AI budget as ``/ai/chat``
+    and ``/resumes/.../improve``. The seeker's profile + most recent
+    resume are resolved server-side so the FE only has to pass the
+    vacancy id, tone, and language.
+    """
+    if current_user.role != "seeker":
+        raise HTTPException(
+            status_code=403, detail="Only seekers can generate cover letters"
+        )
+
+    vacancy = await db.get(Vacancy, payload.vacancy_id)
+    if vacancy is None or vacancy.is_deleted:
+        raise HTTPException(status_code=404, detail="Vacancy not found")
+
+    profile = await db.scalar(
+        select(SeekerProfile).where(SeekerProfile.user_id == current_user.id)
+    )
+    # The profile is optional but heavily desirable — empty profile means
+    # the rule-based path has to compose a generic letter. We don't 404
+    # the user here; instead we just pass empty fields through. Their UI
+    # nudges them to fill the profile first via a separate hint.
+
+    latest_resume = await db.scalar(
+        select(Resume)
+        .where(Resume.user_id == current_user.id)
+        .order_by(desc(Resume.created_at))
+        .limit(1)
+    )
+
+    allowed, used_today, limit = await can_use_ai_today(db, current_user)
+    if not allowed:
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "code": "daily_limit_reached",
+                "limit": limit,
+                "used_today": used_today,
+            },
+        )
+
+    skills_csv = (profile.skills_csv if profile else "") or ""
+    skills_list = [s.strip() for s in skills_csv.split(",") if s.strip()]
+    seeker_blob: dict[str, Any] = {
+        "full_name": profile.full_name if profile else "",
+        "target_role": profile.target_role if profile else "",
+        "location": profile.location if profile else "",
+        "about": profile.about if profile else "",
+        "skills": skills_list,
+        # Trim resume text so the prompt stays bounded — the LLM doesn't
+        # need the full document to write a 3-paragraph letter, and the
+        # cache benefits from a stable upper bound.
+        "resume_text": (latest_resume.raw_text[:4000] if latest_resume else ""),
+    }
+    vacancy_blob: dict[str, Any] = {
+        "title": vacancy.title,
+        "company": vacancy.company,
+        "location": vacancy.location,
+        "description": (vacancy.description or "")[:4000],
+    }
+
+    llm = get_llm_service()
+    letter = await llm.cover_letter(
+        seeker=seeker_blob,
+        vacancy=vacancy_blob,
+        tone=payload.tone,
+        language=payload.language,
+    )
+
+    # Budget after success (same convention as /ai/chat and /resumes/improve).
+    await store_ai_usage(
+        db, current_user, prompt_chars=len(vacancy_blob["description"]) + len(seeker_blob["resume_text"])
+    )
+
+    return CoverLetterResponse(
+        body=letter.body,
+        used_today=used_today + 1,
+        limit=limit,
+        backend=llm.name,
     )

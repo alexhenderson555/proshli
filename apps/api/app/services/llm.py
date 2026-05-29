@@ -33,6 +33,7 @@ from typing import Any, Protocol, cast
 import structlog
 from app.config import settings
 from app.services.ai_guardrails import extract_basic_filters
+from app.services.ai_metrics import record_outcome, record_usage
 
 log = structlog.get_logger(__name__)
 
@@ -122,6 +123,18 @@ class ResumeImprovement:
     suggestions: list[str] = field(default_factory=list)
 
 
+@dataclass(slots=True)
+class CoverLetter:
+    """Single-shot cover letter draft.
+
+    ``body`` is the full text (3–5 short paragraphs, plain prose, no
+    salutation/sign-off — the FE adds those around the body so the
+    seeker can replace the addressee without rerunning the model).
+    """
+
+    body: str
+
+
 class LLMService(Protocol):
     """Protocol implemented by both the real and fallback services.
 
@@ -162,6 +175,26 @@ class LLMService(Protocol):
         is a free-form hint (e.g. "сделай акцент на ML"). Implementations
         must never raise — fall back to a scripted answer if the model
         errors so the route layer can surface a clean response.
+        """
+        ...
+
+    async def cover_letter(
+        self,
+        *,
+        seeker: dict[str, Any],
+        vacancy: dict[str, Any],
+        tone: str,
+        language: str,
+    ) -> CoverLetter:
+        """Draft a tailored cover letter for a vacancy.
+
+        ``seeker`` is a compact dict of the seeker's profile + most recent
+        resume (``full_name``, ``target_role``, ``skills``, ``about``,
+        ``resume_text``). ``vacancy`` carries the role's ``title``,
+        ``company``, ``location``, and ``description``. ``tone`` is
+        ``"formal"`` or ``"friendly"``; ``language`` is ``"ru"`` or
+        ``"en"``. Implementations must never raise — return a sensible
+        scripted fallback so the route layer can always reply.
         """
         ...
 
@@ -237,6 +270,59 @@ class RuleBasedLLMService:
             "ключевые технологии и поддающиеся проверке достижения."
         )
         return ResumeImprovement(summary=summary, suggestions=suggestions[:5])
+
+    async def cover_letter(
+        self,
+        *,
+        seeker: dict[str, Any],
+        vacancy: dict[str, Any],
+        tone: str,
+        language: str,
+    ) -> CoverLetter:
+        """Scripted fallback. Composes a plausible 3-paragraph letter using
+        what's known about the seeker and the role. No model — but it's
+        coherent enough that the UI is testable without an API key.
+        """
+        target = str(seeker.get("target_role") or vacancy.get("title") or "")
+        company = str(vacancy.get("company") or "вашей компании")
+        title = str(vacancy.get("title") or target or "позицию")
+        skills_raw = seeker.get("skills")
+        if isinstance(skills_raw, list):
+            skills = ", ".join(str(s) for s in skills_raw[:5] if s)
+        else:
+            skills = ""
+        about = str(seeker.get("about") or "").strip()
+
+        if language == "en":
+            opener = (
+                f"I'm writing to express interest in the {title} role at {company}."
+            )
+            mid = (
+                f"My background centers on {skills}. {about}"
+                if skills or about
+                else "My background includes hands-on work on similar problems."
+            )
+            close = (
+                "I'd welcome the chance to discuss how my experience could fit."
+                if tone == "formal"
+                else "Happy to chat anytime — let me know what works."
+            )
+        else:
+            opener = (
+                f"Пишу вам с интересом к позиции «{title}» в {company}."
+            )
+            mid = (
+                f"Мой опыт связан с {skills}. {about}".strip()
+                if skills or about
+                else "За плечами — опыт на похожих задачах и измеримые результаты."
+            )
+            close = (
+                "Буду рад обсудить, как мой опыт может усилить команду."
+                if tone == "formal"
+                else "Готов созвониться в удобное время — дайте знать."
+            )
+        body = f"{opener}\n\n{mid}\n\n{close}"
+        return CoverLetter(body=body)
 
 
 class AnthropicLLMService:
@@ -330,6 +416,8 @@ class AnthropicLLMService:
                             yield "filter", {"key": key, "value": value.strip()}
 
             usage = getattr(final, "usage", None)
+            record_usage("chat", usage)
+            record_outcome("chat", "success")
             if usage is not None:
                 yield "usage", {
                     "input_tokens": int(getattr(usage, "input_tokens", 0) or 0),
@@ -342,6 +430,7 @@ class AnthropicLLMService:
             # ``data-done``. Letting the exception bubble would tear down
             # the SSE generator without telling the FE why.
             log.warning("llm.anthropic_failed", error=str(exc))
+            record_outcome("chat", "error")
             yield "content", "Сейчас не удаётся достучаться до модели. Попробуй ещё раз через минуту."
 
     async def improve_resume(
@@ -417,8 +506,10 @@ class AnthropicLLMService:
                 tool_choice=cast(Any, {"type": "tool", "name": "emit_resume_improvement"}),
                 messages=cast(Any, [{"role": "user", "content": user_message}]),
             )
+            record_usage("improve_resume", getattr(response, "usage", None))
         except Exception as exc:  # pragma: no cover — network / quota faults
             log.warning("llm.improve_resume_failed", error=str(exc))
+            record_outcome("improve_resume", "error")
             return await RuleBasedLLMService().improve_resume(
                 content=content, target_role=target_role, focus=focus
             )
@@ -454,11 +545,117 @@ class AnthropicLLMService:
                 summary_len=len(summary),
                 suggestion_count=len(suggestions),
             )
+            record_outcome("improve_resume", "error")
             return await RuleBasedLLMService().improve_resume(
                 content=content, target_role=target_role, focus=focus
             )
 
+        record_outcome("improve_resume", "success")
         return ResumeImprovement(summary=summary, suggestions=suggestions)
+
+    async def cover_letter(
+        self,
+        *,
+        seeker: dict[str, Any],
+        vacancy: dict[str, Any],
+        tone: str,
+        language: str,
+    ) -> CoverLetter:
+        """Generate a tailored cover letter via tool-use.
+
+        We force a single ``emit_cover_letter`` tool call so the model
+        returns plain text in a predictable shape (no prose-around-JSON
+        parsing). Fallback to the rule-based draft on any error keeps
+        the endpoint usable.
+        """
+        seeker_blob = json.dumps(seeker, ensure_ascii=False)
+        vacancy_blob = json.dumps(vacancy, ensure_ascii=False)
+        lang_label = "русском" if language == "ru" else "английском"
+        tone_label = (
+            "официальный, деловой"
+            if tone == "formal"
+            else "дружелюбный, разговорный, но профессиональный"
+        )
+
+        system_prompt = (
+            "Ты — карьерный консультант сервиса Proshli. По данным кандидата и "
+            "вакансии составляешь короткое сопроводительное письмо: 3 абзаца "
+            f"на {lang_label} языке, тон — {tone_label}. Без приветствия и "
+            "подписи (их добавит интерфейс). Не выдумывай факты: опирайся "
+            "только на то, что есть в данных кандидата. Всегда вызывай "
+            "инструмент emit_cover_letter."
+        )
+        tool: dict[str, Any] = {
+            "name": "emit_cover_letter",
+            "description": "Возвращает текст сопроводительного письма.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "body": {
+                        "type": "string",
+                        "description": (
+                            "Текст письма (3 абзаца, разделённые двойным "
+                            "переносом строки). Без приветствия/подписи."
+                        ),
+                    },
+                },
+                "required": ["body"],
+            },
+        }
+        user_message = (
+            f"Кандидат:\n{seeker_blob}\n\nВакансия:\n{vacancy_blob}"
+        )
+
+        try:
+            response = await self._client.messages.create(
+                model=self._model,
+                max_tokens=self._max_tokens,
+                system=cast(
+                    Any,
+                    [
+                        {
+                            "type": "text",
+                            "text": system_prompt,
+                            "cache_control": {"type": "ephemeral"},
+                        }
+                    ],
+                ),
+                tools=cast(Any, [tool]),
+                tool_choice=cast(Any, {"type": "tool", "name": "emit_cover_letter"}),
+                messages=cast(Any, [{"role": "user", "content": user_message}]),
+            )
+            record_usage("cover_letter", getattr(response, "usage", None))
+        except Exception as exc:  # pragma: no cover — network / quota faults
+            log.warning("llm.cover_letter_failed", error=str(exc))
+            record_outcome("cover_letter", "error")
+            return await RuleBasedLLMService().cover_letter(
+                seeker=seeker, vacancy=vacancy, tone=tone, language=language
+            )
+
+        body = ""
+        for block in getattr(response, "content", []):
+            if getattr(block, "type", "") == "tool_use":
+                raw_input = getattr(block, "input", {}) or {}
+                if isinstance(raw_input, str):
+                    try:
+                        raw_input = json.loads(raw_input)
+                    except json.JSONDecodeError:
+                        raw_input = {}
+                if isinstance(raw_input, dict):
+                    value = raw_input.get("body")
+                    if isinstance(value, str):
+                        body = value.strip()
+                break
+
+        if not body:
+            log.warning("llm.cover_letter_empty_tool_call")
+            record_outcome("cover_letter", "error")
+            return await RuleBasedLLMService().cover_letter(
+                seeker=seeker, vacancy=vacancy, tone=tone, language=language
+            )
+
+        record_outcome("cover_letter", "success")
+        return CoverLetter(body=body)
 
 
 @lru_cache(maxsize=1)

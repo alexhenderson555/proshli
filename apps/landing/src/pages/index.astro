@@ -2,8 +2,12 @@
 import BaseLayout from "../layouts/BaseLayout.astro";
 import HeroAiDemo from "../components/HeroAiDemo.tsx";
 import HeroBackdrop from "../components/HeroBackdrop.tsx";
+import TelegramMockup from "../components/TelegramMockup.astro";
+import Testimonials from "../components/Testimonials.astro";
 import PricingCard from "../components/PricingCard.astro";
 import FaqItem from "../components/FaqItem.astro";
+import AnimatedCounter from "../components/AnimatedCounter.tsx";
+import Reveal from "../components/Reveal.tsx";
 import { tiers } from "../lib/tiers";
 ---
 
@@ -13,24 +17,32 @@ import { tiers } from "../lib/tiers";
     <HeroBackdrop client:load />
     <div class="mx-auto max-w-6xl w-full grid md:grid-cols-[1fr_1.2fr] gap-12 md:gap-16 items-center py-24">
       <div>
-        <p class="text-13 font-mono text-landing-text-muted mb-4 tracking-wide">12 847 вакансий · 50+ источников · обновление каждый час</p>
-        <h1 class="text-32 md:text-48 lg:text-72 font-extrabold tracking-tight leading-tight">
+        <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10 bg-white/[0.03] mb-6">
+          <span class="relative flex h-2 w-2">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-2 w-2 bg-green-400"></span>
+          </span>
+          <span class="text-12 text-landing-text-muted">Обновлено 12 мин назад · 12 847 вакансий</span>
+        </div>
+        <h1 class="text-32 md:text-48 lg:text-64 font-extrabold tracking-tight leading-[1.1]">
           AI читает вакансии,<br class="hidden md:block" />
-          <span class="bg-clip-text text-transparent bg-gradient-to-r from-white to-purple-300">ты не читаешь</span>
+          <span class="bg-clip-text text-transparent bg-gradient-to-r from-white via-purple-200 to-purple-400">ты не читаешь</span>
         </h1>
-        <p class="mt-6 text-16 text-landing-text-muted leading-loose max-w-md">
+        <p class="mt-6 text-16 md:text-18 text-landing-text-muted leading-relaxed max-w-lg">
           Я задолбался листать hh каждый день и сделал AI, который читает за меня.
           Опиши что ищешь — получишь матчи по резюме. Дайджест в Telegram каждое утро.
         </p>
-        <div class="mt-8 flex items-center gap-4">
+        <div class="mt-8 flex flex-col sm:flex-row items-start sm:items-center gap-4">
           <a
             href="https://app.proshli.ru/auth/register"
-            class="inline-flex items-center h-10 px-5 rounded-lg bg-gradient-to-r from-landing-accent-start to-landing-accent-end text-14 font-medium text-white shadow-glow"
+            class="inline-flex items-center h-11 px-6 rounded-lg bg-gradient-to-r from-landing-accent-start to-landing-accent-end text-14 font-medium text-white shadow-glow animate-glow-pulse hover:scale-[1.02] transition-transform"
           >
             Попробовать бесплатно
+            <svg class="ml-2 w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
           </a>
-          <a href="#how-it-works" class="text-13 text-landing-text-muted hover:text-landing-text-primary transition-colors">
-            Как это работает &darr;
+          <a href="#how-it-works" class="text-14 text-landing-text-muted hover:text-landing-text-primary transition-colors flex items-center gap-1.5">
+            Как это работает
+            <svg class="w-4 h-4 animate-bounce" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6" /></svg>
           </a>
         </div>
       </div>
@@ -41,104 +53,228 @@ import { tiers } from "../lib/tiers";
     </div>
   </section>
 
-  <!-- ═══ How it works: асимметричный, без emoji-иконок ═══ -->
+  <!-- ═══ Logos / trust bar ═══ -->
+  <section class="py-12 px-6 border-t border-white/5">
+    <div class="mx-auto max-w-4xl">
+      <p class="text-center text-12 text-landing-text-muted mb-6 tracking-wide uppercase">Собираем вакансии из</p>
+      <div class="flex flex-wrap items-center justify-center gap-x-10 gap-y-4">
+        <span class="text-16 font-semibold text-white/30 hover:text-white/60 transition-colors">HeadHunter</span>
+        <span class="text-16 font-semibold text-white/30 hover:text-white/60 transition-colors">Habr Career</span>
+        <span class="text-16 font-semibold text-white/30 hover:text-white/60 transition-colors">LinkedIn</span>
+        <span class="text-16 font-semibold text-white/30 hover:text-white/60 transition-colors">Telegram</span>
+        <span class="text-16 font-semibold text-white/30 hover:text-white/60 transition-colors">Getmatch</span>
+        <span class="text-14 text-landing-text-muted">и ещё 50+</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ How it works: с иконками и Telegram-мокапом ═══ -->
   <section id="how-it-works" class="py-32 px-6 border-t border-white/5">
     <div class="mx-auto max-w-6xl">
-      <h2 class="text-24 md:text-32 font-bold tracking-tight mb-16">Три шага от резюме до первого матча</h2>
+      <Reveal client:visible>
+        <h2 class="text-24 md:text-32 font-bold tracking-tight mb-4">Три шага от резюме до первого матча</h2>
+        <p class="text-14 text-landing-text-muted mb-16 max-w-lg">Без регистрации на десяти сайтах, без ручного перебора. Загрузил — получил — откликнулся.</p>
+      </Reveal>
 
-      <div class="grid md:grid-cols-[2fr_1fr] gap-12 items-start mb-12">
-        <!-- Большой блок слева — шаг 1 -->
-        <div class="rounded-xl border border-white/8 bg-white/[0.02] p-8">
-          <span class="text-11 font-mono text-landing-text-muted tracking-wider">01</span>
-          <h3 class="text-18 font-semibold mt-2 mb-3">Загрузи резюме</h3>
-          <p class="text-14 text-landing-text-muted leading-loose">
-            PDF или текст. AI извлекает скиллы, опыт и желаемый стек за 5 секунд.
-            Считает embedding — 1024-мерный вектор, который описывает твой профиль
-            точнее любых чекбоксов.
-          </p>
-        </div>
-        <!-- Маленький блок справа — шаг 2 -->
-        <div class="rounded-xl border border-white/8 bg-white/[0.02] p-8">
-          <span class="text-11 font-mono text-landing-text-muted tracking-wider">02</span>
-          <h3 class="text-18 font-semibold mt-2 mb-3">Получи матчи</h3>
-          <p class="text-14 text-landing-text-muted leading-loose">
-            Cosine similarity между твоим вектором и вакансиями. Топ-10 по убыванию.
-            Без ручного перебора.
-          </p>
-        </div>
-      </div>
+      <div class="grid md:grid-cols-[1.3fr_1fr] gap-16 items-start">
+        <!-- Steps -->
+        <div class="flex flex-col gap-6">
+          <Reveal client:visible delay={0.1}>
+            <div class="rounded-xl border border-white/8 bg-white/[0.02] p-6 hover:border-landing-accent-start/20 transition-colors group">
+              <div class="flex items-start gap-4">
+                <div class="w-10 h-10 rounded-lg bg-landing-accent-start/10 flex items-center justify-center shrink-0 group-hover:bg-landing-accent-start/20 transition-colors">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-landing-accent-start">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" />
+                  </svg>
+                </div>
+                <div>
+                  <div class="flex items-center gap-3 mb-2">
+                    <span class="text-11 font-mono text-landing-accent-start/60 tracking-wider">01</span>
+                    <h3 class="text-16 font-semibold">Загрузи резюме</h3>
+                  </div>
+                  <p class="text-14 text-landing-text-muted leading-relaxed">
+                    PDF или текст. AI извлекает скиллы, опыт и желаемый стек за 5 секунд.
+                    Считает embedding — 1024-мерный вектор, который описывает твой профиль
+                    точнее любых чекбоксов.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </Reveal>
 
-      <!-- Широкий блок на всю ширину — шаг 3 -->
-      <div class="rounded-xl border border-white/8 bg-white/[0.02] p-8 md:max-w-lg">
-        <span class="text-11 font-mono text-landing-text-muted tracking-wider">03</span>
-        <h3 class="text-18 font-semibold mt-2 mb-3">Дайджест в Telegram</h3>
-        <p class="text-14 text-landing-text-muted leading-loose">
-          Каждое утро новые матчи в чате. Без push-спама, без писем в почту.
-          Можно поставить на паузу одной кнопкой.
-        </p>
+          <Reveal client:visible delay={0.2}>
+            <div class="rounded-xl border border-white/8 bg-white/[0.02] p-6 hover:border-landing-accent-start/20 transition-colors group">
+              <div class="flex items-start gap-4">
+                <div class="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0 group-hover:bg-blue-500/20 transition-colors">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-blue-400">
+                    <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" /><path d="M11 8v6M8 11h6" />
+                  </svg>
+                </div>
+                <div>
+                  <div class="flex items-center gap-3 mb-2">
+                    <span class="text-11 font-mono text-landing-accent-start/60 tracking-wider">02</span>
+                    <h3 class="text-16 font-semibold">Получи матчи</h3>
+                  </div>
+                  <p class="text-14 text-landing-text-muted leading-relaxed">
+                    Cosine similarity между твоим вектором и вакансиями. Топ-10 по убыванию
+                    с объяснением почему каждая подходит. Без ручного перебора.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </Reveal>
+
+          <Reveal client:visible delay={0.3}>
+            <div class="rounded-xl border border-white/8 bg-white/[0.02] p-6 hover:border-landing-accent-start/20 transition-colors group">
+              <div class="flex items-start gap-4">
+                <div class="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0 group-hover:bg-emerald-500/20 transition-colors">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-emerald-400">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <div class="flex items-center gap-3 mb-2">
+                    <span class="text-11 font-mono text-landing-accent-start/60 tracking-wider">03</span>
+                    <h3 class="text-16 font-semibold">Дайджест в Telegram</h3>
+                  </div>
+                  <p class="text-14 text-landing-text-muted leading-relaxed">
+                    Каждое утро новые матчи в чате. Без push-спама, без писем в почту.
+                    Можно поставить на паузу одной кнопкой.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </Reveal>
+        </div>
+
+        <!-- Telegram mockup -->
+        <Reveal client:visible delay={0.2} direction="right">
+          <div class="sticky top-24">
+            <TelegramMockup />
+          </div>
+        </Reveal>
       </div>
     </div>
   </section>
 
-  <!-- ═══ Числа (editorial-момент, не секция карточек) ═══ -->
-  <section class="py-20 px-6 border-t border-white/5">
-    <div class="mx-auto max-w-6xl grid grid-cols-2 md:grid-cols-4 gap-8">
-      <div>
-        <div class="text-32 font-bold font-mono">12 847</div>
-        <div class="text-13 text-landing-text-muted mt-1">вакансий в базе</div>
-      </div>
-      <div>
-        <div class="text-32 font-bold font-mono">50+</div>
-        <div class="text-13 text-landing-text-muted mt-1">источников</div>
-      </div>
-      <div>
-        <div class="text-32 font-bold font-mono">1024</div>
-        <div class="text-13 text-landing-text-muted mt-1">мерный embedding</div>
-      </div>
-      <div>
-        <div class="text-32 font-bold font-mono">&lt;800ms</div>
-        <div class="text-13 text-landing-text-muted mt-1">до первого токена AI</div>
-      </div>
+  <!-- ═══ Числа с анимированными счётчиками ═══ -->
+  <section class="py-24 px-6 border-t border-white/5 relative overflow-hidden">
+    <!-- Subtle background glow -->
+    <div class="absolute inset-0 bg-[radial-gradient(ellipse_50%_50%_at_50%_50%,rgba(124,58,237,0.06)_0%,transparent_70%)] pointer-events-none"></div>
+    <div class="mx-auto max-w-6xl grid grid-cols-2 md:grid-cols-4 gap-8 relative">
+      <Reveal client:visible delay={0}>
+        <div class="text-center md:text-left">
+          <div class="text-36 md:text-48 font-bold font-mono text-white">
+            <AnimatedCounter client:visible target={12847} separator=" " />
+          </div>
+          <div class="text-13 text-landing-text-muted mt-2">вакансий в базе</div>
+        </div>
+      </Reveal>
+      <Reveal client:visible delay={0.1}>
+        <div class="text-center md:text-left">
+          <div class="text-36 md:text-48 font-bold font-mono text-white">
+            <AnimatedCounter client:visible target={50} suffix="+" />
+          </div>
+          <div class="text-13 text-landing-text-muted mt-2">источников</div>
+        </div>
+      </Reveal>
+      <Reveal client:visible delay={0.2}>
+        <div class="text-center md:text-left">
+          <div class="text-36 md:text-48 font-bold font-mono text-white">
+            <AnimatedCounter client:visible target={1024} />
+          </div>
+          <div class="text-13 text-landing-text-muted mt-2">мерный embedding</div>
+        </div>
+      </Reveal>
+      <Reveal client:visible delay={0.3}>
+        <div class="text-center md:text-left">
+          <div class="text-36 md:text-48 font-bold font-mono text-white">
+            &lt;<AnimatedCounter client:visible target={800} />ms
+          </div>
+          <div class="text-13 text-landing-text-muted mt-2">до первого токена AI</div>
+        </div>
+      </Reveal>
     </div>
   </section>
+
+  <!-- ═══ Social proof / Testimonials ═══ -->
+  <Testimonials />
 
   <!-- ═══ Pricing ═══ -->
   <section id="pricing" class="py-32 px-6 border-t border-white/5">
     <div class="mx-auto max-w-6xl">
-      <h2 class="text-24 md:text-32 font-bold tracking-tight mb-3">Тарифы</h2>
-      <p class="text-14 text-landing-text-muted mb-12">Без скрытых платежей, без минимального срока. Отмена в один клик.</p>
+      <Reveal client:visible>
+        <h2 class="text-24 md:text-32 font-bold tracking-tight mb-3">Тарифы</h2>
+        <p class="text-14 text-landing-text-muted mb-12">Без скрытых платежей, без минимального срока. Отмена в один клик.</p>
+      </Reveal>
       <div class="grid md:grid-cols-3 gap-5">
-        {tiers.map((t) => <PricingCard {...t} />)}
+        {tiers.map((t, i) => (
+          <Reveal client:visible delay={i * 0.1}>
+            <PricingCard {...t} />
+          </Reveal>
+        ))}
       </div>
     </div>
+  </section>
+
+  <!-- ═══ CTA banner ═══ -->
+  <section class="py-24 px-6">
+    <Reveal client:visible>
+      <div class="mx-auto max-w-4xl rounded-2xl border border-landing-accent-start/20 bg-gradient-to-br from-landing-accent-start/10 via-transparent to-landing-accent-end/5 p-10 md:p-14 text-center relative overflow-hidden">
+        <div class="absolute inset-0 bg-[radial-gradient(ellipse_60%_60%_at_50%_0%,rgba(124,58,237,0.15)_0%,transparent_70%)] pointer-events-none"></div>
+        <div class="relative">
+          <h2 class="text-24 md:text-32 font-bold tracking-tight mb-4">Хватит листать вакансии вручную</h2>
+          <p class="text-16 text-landing-text-muted mb-8 max-w-lg mx-auto">Загрузи резюме один раз — AI будет присылать релевантные матчи каждое утро. Бесплатно.</p>
+          <a
+            href="https://app.proshli.ru/auth/register"
+            class="inline-flex items-center h-12 px-8 rounded-lg bg-gradient-to-r from-landing-accent-start to-landing-accent-end text-15 font-medium text-white shadow-glow hover:scale-[1.02] transition-transform"
+          >
+            Начать бесплатно
+            <svg class="ml-2 w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+          </a>
+        </div>
+      </div>
+    </Reveal>
   </section>
 
   <!-- ═══ FAQ ═══ -->
   <section id="faq" class="py-32 px-6 border-t border-white/5">
     <div class="mx-auto max-w-3xl">
-      <h2 class="text-24 md:text-32 font-bold tracking-tight mb-12">Частые вопросы</h2>
+      <Reveal client:visible>
+        <h2 class="text-24 md:text-32 font-bold tracking-tight mb-12">Частые вопросы</h2>
+      </Reveal>
       <div class="space-y-3">
-        <FaqItem question="Какие источники вакансий?">
-          HeadHunter, Habr Career, ~50 проверенных IT Telegram-каналов, корпоративные сайты.
-          Парсинг каждый час, дедупликация по нормализованным заголовкам.
-        </FaqItem>
-        <FaqItem question="AI правда читает мои данные?">
-          Резюме обрабатывается embedding-моделью для семантического поиска. Текст не отправляется
-          третьим сторонам кроме Anthropic (при запросах к AI-ассистенту). Удалить аккаунт —
-          одна кнопка в настройках.
-        </FaqItem>
-        <FaqItem question="Чем отличаетесь от hh.ru?">
-          Не пытаемся заменить hh — аккумулируем вакансии из десятков источников и ранжируем
-          по совпадению с резюме. Ты не листаешь — AI делает first-pass и присылает топ-10 в Telegram.
-        </FaqItem>
-        <FaqItem question="Можно отменить подписку?">
-          В любой момент. Никаких автопродлений без согласия. После отмены оставшиеся
-          дни оплаченного периода остаются доступны.
-        </FaqItem>
-        <FaqItem question="А если я работодатель?">
-          Есть тариф Employer — публикация вакансий + доступ к кандидатам с AI-скринингом.
-          <a href="/employers" class="text-landing-accent-start hover:underline ml-1">Подробнее</a>.
-        </FaqItem>
+        <Reveal client:visible delay={0.05}>
+          <FaqItem question="Какие источники вакансий?">
+            HeadHunter, Habr Career, ~50 проверенных IT Telegram-каналов, корпоративные сайты.
+            Парсинг каждый час, дедупликация по нормализованным заголовкам.
+          </FaqItem>
+        </Reveal>
+        <Reveal client:visible delay={0.1}>
+          <FaqItem question="AI правда читает мои данные?">
+            Резюме обрабатывается embedding-моделью для семантического поиска. Текст не отправляется
+            третьим сторонам кроме Anthropic (при запросах к AI-ассистенту). Удалить аккаунт —
+            одна кнопка в настройках.
+          </FaqItem>
+        </Reveal>
+        <Reveal client:visible delay={0.15}>
+          <FaqItem question="Чем отличаетесь от hh.ru?">
+            Не пытаемся заменить hh — аккумулируем вакансии из десятков источников и ранжируем
+            по совпадению с резюме. Ты не листаешь — AI делает first-pass и присылает топ-10 в Telegram.
+          </FaqItem>
+        </Reveal>
+        <Reveal client:visible delay={0.2}>
+          <FaqItem question="Можно отменить подписку?">
+            В любой момент. Никаких автопродлений без согласия. После отмены оставшиеся
+            дни оплаченного периода остаются доступны.
+          </FaqItem>
+        </Reveal>
+        <Reveal client:visible delay={0.25}>
+          <FaqItem question="А если я работодатель?">
+            Есть тариф Employer — публикация вакансий + доступ к кандидатам с AI-скринингом.
+            <a href="/employers" class="text-landing-accent-start hover:underline ml-1">Подробнее</a>.
+          </FaqItem>
+        </Reveal>
       </div>
     </div>
   </section>

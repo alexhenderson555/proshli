@@ -12,21 +12,69 @@ const formattedDate = post.data.publishDate.toLocaleDateString("ru-RU", {
   month: "long",
   year: "numeric",
 });
+
+// Estimate reading time (~200 words/min for Russian)
+const wordCount = post.body?.split(/\s+/).length ?? 0;
+const readingTime = Math.max(1, Math.ceil(wordCount / 200));
 ---
 
 <BaseLayout title={`${post.data.title} — Блог Proshli`} description={post.data.description}>
-  <article class="mx-auto max-w-3xl px-6 py-24">
-    <a href="/blog" class="text-13 text-landing-text-muted hover:text-landing-text-primary transition-colors">&larr; Все статьи</a>
-    <h1 class="text-24 md:text-32 font-extrabold tracking-tight mt-6 mb-3">{post.data.title}</h1>
-    <div class="flex items-center gap-3 text-12 text-landing-text-muted mb-12">
-      <span>{formattedDate}</span>
-      {post.data.tags.length > 0 && <span>&middot;</span>}
-      {post.data.tags.map((t) => (
-        <span class="px-2 py-0.5 rounded-full border border-white/8">{t}</span>
-      ))}
-    </div>
-    <div class="prose prose-invert prose-lg max-w-none prose-p:text-landing-text-muted prose-p:leading-loose prose-headings:text-landing-text-primary prose-a:text-landing-accent-start prose-strong:text-landing-text-primary prose-code:text-landing-accent-start prose-code:text-13">
-      <slot />
+  <article class="relative py-32 px-6 overflow-hidden">
+    <div class="absolute inset-0 bg-[radial-gradient(ellipse_40%_20%_at_50%_0%,rgba(124,58,237,0.06)_0%,transparent_70%)] pointer-events-none"></div>
+    <div class="mx-auto max-w-3xl relative">
+      <!-- Back link -->
+      <a href="/blog" class="inline-flex items-center gap-1.5 text-13 text-landing-text-muted hover:text-landing-text-primary transition-colors mb-8 group">
+        <svg class="w-4 h-4 group-hover:-translate-x-1 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+        Все статьи
+      </a>
+
+      <!-- Header -->
+      <header class="mb-12">
+        <h1 class="text-24 md:text-36 font-extrabold tracking-tight mb-4">{post.data.title}</h1>
+        <div class="flex flex-wrap items-center gap-3 text-13 text-landing-text-muted">
+          <div class="flex items-center gap-1.5">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-landing-text-muted"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
+            <span>{formattedDate}</span>
+          </div>
+          <span class="text-white/20">&middot;</span>
+          <div class="flex items-center gap-1.5">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-landing-text-muted"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>
+            <span>{readingTime} мин чтения</span>
+          </div>
+          {post.data.tags.length > 0 && (
+            <>
+              <span class="text-white/20">&middot;</span>
+              <div class="flex gap-1.5">
+                {post.data.tags.map((t) => (
+                  <span class="px-2 py-0.5 rounded-full border border-white/10 bg-white/[0.03] text-11">{t}</span>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      </header>
+
+      <!-- Content -->
+      <div class="prose prose-invert prose-lg max-w-none prose-p:text-landing-text-muted prose-p:leading-loose prose-headings:text-landing-text-primary prose-a:text-landing-accent-start prose-a:no-underline hover:prose-a:underline prose-strong:text-landing-text-primary prose-code:text-landing-accent-start prose-code:text-13 prose-code:bg-white/5 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-blockquote:border-landing-accent-start/30 prose-blockquote:text-landing-text-muted prose-hr:border-white/5">
+        <slot />
+      </div>
+
+      <!-- Footer -->
+      <div class="mt-16 pt-8 border-t border-white/5">
+        <div class="flex items-center justify-between">
+          <a href="/blog" class="inline-flex items-center gap-1.5 text-14 text-landing-text-muted hover:text-landing-accent-start transition-colors group">
+            <svg class="w-4 h-4 group-hover:-translate-x-1 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+            Все статьи
+          </a>
+          <a
+            href="https://app.proshli.ru/auth/register"
+            class="inline-flex items-center gap-1.5 text-14 text-landing-accent-start hover:text-landing-accent-end transition-colors"
+          >
+            Попробовать Proshli
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+          </a>
+        </div>
+      </div>
     </div>
   </article>
 </BaseLayout>

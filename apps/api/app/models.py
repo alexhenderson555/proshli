@@ -7,11 +7,13 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
     UniqueConstraint,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
@@ -408,6 +410,43 @@ class PublicationQueueItem(Base):
     published_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
+class VacancyApplication(Base):
+    """One row per (seeker, vacancy) tracked through the kanban.
+
+    The kanban has five lanes — ``saved`` (default leftmost), ``applied``,
+    ``interview``, ``offer``, ``rejected``. The Saved tab in the seeker
+    dashboard shows ``status='saved'``; the Applications tab shows the
+    rest as a 4-column board. There is at most one row per (user, vacancy)
+    pair — moving between lanes is a status update, not an insert.
+
+    Hard delete is the right semantic here: if a user unsaves a vacancy
+    we don't want a tombstone to clutter their pipeline. The pipeline is
+    short-lived state, not an audit trail.
+    """
+
+    __tablename__ = "vacancy_applications"
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "vacancy_id",
+            name="uq_vacancy_applications_user_vacancy",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    vacancy_id: Mapped[int] = mapped_column(
+        ForeignKey("vacancies.id", ondelete="CASCADE"), index=True
+    )
+    # saved | applied | interview | offer | rejected
+    status: Mapped[str] = mapped_column(String(16), default="saved", index=True)
+    notes: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now_utc, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=now_utc, index=True)
+
+
 class CompanyPrestige(Base):
     """Per-company prestige score (0.0 – 1.0) used by channel-approval scoring.
 
@@ -476,3 +515,109 @@ class ChannelCandidate(Base):
     # to reflect the decision (strike-through + remove buttons).
     admin_message_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=now_utc)
+
+
+class MatchReasoning(Base):
+    """LLM-reranker output cache: one row per (resume, vacancy).
+
+    Match-score v1 (``app.services.match_score``) returns cosine similarity +
+    a tier label only. v2 takes the top-50 candidates by cosine, feeds them
+    to Claude with the resume context, and asks for the top-10 with a
+    1-2 sentence rationale per match. That rationale is the durable user-
+    facing value here; the bare ``rerank_score`` is exposed only to sort.
+
+    Cache keyed on ``(resume_id, vacancy_id)`` so re-runs against the same
+    pair short-circuit. Invalidation rules:
+
+    * Resume re-upload → ``DELETE WHERE resume_id = :rid`` (see
+      ``app.routes.resumes.upload``). Reasoning is resume-specific.
+    * 14-day TTL on rows — vacancy descriptions evolve, the reranker should
+      re-evaluate quarterly-ish. Checked at read time, not pruned by cron.
+    * Vacancy edits do not invalidate — our vacancies are append-only in
+      practice, and a tiny description tweak doesn't change match calculus.
+
+    ``cosine_score`` is kept alongside ``rerank_score`` so we can audit
+    drift between the two ranking signals without re-running the embedding
+    query.
+    """
+
+    __tablename__ = "match_reasonings"
+    __table_args__ = (
+        UniqueConstraint(
+            "resume_id",
+            "vacancy_id",
+            name="uq_match_reasonings_resume_vacancy",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    resume_id: Mapped[int] = mapped_column(
+        ForeignKey("resumes.id", ondelete="CASCADE"), index=True
+    )
+    vacancy_id: Mapped[int] = mapped_column(
+        ForeignKey("vacancies.id", ondelete="CASCADE"), index=True
+    )
+    # Claude's own 0..1 score after reranking. Used for ordering inside the
+    # /vacancies/match-feed response.
+    rerank_score: Mapped[float] = mapped_column(Float, index=True)
+    # Snapshot of the original cosine similarity at rerank time. Lets us
+    # answer "did Claude agree with the embedding?" without re-querying.
+    cosine_score: Mapped[float] = mapped_column(Float)
+    # Russian-first rationale: the prod audience is RU. EN is optional and
+    # populated only if we ever add an explicit /en variant of the feed.
+    reasoning_ru: Mapped[str] = mapped_column(Text)
+    reasoning_en: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Which Claude model produced this row — captured so a config rollback
+    # ("we regret moving from opus to haiku") can mass-invalidate by model
+    # without nuking the whole cache.
+    model: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now_utc, index=True)
+
+
+class EventLog(Base):
+    """General-purpose product-analytics event substrate.
+
+    We previously had domain-specific tables (``ai_usage_events``,
+    ``digest_dispatch_events``, ``employer_action_logs``) but no place to
+    record cross-cutting product signal: page views, signups, login,
+    vacancy clicks, digest opens. This table is that substrate.
+
+    Schema choices:
+
+    * ``user_id`` nullable — anonymous visitors are tracked via
+      ``session_id`` (an opaque cookie). ON DELETE SET NULL so user
+      deletion doesn't wipe historical aggregates.
+    * ``event`` is a short string enum (``page_view``, ``signup``, ``login``,
+      ``vacancy_view``, ``vacancy_apply``, ``digest_open``, ``ai_chat``,
+      …). New events can be added without a migration.
+    * ``meta`` is JSONB so we can attach event-specific payload (e.g.
+      ``{"dispatch_event_id": 42, "frequency": "daily"}`` for digest_open)
+      without schema churn. Stays small (<1KB per row in practice).
+    * Composite index on ``(user_id, created_at)`` is the hot path for
+      "what did this user do recently?" and for DAU windowing.
+
+    Heavy aggregations (DAU, signup funnel, retention cohorts) run against
+    this table directly from Grafana's Postgres datasource — no
+    pre-aggregation until row count makes it necessary.
+    """
+
+    __tablename__ = "event_log"
+    __table_args__ = (
+        Index("ix_event_log_user_created", "user_id", "created_at"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    # Anonymous correlation. UUID4-as-hex (32 chars) generated server-side
+    # the first time we see a visitor; mirrored back via HttpOnly cookie.
+    session_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    event: Mapped[str] = mapped_column(String(64), index=True)
+    # Free-form target descriptor. ``target_kind="vacancy"`` + ``target_id=42``
+    # is the common shape; for page_view it's ``target_kind="page"`` +
+    # ``target_id="/vacancies"``.
+    target_kind: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    target_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    meta: Mapped[dict] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now_utc, index=True)

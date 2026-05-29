@@ -72,6 +72,16 @@ class VacancyOut(BaseModel):
     external_url: str | None = None
     match_score: float | None = None
     match_tier: Literal["strong", "decent", "stretch", "longshot"] | None = None
+    # Match-score 2.0 — LLM-generated 1-2 sentence justification for why
+    # this vacancy fits the caller's resume. Populated only by the
+    # ``GET /vacancies/match-feed`` endpoint (or when a cached row exists
+    # in ``match_reasonings``); ``None`` elsewhere keeps the contract
+    # backwards-compatible for /vacancies, the digest, and employer views.
+    match_reasoning: str | None = None
+    # Reranker confidence in [0, 1]. Distinct from ``match_score`` (cosine
+    # in [-1, 1]) so the FE can show both, or pick the rerank score as the
+    # primary signal in the "For me" tab without losing the cosine fallback.
+    rerank_score: float | None = None
 
     model_config = {"from_attributes": True}
 
@@ -279,6 +289,37 @@ class ResumeImproveResponse(BaseModel):
     backend: str
 
 
+CoverLetterTone = Literal["formal", "friendly"]
+CoverLetterLanguage = Literal["ru", "en"]
+
+
+class CoverLetterRequest(BaseModel):
+    """Generate-cover-letter input.
+
+    Seeker passes the vacancy id and picks tone + language. We resolve
+    the seeker's profile + latest resume server-side — the FE doesn't
+    have to assemble a payload from disparate sources.
+    """
+
+    vacancy_id: int
+    tone: CoverLetterTone = "formal"
+    language: CoverLetterLanguage = "ru"
+
+
+class CoverLetterResponse(BaseModel):
+    """AI cover-letter draft + the standard budget envelope.
+
+    ``body`` is the letter text (3 short paragraphs, plain prose, no
+    salutation/sign-off — those live in the FE so the seeker can
+    customise the addressee without re-spending budget).
+    """
+
+    body: str
+    used_today: int
+    limit: int
+    backend: str
+
+
 # --------------------------------------------------------------------- billing
 
 
@@ -322,3 +363,69 @@ class CheckoutResponse(BaseModel):
 class MatchScoreOut(BaseModel):
     score: float
     tier: Literal["strong", "decent", "stretch", "longshot"]
+    # Match-score 2.0 — cached LLM reasoning if a ``match_reasonings`` row
+    # exists for the (resume, vacancy) pair. ``None`` when no rerank has
+    # been computed yet, or when the row aged out of the TTL. The detail
+    # page renders this as a "Why this fits?" blurb under the pill.
+    reasoning: str | None = None
+    rerank_score: float | None = None
+
+
+class VacancyStatsOut(BaseModel):
+    """Public, anonymous-readable counts for the landing-page hero strip.
+
+    Exposes only aggregate, non-PII numbers — the landing copy promises
+    "не HH-спам, а сигнал" and these values back that up with live data
+    instead of the previous hard-coded `40+ / 10× / 24/7` placeholders.
+    """
+
+    total: int
+    last_24h: int
+    sources: int
+
+
+# --------------------------------------------------------------------- kanban
+
+ApplicationStatus = Literal["saved", "applied", "interview", "offer", "rejected"]
+
+
+class ApplicationCreateRequest(BaseModel):
+    """Body for ``POST /applications`` — seekers track a vacancy in their pipeline.
+
+    ``status`` defaults to ``saved`` (the leftmost kanban lane). Sending an
+    explicit status is supported so the FE "Apply" button can skip the
+    save-then-promote round-trip.
+    """
+
+    vacancy_id: int
+    status: ApplicationStatus = "saved"
+    notes: str = Field(default="", max_length=4000)
+
+
+class ApplicationUpdateRequest(BaseModel):
+    """Body for ``PATCH /applications/{id}`` — move between lanes or edit notes."""
+
+    status: ApplicationStatus | None = None
+    notes: str | None = Field(default=None, max_length=4000)
+
+
+class ApplicationOut(BaseModel):
+    id: int
+    vacancy_id: int
+    status: ApplicationStatus
+    notes: str
+    created_at: datetime
+    updated_at: datetime
+    vacancy: VacancyOut
+
+    model_config = {"from_attributes": True}
+
+
+class ApplicationCountsOut(BaseModel):
+    """One number per kanban lane, used by the dashboard overview tab."""
+
+    saved: int
+    applied: int
+    interview: int
+    offer: int
+    rejected: int

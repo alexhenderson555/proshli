@@ -14,6 +14,8 @@ import { setRequestLocale } from "next-intl/server";
 
 import { AppFooter } from "@/components/app-footer";
 import { AppHeader } from "@/components/app-header";
+import { CommandMenu } from "@/components/command-menu";
+import { AiPanel } from "@/components/ai-panel";
 import { routing } from "@/i18n/routing";
 
 // Statically render both locales — none of the page tree needs runtime
@@ -43,6 +45,8 @@ export default async function LocaleLayout({
       <AppHeader />
       <main className="container page-shell flex-1">{children}</main>
       <AppFooter />
+      <CommandMenu />
+      <AiPanel />
     </>
   );
 }

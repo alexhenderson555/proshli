@@ -63,6 +63,41 @@ export type Vacancy = Schemas["VacancyOut"] & {
   match_score?: number | null;
   match_tier?: MatchTier | null;
 };
+// Hand-written until OpenAPI regen — backend ships VacancyStatsOut from
+// 2026-05-18 (landing-hero live counters).
+export interface VacancyStatsOut {
+  total: number;
+  last_24h: number;
+  sources: number;
+}
+
+// Hand-written until OpenAPI regen — seeker kanban (saved+applied+interview+
+// offer+rejected) shipped 2026-05-18. Schemas mirror app.schemas.Application*.
+export type ApplicationStatus =
+  | "saved"
+  | "applied"
+  | "interview"
+  | "offer"
+  | "rejected";
+
+export interface ApplicationOut {
+  id: number;
+  vacancy_id: number;
+  status: ApplicationStatus;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+  vacancy: Vacancy;
+}
+
+export interface ApplicationCountsOut {
+  saved: number;
+  applied: number;
+  interview: number;
+  offer: number;
+  rejected: number;
+}
+
 export type VacancyCreateRequest = Schemas["VacancyCreateRequest"];
 export type VacancyUpdateRequest = Schemas["VacancyUpdateRequest"];
 export type VacancyPromoteRequest = Schemas["VacancyPromoteRequest"];

@@ -55,3 +55,6 @@ backups/
 
 # Superpowers brainstorming session artifacts
 .superpowers/
+
+# Deploy archives
+proshli.tar.gz

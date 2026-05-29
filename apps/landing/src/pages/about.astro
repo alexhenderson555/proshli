@@ -1,55 +1,154 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
+import Reveal from "../components/Reveal.tsx";
 ---
 
 <BaseLayout title="О Proshli" description="Solo-проект для решения job-search fatigue в IT. Стек, история, контакты.">
-  <section class="py-32 px-6">
-    <div class="mx-auto max-w-3xl">
-      <h1 class="text-32 md:text-48 font-extrabold tracking-tight mb-12">О проекте</h1>
-
-      <div class="space-y-8 text-16 text-landing-text-muted leading-loose">
-        <p>
-          Proshli — это попытка решить «job-search fatigue» в IT. Слишком много вакансий,
-          слишком много шума, слишком много copy-paste-описаний. AI-фильтр читает вакансии
-          за тебя и шлёт только релевантные матчи.
-        </p>
-
-        <p>
-          Сейчас это solo-проект. Привет, я Alex. Делаю в свободное время по вечерам
-          и выходным. Задолбался листать hh каждый день — сделал инструмент для себя,
-          потом решил открыть для всех.
-        </p>
-      </div>
-
-      <div class="mt-16 pt-12 border-t border-white/5">
-        <h2 class="text-20 font-semibold mb-6">Технически</h2>
-        <div class="text-14 text-landing-text-muted leading-loose space-y-3">
-          <p>
-            <span class="font-mono text-12 text-white/50">backend</span> —
-            Python, FastAPI 0.115, async SQLAlchemy 2, Celery 5, Postgres + pgvector
-          </p>
-          <p>
-            <span class="font-mono text-12 text-white/50">frontend</span> —
-            Astro 5 (лендинг), Next.js 16 (приложение), Tailwind, React 19
-          </p>
-          <p>
-            <span class="font-mono text-12 text-white/50">ai</span> —
-            Anthropic Claude, embedding 1024-dim, cosine similarity для match-score
-          </p>
-          <p>
-            <span class="font-mono text-12 text-white/50">infra</span> —
-            один VPS, Caddy, Docker Compose, GitHub Actions CI
+  <!-- Hero -->
+  <section class="relative py-32 px-6 overflow-hidden">
+    <div class="absolute inset-0 bg-[radial-gradient(ellipse_40%_40%_at_20%_30%,rgba(124,58,237,0.08)_0%,transparent_70%)] pointer-events-none"></div>
+    <div class="mx-auto max-w-4xl relative">
+      <Reveal client:visible>
+        <div class="mb-16">
+          <h1 class="text-32 md:text-48 font-extrabold tracking-tight mb-6">
+            Один человек,<br />
+            <span class="bg-clip-text text-transparent bg-gradient-to-r from-white via-purple-200 to-purple-400">один VPS, один бот</span>
+          </h1>
+          <p class="text-18 text-landing-text-muted leading-relaxed max-w-2xl">
+            Proshli — это попытка решить «job-search fatigue» в IT. Слишком много вакансий,
+            слишком много шума, слишком много copy-paste-описаний.
           </p>
         </div>
-      </div>
+      </Reveal>
 
-      <div class="mt-16 pt-12 border-t border-white/5">
-        <h2 class="text-20 font-semibold mb-6">Контакты</h2>
-        <p class="text-14 text-landing-text-muted leading-loose">
-          Баги, идеи, вопросы — пиши в Telegram:
-          <a href="https://t.me/proshli_contact" class="text-landing-accent-start hover:underline">@proshli_contact</a>.
-        </p>
-      </div>
+      <!-- Story -->
+      <Reveal client:visible delay={0.1}>
+        <div class="rounded-2xl border border-white/8 bg-white/[0.02] p-8 md:p-10 mb-8">
+          <div class="flex items-start gap-4 mb-6">
+            <div class="w-12 h-12 rounded-full bg-gradient-to-br from-landing-accent-start to-landing-accent-end flex items-center justify-center text-16 font-bold text-white shrink-0">A</div>
+            <div>
+              <div class="text-16 font-semibold">Alex</div>
+              <div class="text-13 text-landing-text-muted">Создатель Proshli</div>
+            </div>
+          </div>
+          <div class="space-y-4 text-16 text-landing-text-muted leading-relaxed">
+            <p>
+              Привет. Делаю Proshli в свободное время по вечерам и выходным.
+              Задолбался листать hh каждый день — сделал инструмент для себя,
+              потом решил открыть для всех.
+            </p>
+            <p>
+              AI-фильтр читает вакансии за тебя и шлёт только релевантные матчи.
+              Не пытаюсь заменить hh — аккумулирую вакансии из десятков источников
+              и ранжирую по совпадению с резюме.
+            </p>
+          </div>
+        </div>
+      </Reveal>
+
+      <!-- Tech stack -->
+      <Reveal client:visible delay={0.2}>
+        <div class="rounded-2xl border border-white/8 bg-white/[0.02] p-8 md:p-10 mb-8">
+          <h2 class="text-20 font-semibold mb-6 flex items-center gap-3">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-landing-accent-start"><path d="M16 18l6-6-6-6M8 6l-6 6 6 6" /></svg>
+            Технически
+          </h2>
+          <div class="grid md:grid-cols-2 gap-6">
+            <div class="rounded-xl bg-white/[0.02] border border-white/5 p-5">
+              <div class="flex items-center gap-2 mb-3">
+                <div class="w-2 h-2 rounded-full bg-emerald-400"></div>
+                <span class="font-mono text-12 text-emerald-400">backend</span>
+              </div>
+              <p class="text-14 text-landing-text-muted leading-relaxed">
+                Python, FastAPI 0.115, async SQLAlchemy 2, Celery 5, Postgres + pgvector
+              </p>
+            </div>
+            <div class="rounded-xl bg-white/[0.02] border border-white/5 p-5">
+              <div class="flex items-center gap-2 mb-3">
+                <div class="w-2 h-2 rounded-full bg-blue-400"></div>
+                <span class="font-mono text-12 text-blue-400">frontend</span>
+              </div>
+              <p class="text-14 text-landing-text-muted leading-relaxed">
+                Astro 5 (лендинг), Next.js 16 (приложение), Tailwind, React 19
+              </p>
+            </div>
+            <div class="rounded-xl bg-white/[0.02] border border-white/5 p-5">
+              <div class="flex items-center gap-2 mb-3">
+                <div class="w-2 h-2 rounded-full bg-violet-400"></div>
+                <span class="font-mono text-12 text-violet-400">ai</span>
+              </div>
+              <p class="text-14 text-landing-text-muted leading-relaxed">
+                Anthropic Claude, Voyage embeddings 1024-dim, cosine similarity для match-score
+              </p>
+            </div>
+            <div class="rounded-xl bg-white/[0.02] border border-white/5 p-5">
+              <div class="flex items-center gap-2 mb-3">
+                <div class="w-2 h-2 rounded-full bg-amber-400"></div>
+                <span class="font-mono text-12 text-amber-400">infra</span>
+              </div>
+              <p class="text-14 text-landing-text-muted leading-relaxed">
+                Один VPS, Caddy, Docker Compose, GitHub Actions CI, Cloudflare
+              </p>
+            </div>
+          </div>
+        </div>
+      </Reveal>
+
+      <!-- Values -->
+      <Reveal client:visible delay={0.3}>
+        <div class="rounded-2xl border border-white/8 bg-white/[0.02] p-8 md:p-10 mb-8">
+          <h2 class="text-20 font-semibold mb-6">Принципы</h2>
+          <div class="grid md:grid-cols-3 gap-6">
+            <div>
+              <div class="w-10 h-10 rounded-lg bg-landing-accent-start/10 flex items-center justify-center mb-3">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-landing-accent-start"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+              </div>
+              <h3 class="text-14 font-semibold mb-1">Приватность</h3>
+              <p class="text-13 text-landing-text-muted leading-relaxed">Резюме не продаём, не шарим. Удалить аккаунт — одна кнопка.</p>
+            </div>
+            <div>
+              <div class="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center mb-3">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-emerald-400"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
+              </div>
+              <h3 class="text-14 font-semibold mb-1">Честный прайс</h3>
+              <p class="text-13 text-landing-text-muted leading-relaxed">Без скрытых платежей, без автопродлений. Free — навсегда бесплатно.</p>
+            </div>
+            <div>
+              <div class="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center mb-3">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-blue-400"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>
+              </div>
+              <h3 class="text-14 font-semibold mb-1">Экономия времени</h3>
+              <p class="text-13 text-landing-text-muted leading-relaxed">2 минуты на дайджест вместо часа на hh. Время — единственный невосполнимый ресурс.</p>
+            </div>
+          </div>
+        </div>
+      </Reveal>
+
+      <!-- Contact -->
+      <Reveal client:visible delay={0.4}>
+        <div class="rounded-2xl border border-landing-accent-start/20 bg-gradient-to-br from-landing-accent-start/8 to-transparent p-8 md:p-10">
+          <h2 class="text-20 font-semibold mb-4">Контакты</h2>
+          <p class="text-14 text-landing-text-muted leading-relaxed mb-6">
+            Баги, идеи, вопросы, предложения о сотрудничестве — пиши.
+          </p>
+          <div class="flex flex-wrap gap-3">
+            <a
+              href="https://t.me/proshli_contact"
+              class="inline-flex items-center gap-2 h-10 px-5 rounded-lg bg-white/5 border border-white/10 text-14 text-white hover:bg-white/10 transition-colors"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="text-blue-400"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.479.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+              @proshli_contact
+            </a>
+            <a
+              href="mailto:alex@proshli.ru"
+              class="inline-flex items-center gap-2 h-10 px-5 rounded-lg bg-white/5 border border-white/10 text-14 text-white hover:bg-white/10 transition-colors"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-landing-text-muted"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg>
+              alex@proshli.ru
+            </a>
+          </div>
+        </div>
+      </Reveal>
     </div>
   </section>
 </BaseLayout>

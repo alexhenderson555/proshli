@@ -25,6 +25,7 @@ from app.models import (
     TelegramLinkCode,
     User,
     Vacancy,
+    VacancyApplication,
 )
 from httpx import AsyncClient
 from sqlalchemy import delete, select
@@ -86,6 +87,9 @@ async def register_test_user(
             )
             await session.execute(
                 delete(Subscription).where(Subscription.user_id == user_id)
+            )
+            await session.execute(
+                delete(VacancyApplication).where(VacancyApplication.user_id == user_id)
             )
             await session.execute(
                 delete(Resume).where(Resume.user_id == user_id)

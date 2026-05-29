@@ -1,6 +1,7 @@
 ---
 import { getCollection } from "astro:content";
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import Reveal from "../../components/Reveal.tsx";
 
 const posts = (await getCollection("blog", ({ data }) => !data.draft)).sort(
   (a, b) => b.data.publishDate.valueOf() - a.data.publishDate.valueOf(),
@@ -8,31 +9,53 @@ const posts = (await getCollection("blog", ({ data }) => !data.draft)).sort(
 ---
 
 <BaseLayout title="Блог — Proshli" description="Заметки о том, как строится Proshli и что узнаём по дороге.">
-  <section class="mx-auto max-w-3xl px-6 py-24">
-    <h1 class="text-32 md:text-48 font-extrabold tracking-tight mb-12">Блог</h1>
-    <div class="space-y-6">
-      {posts.map((post) => (
-        <a
-          href={`/blog/${post.slug}`}
-          class="block rounded-lg border border-white/8 bg-white/[0.02] p-6 hover:border-landing-accent-start/30 transition-colors"
-        >
-          <h2 class="text-18 font-semibold mb-2">{post.data.title}</h2>
-          <p class="text-14 text-landing-text-muted leading-loose mb-3">{post.data.description}</p>
-          <div class="flex items-center gap-3 text-12 text-landing-text-muted">
-            <span>
-              {post.data.publishDate.toLocaleDateString("ru-RU", {
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-              })}
-            </span>
-            {post.data.tags.length > 0 && <span>&middot;</span>}
-            {post.data.tags.map((t) => (
-              <span class="px-2 py-0.5 rounded-full border border-white/8">{t}</span>
-            ))}
-          </div>
-        </a>
-      ))}
+  <section class="relative py-32 px-6 overflow-hidden">
+    <div class="absolute inset-0 bg-[radial-gradient(ellipse_40%_30%_at_50%_0%,rgba(124,58,237,0.08)_0%,transparent_70%)] pointer-events-none"></div>
+    <div class="mx-auto max-w-3xl relative">
+      <Reveal client:visible>
+        <div class="mb-12">
+          <h1 class="text-32 md:text-48 font-extrabold tracking-tight mb-4">Блог</h1>
+          <p class="text-16 text-landing-text-muted">Заметки о том, как строится Proshli и что узнаём по дороге.</p>
+        </div>
+      </Reveal>
+
+      <div class="space-y-5">
+        {posts.map((post, i) => (
+          <Reveal client:visible delay={i * 0.08}>
+            <a
+              href={`/blog/${post.slug}`}
+              class="group block rounded-2xl border border-white/8 bg-white/[0.02] p-6 hover:border-landing-accent-start/30 hover:bg-white/[0.03] transition-all"
+            >
+              <div class="flex items-start justify-between gap-4">
+                <div>
+                  <h2 class="text-18 font-semibold mb-2 group-hover:text-landing-accent-start transition-colors">{post.data.title}</h2>
+                  <p class="text-14 text-landing-text-muted leading-relaxed mb-3">{post.data.description}</p>
+                  <div class="flex items-center gap-3 text-12 text-landing-text-muted">
+                    <span>
+                      {post.data.publishDate.toLocaleDateString("ru-RU", {
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric",
+                      })}
+                    </span>
+                    {post.data.tags.length > 0 && <span>&middot;</span>}
+                    {post.data.tags.map((t) => (
+                      <span class="px-2 py-0.5 rounded-full border border-white/8 text-11">{t}</span>
+                    ))}
+                  </div>
+                </div>
+                <svg class="w-5 h-5 text-landing-text-muted group-hover:text-landing-accent-start group-hover:translate-x-1 transition-all shrink-0 mt-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+              </div>
+            </a>
+          </Reveal>
+        ))}
+      </div>
+
+      {posts.length === 0 && (
+        <div class="text-center py-20 text-landing-text-muted">
+          <p class="text-16">Пока пусто. Скоро будут статьи.</p>
+        </div>
+      )}
     </div>
   </section>
 </BaseLayout>

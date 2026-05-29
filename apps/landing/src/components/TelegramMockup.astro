@@ -1,0 +1,94 @@
+---
+/**
+ * Telegram-style chat mockup showing the daily digest.
+ * Pure CSS/HTML — no images, no external deps.
+ */
+---
+
+<div class="w-full max-w-sm mx-auto">
+  <!-- Phone frame -->
+  <div class="rounded-2xl border border-white/10 bg-[#0e1621] overflow-hidden shadow-2xl shadow-black/40">
+    <!-- Telegram header -->
+    <div class="flex items-center gap-3 px-4 py-3 bg-[#17212b] border-b border-white/5">
+      <div class="w-8 h-8 rounded-full bg-gradient-to-br from-landing-accent-start to-landing-accent-end flex items-center justify-center text-11 font-bold text-white">P</div>
+      <div>
+        <div class="text-13 font-semibold text-white">Proshli Bot</div>
+        <div class="text-11 text-[#6c7883]">online</div>
+      </div>
+    </div>
+
+    <!-- Chat messages -->
+    <div class="px-3 py-4 space-y-3 min-h-[280px]">
+      <!-- Bot message: digest -->
+      <div class="max-w-[85%]">
+        <div class="rounded-xl rounded-tl-sm bg-[#182533] px-3.5 py-2.5 text-13 text-[#e1e3e6] leading-relaxed">
+          <div class="text-landing-accent-start font-semibold mb-1.5">Утренний дайджест</div>
+          Нашёл <span class="text-white font-semibold">7 новых вакансий</span> за ночь. Топ-3 по match-score:
+        </div>
+        <div class="text-11 text-[#6c7883] mt-1 ml-1">09:00</div>
+      </div>
+
+      <!-- Vacancy card 1 -->
+      <div class="max-w-[85%]">
+        <div class="rounded-xl rounded-tl-sm bg-[#182533] px-3.5 py-2.5 text-13 text-[#e1e3e6]">
+          <div class="flex items-center justify-between mb-1">
+            <span class="font-semibold text-white">Senior Backend</span>
+            <span class="text-landing-accent-start font-mono text-12 font-bold">94%</span>
+          </div>
+          <div class="text-12 text-[#6c7883]">Yandex · ₽550K · Remote</div>
+          <div class="flex gap-1.5 mt-2">
+            <span class="text-11 px-1.5 py-0.5 rounded bg-white/5 text-[#8b98a5]">Go</span>
+            <span class="text-11 px-1.5 py-0.5 rounded bg-white/5 text-[#8b98a5]">Kafka</span>
+            <span class="text-11 px-1.5 py-0.5 rounded bg-white/5 text-[#8b98a5]">gRPC</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Vacancy card 2 -->
+      <div class="max-w-[85%]">
+        <div class="rounded-xl rounded-tl-sm bg-[#182533] px-3.5 py-2.5 text-13 text-[#e1e3e6]">
+          <div class="flex items-center justify-between mb-1">
+            <span class="font-semibold text-white">Backend Lead</span>
+            <span class="text-landing-accent-start font-mono text-12 font-bold">89%</span>
+          </div>
+          <div class="text-12 text-[#6c7883]">Tinkoff · ₽600K · Hybrid</div>
+          <div class="flex gap-1.5 mt-2">
+            <span class="text-11 px-1.5 py-0.5 rounded bg-white/5 text-[#8b98a5]">Go</span>
+            <span class="text-11 px-1.5 py-0.5 rounded bg-white/5 text-[#8b98a5]">Postgres</span>
+            <span class="text-11 px-1.5 py-0.5 rounded bg-white/5 text-[#8b98a5]">K8s</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- User reply -->
+      <div class="flex justify-end">
+        <div>
+          <div class="rounded-xl rounded-tr-sm bg-[#2b5278] px-3.5 py-2.5 text-13 text-white">
+            Откликнись на первую
+          </div>
+          <div class="text-11 text-[#6c7883] mt-1 text-right mr-1">09:01</div>
+        </div>
+      </div>
+
+      <!-- Bot reply -->
+      <div class="max-w-[85%]">
+        <div class="rounded-xl rounded-tl-sm bg-[#182533] px-3.5 py-2.5 text-13 text-[#e1e3e6]">
+          Готово. Сгенерировал cover letter и отправил отклик на hh.ru
+        </div>
+        <div class="text-11 text-[#6c7883] mt-1 ml-1">09:01</div>
+      </div>
+    </div>
+
+    <!-- Input bar -->
+    <div class="flex items-center gap-2 px-3 py-2.5 bg-[#17212b] border-t border-white/5">
+      <div class="flex-1 h-8 rounded-lg bg-[#242f3d] px-3 flex items-center text-13 text-[#6c7883]">
+        Сообщение...
+      </div>
+      <div class="w-8 h-8 rounded-full bg-landing-accent-start/20 flex items-center justify-center">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-landing-accent-start">
+          <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+        </svg>
+      </div>
+    </div>
+  </div>
+</div>

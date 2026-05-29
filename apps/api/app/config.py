@@ -98,6 +98,17 @@ class Settings(BaseSettings):
     anthropic_api_key: str = Field(default="")
     anthropic_model: str = Field(default="claude-sonnet-4-5-20250929")
     anthropic_max_tokens: int = Field(default=1024)
+    # Match-score 2.0 LLM reranker. Default to Opus 4.6 (the recommended
+    # model for production agents that need strong reasoning); operators
+    # can downshift to Haiku via env if cost becomes a concern. Distinct
+    # from ``anthropic_model`` so the chat / cover-letter endpoints can
+    # run on a cheaper model while the reranker stays on the best one.
+    match_rerank_model: str = Field(default="claude-opus-4-6")
+    match_rerank_max_tokens: int = Field(default=4096)
+    # TTL (in days) for ``match_reasonings`` rows. After this, the
+    # reranker re-evaluates the (resume, vacancy) pair on next request
+    # rather than serving the cached row.
+    match_reasoning_ttl_days: int = Field(default=14)
 
     # Wave 4: Voyage AI for vacancy/query embeddings (semantic search).
     # Empty key → :class:`RuleBasedEmbeddingService` fallback, same pattern

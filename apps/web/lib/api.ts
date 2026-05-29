@@ -1,4 +1,7 @@
 import type {
+  ApplicationCountsOut,
+  ApplicationOut,
+  ApplicationStatus,
   EmployerActionLogOut,
   EmployerVacancyAnalyticsOut,
   EmployerVacancyPageOut,
@@ -7,12 +10,13 @@ import type {
   TokenResponse,
   UserOut,
   Vacancy,
+  VacancyStatsOut,
 } from "@/lib/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 
 type RequestOptions = {
-  method?: "GET" | "POST" | "PUT" | "DELETE";
+  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   token?: string | null;
   query?: Record<string, string | number | boolean | undefined | null>;
   body?: unknown;
@@ -89,11 +93,64 @@ export const api = {
   vacancies(query: RequestOptions["query"]) {
     return request<Vacancy[]>("/vacancies", { query });
   },
+  vacancyStats() {
+    return request<VacancyStatsOut>("/vacancies/stats");
+  },
   vacancy(id: number) {
     return request<Vacancy>(`/vacancies/${id}`);
   },
   matchScore(token: string, vacancyId: number) {
     return request<MatchScoreOut>(`/vacancies/${vacancyId}/match-score`, { token });
+  },
+  coverLetter(
+    token: string,
+    payload: { vacancy_id: number; tone?: "formal" | "friendly"; language?: "ru" | "en" },
+  ) {
+    return request<{
+      body: string;
+      used_today: number;
+      limit: number;
+      backend: string;
+    }>("/ai/cover-letter", { method: "POST", token, body: payload });
+  },
+  // Seeker kanban — 5 lanes (saved → applied → interview → offer → rejected).
+  // POST is idempotent: re-posting the same vacancy_id returns the existing row,
+  // so the FE doesn't need to inspect the local cache before calling.
+  listApplications(token: string, status?: ApplicationStatus) {
+    return request<ApplicationOut[]>("/applications", {
+      token,
+      query: status ? { status } : undefined,
+    });
+  },
+  applicationCounts(token: string) {
+    return request<ApplicationCountsOut>("/applications/counts", { token });
+  },
+  createApplication(
+    token: string,
+    payload: { vacancy_id: number; status?: ApplicationStatus; notes?: string },
+  ) {
+    return request<ApplicationOut>("/applications", {
+      method: "POST",
+      token,
+      body: payload,
+    });
+  },
+  updateApplication(
+    token: string,
+    applicationId: number,
+    payload: { status?: ApplicationStatus; notes?: string },
+  ) {
+    return request<ApplicationOut>(`/applications/${applicationId}`, {
+      method: "PATCH",
+      token,
+      body: payload,
+    });
+  },
+  deleteApplication(token: string, applicationId: number) {
+    return request<{ status: string }>(`/applications/${applicationId}`, {
+      method: "DELETE",
+      token,
+    });
   },
   seekerProfile(token: string) {
     return request<SeekerProfileOut>("/profiles/seeker", { token });

@@ -27,7 +27,7 @@ test("default locale renders RU strings on /", async ({ page }) => {
   await page.goto("/");
   await expect(page).toHaveURL(/\/$/);
   // The hero copy contains a distinctive Russian phrase from messages/ru.json.
-  await expect(page.getByText("пока AI ищет за вас")).toBeVisible();
+  await expect(page.getByText("а не HH-спам")).toBeVisible();
   // `<html lang>` is set from `getLocale()` at SSR time.
   await expect(page.locator("html")).toHaveAttribute("lang", "ru");
 });
@@ -35,7 +35,7 @@ test("default locale renders RU strings on /", async ({ page }) => {
 test("/en renders English strings", async ({ page }) => {
   await page.goto("/en");
   // EN-only copy from messages/en.json.
-  await expect(page.getByText("while AI searches for you")).toBeVisible();
+  await expect(page.getByText("no job-board spam")).toBeVisible();
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
 });
 

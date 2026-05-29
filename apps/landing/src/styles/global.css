@@ -9,4 +9,72 @@
   body {
     font-feature-settings: "cv11", "ss01", "ss03";
   }
+
+  /* Smooth scroll */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Selection color */
+  ::selection {
+    background-color: rgba(124, 58, 237, 0.3);
+    color: white;
+  }
+}
+
+@layer utilities {
+  /* Floating orb animations */
+  @keyframes float {
+    0%, 100% { transform: translateY(0) translateX(0); }
+    33% { transform: translateY(-20px) translateX(10px); }
+    66% { transform: translateY(10px) translateX(-5px); }
+  }
+  @keyframes float-delayed {
+    0%, 100% { transform: translateY(0) translateX(0); }
+    33% { transform: translateY(15px) translateX(-10px); }
+    66% { transform: translateY(-10px) translateX(8px); }
+  }
+  @keyframes float-slow {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-15px) scale(1.05); }
+  }
+
+  .animate-float {
+    animation: float 8s ease-in-out infinite;
+  }
+  .animate-float-delayed {
+    animation: float-delayed 10s ease-in-out infinite;
+    animation-delay: 2s;
+  }
+  .animate-float-slow {
+    animation: float-slow 12s ease-in-out infinite;
+    animation-delay: 4s;
+  }
+
+  /* Gradient text utility */
+  .text-gradient {
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* Glow pulse for CTA */
+  @keyframes glow-pulse {
+    0%, 100% { box-shadow: 0 0 20px rgba(124, 58, 237, 0.3); }
+    50% { box-shadow: 0 0 30px rgba(124, 58, 237, 0.5), 0 0 60px rgba(124, 58, 237, 0.15); }
+  }
+  .animate-glow-pulse {
+    animation: glow-pulse 3s ease-in-out infinite;
+  }
+
+  /* Shimmer effect for loading states */
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  .animate-shimmer {
+    background: linear-gradient(90deg, transparent 25%, rgba(255,255,255,0.05) 50%, transparent 75%);
+    background-size: 200% 100%;
+    animation: shimmer 2s ease-in-out infinite;
+  }
 }

@@ -14,8 +14,16 @@ scheduling story.
 from __future__ import annotations
 
 from app.config import settings
+from app.sentry import init_sentry
 from celery import Celery
 from celery.schedules import crontab
+
+# Initialise Sentry as early as possible — before any task module is
+# imported. The CeleryIntegration in ``app.sentry.init_sentry`` then
+# captures task failures, retries, and beat misses automatically.
+# Silently no-ops in test runs and when ``SENTRY_DSN`` is empty (the
+# default in dev), so this is safe to call unconditionally.
+init_sentry()
 
 celery_app = Celery(
     "proshli",
@@ -28,6 +36,7 @@ celery_app = Celery(
         "workers.tasks.prefilter",
         "workers.tasks.publisher",
         "workers.tasks.channel_approval",
+        "workers.tasks.cleanup",
     ],
 )
 
@@ -36,6 +45,7 @@ celery_app = Celery(
 # importers of ``celery_app`` we want the side-effect now.
 import workers.tasks.billing as _billing  # noqa: E402
 import workers.tasks.channel_approval as _channel_approval  # noqa: E402
+import workers.tasks.cleanup as _cleanup  # noqa: E402
 import workers.tasks.digest as _digest  # noqa: E402
 import workers.tasks.ingest as _ingest  # noqa: E402
 import workers.tasks.prefilter as _prefilter  # noqa: E402
@@ -47,6 +57,7 @@ import workers.tasks.publisher as _publisher  # noqa: E402
 _REGISTERED_TASK_MODULES = (
     _billing,
     _channel_approval,
+    _cleanup,
     _digest,
     _ingest,
     _prefilter,
@@ -68,9 +79,30 @@ celery_app.conf.update(
     # Beat schedule lives here so it ships with the app (no separate file
     # to forget). Times are UTC.
     beat_schedule={
+        # General ingest tick — fans out to every connector (habr_career,
+        # company_sites, telegram, rss, and the narrow HH light sweep).
+        # HH light is also called explicitly via ``run_hh_light`` below
+        # for symmetry with ``run_hh_wide`` — when staffing the operations
+        # dashboard it helps to see the two HH cadences as distinct tasks.
         "ingest-every-10-min": {
             "task": "workers.tasks.ingest.run_all_connectors",
             "schedule": crontab(minute="*/10"),
+        },
+        # Wide HH sweep — every 6 h, on minute=17 to dodge the :00/:15
+        # ingest ticks and the :15 weekly-digest. Wall-clock ~10-15 min;
+        # worker prefetch=1 keeps it from blocking shorter tasks
+        # because the publisher/prefilter slots are on different minutes.
+        "hh-wide-every-6h": {
+            "task": "workers.tasks.ingest.run_hh_wide",
+            "schedule": crontab(minute=17, hour="*/6"),
+        },
+        # Daily cleanup of stale vacancies (>90 days old + has
+        # published_at). Runs at 04:23 UTC = ~07:23 MSK, before the
+        # morning digest window so today's digest queries see the
+        # pruned table.
+        "cleanup-stale-daily-04-utc": {
+            "task": "workers.tasks.cleanup.cleanup_stale_vacancies",
+            "schedule": crontab(hour=4, minute=23),
         },
         "daily-digest-09-utc": {
             "task": "workers.tasks.digest.send_digests",

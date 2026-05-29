@@ -10,9 +10,24 @@ const currentLocale = Astro.currentLocale || "ru";
 
 <header class="fixed top-0 left-0 right-0 z-40 border-b border-white/5 bg-landing-bg-primary/70 backdrop-blur-xl">
   <div class="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
-    <a href="/" class="flex items-center gap-2 font-bold tracking-tight">
+    <a href="/" class="flex items-center gap-2.5 font-bold tracking-tight group">
+      <!-- Logomark: abstract "P" signal wave -->
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" class="shrink-0 transition-transform group-hover:scale-110">
+        <rect width="28" height="28" rx="7" class="fill-landing-accent-start/20" />
+        <path d="M8 20V8h5a5 5 0 0 1 0 10H8" stroke="url(#logo-grad)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+        <circle cx="19" cy="10" r="1.5" class="fill-landing-accent-end" opacity="0.7" />
+        <circle cx="21" cy="14" r="1" class="fill-landing-accent-start" opacity="0.5" />
+        <defs>
+          <linearGradient id="logo-grad" x1="8" y1="8" x2="18" y2="18">
+            <stop stop-color="var(--color-landing-accent-start)" />
+            <stop offset="1" stop-color="var(--color-landing-accent-end)" />
+          </linearGradient>
+        </defs>
+      </svg>
       <span class="text-18">Proshli</span>
     </a>
+
+    <!-- Desktop nav -->
     <nav class="hidden items-center gap-6 md:flex">
       {links.map((l) => (
         <a href={l.href} class="text-13 text-landing-text-muted hover:text-landing-text-primary transition-colors">
@@ -20,17 +35,93 @@ const currentLocale = Astro.currentLocale || "ru";
         </a>
       ))}
     </nav>
+
     <div class="flex items-center gap-3">
-      <a href={currentLocale === "ru" ? "/en/" : "/"} class="text-12 text-landing-text-muted hover:text-landing-text-primary">
+      <a href={currentLocale === "ru" ? "/en/" : "/"} class="text-12 text-landing-text-muted hover:text-landing-text-primary hidden sm:block">
         {currentLocale === "ru" ? "EN" : "RU"}
       </a>
-      <a href="https://app.proshli.ru/auth/login" class="text-13 text-landing-text-muted hover:text-landing-text-primary">Войти</a>
+      <a href="https://app.proshli.ru/auth/login" class="text-13 text-landing-text-muted hover:text-landing-text-primary hidden sm:block">Войти</a>
       <a
         href="https://app.proshli.ru/auth/register"
-        class="rounded-md bg-gradient-to-r from-landing-accent-start to-landing-accent-end px-3 h-8 inline-flex items-center text-13 font-medium text-white shadow-glow"
+        class="rounded-md bg-gradient-to-r from-landing-accent-start to-landing-accent-end px-3 h-8 inline-flex items-center text-13 font-medium text-white shadow-glow hidden sm:inline-flex"
       >
         Регистрация
       </a>
+
+      <!-- Mobile hamburger -->
+      <button
+        id="mobile-menu-btn"
+        type="button"
+        class="md:hidden relative w-8 h-8 flex items-center justify-center"
+        aria-label="Открыть меню"
+        aria-expanded="false"
+      >
+        <span id="hamburger-icon" class="block">
+          <span class="block w-5 h-0.5 bg-white rounded-full transition-all duration-300"></span>
+          <span class="block w-5 h-0.5 bg-white rounded-full mt-1.5 transition-all duration-300"></span>
+          <span class="block w-3.5 h-0.5 bg-white rounded-full mt-1.5 transition-all duration-300"></span>
+        </span>
+      </button>
     </div>
   </div>
+
+  <!-- Mobile menu panel -->
+  <div
+    id="mobile-menu"
+    class="md:hidden max-h-0 overflow-hidden transition-all duration-300 ease-in-out border-t border-white/0"
+  >
+    <nav class="px-6 py-4 space-y-1 bg-landing-bg-primary/95 backdrop-blur-xl">
+      {links.map((l) => (
+        <a
+          href={l.href}
+          class="block py-2.5 text-15 text-landing-text-muted hover:text-landing-text-primary transition-colors"
+        >
+          {l.label}
+        </a>
+      ))}
+      <div class="pt-3 mt-3 border-t border-white/5 flex items-center gap-4">
+        <a href="https://app.proshli.ru/auth/login" class="text-14 text-landing-text-muted hover:text-landing-text-primary">Войти</a>
+        <a
+          href="https://app.proshli.ru/auth/register"
+          class="rounded-md bg-gradient-to-r from-landing-accent-start to-landing-accent-end px-4 h-9 inline-flex items-center text-13 font-medium text-white shadow-glow"
+        >
+          Регистрация
+        </a>
+        <a href={currentLocale === "ru" ? "/en/" : "/"} class="ml-auto text-12 text-landing-text-muted hover:text-landing-text-primary">
+          {currentLocale === "ru" ? "EN" : "RU"}
+        </a>
+      </div>
+    </nav>
+  </div>
 </header>
+
+<script>
+  const btn = document.getElementById("mobile-menu-btn");
+  const menu = document.getElementById("mobile-menu");
+  const icon = document.getElementById("hamburger-icon");
+  if (btn && menu && icon) {
+    btn.addEventListener("click", () => {
+      const open = menu.classList.toggle("mobile-menu-open");
+      btn.setAttribute("aria-expanded", String(open));
+      icon.classList.toggle("hamburger-open", open);
+    });
+  }
+</script>
+
+<style>
+  .mobile-menu-open {
+    max-height: 320px;
+    border-color: rgba(255, 255, 255, 0.05);
+  }
+  .hamburger-open span:nth-child(1) {
+    transform: translateY(4px) rotate(45deg);
+  }
+  .hamburger-open span:nth-child(2) {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+  .hamburger-open span:nth-child(3) {
+    width: 1.25rem;
+    transform: translateY(-4px) rotate(-45deg);
+  }
+</style>

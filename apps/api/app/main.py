@@ -25,10 +25,12 @@ from fastapi.routing import APIRoute
 from app.config import settings
 from app.exception_handlers import register_exception_handlers
 from app.logging_config import configure_logging
+from app.middleware.metrics import MetricsMiddleware
 from app.middleware.request_id import RequestIdMiddleware
 from app.routes import (
     admin,
     ai,
+    applications,
     auth,
     billing,
     channel_approval,
@@ -82,6 +84,10 @@ def create_app() -> FastAPI:
         expose_headers=["X-Request-ID"],
     )
     app.add_middleware(RequestIdMiddleware)
+    # Metrics middleware lives innermost so it observes after routing has
+    # resolved ``scope["route"]`` — that's what gives us the templated
+    # path (``/vacancies/{vacancy_id}``) instead of the raw ``/vacancies/123``.
+    app.add_middleware(MetricsMiddleware)
 
     register_exception_handlers(app)
 
@@ -92,6 +98,7 @@ def create_app() -> FastAPI:
     app.include_router(profiles.router)
     app.include_router(resumes.router)
     app.include_router(vacancies.router)
+    app.include_router(applications.router)
     app.include_router(ingest.router)
     app.include_router(digest.router)
     app.include_router(ai.router)

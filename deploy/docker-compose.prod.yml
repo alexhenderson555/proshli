@@ -166,6 +166,9 @@ services:
       - "3000"
 
   landing:
+    build:
+      context: ..
+      dockerfile: apps/landing/Dockerfile
     image: ${LANDING_IMAGE:-proshli-landing:latest}
     container_name: proshli-landing
     restart: unless-stopped

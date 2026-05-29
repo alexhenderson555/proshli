@@ -10,30 +10,53 @@ Replaces the toy ``DemoHhConnector`` with a sweep that:
   global cap so a misconfigured sweep cannot DoS the public API.
 * Deduplicates by HH vacancy id across the sweep (rows that show up under
   multiple queries — common for cross-stack roles).
+* Retries on HTTP 429 with exponential backoff (HH 429s aggressively when a
+  cron tick stacks pages too fast). Failure on a single (query, area) is
+  isolated — we skip and continue rather than abort the whole sweep.
 * Falls back to a deterministic two-record sample if the live API call raises
-  (network blocked, HH 429'd us, etc.) so ingestion runs in offline CI keep
-  exercising the rest of the pipeline.
+  (network blocked, every query 429'd, etc.) so ingestion runs in offline CI
+  keep exercising the rest of the pipeline.
 
 The HH search endpoint is public (no API key); we set a descriptive
 ``User-Agent`` per HH's TOS.
+
+Cadence
+=======
+
+``apps/workers/workers/celery_app.py`` runs two separate HH tasks:
+
+* ``run_hh_light`` every 10 min — narrow (Moscow + Russia-wide, low page
+  cap) for freshness on top-of-funnel demand. Default constructor args.
+* ``run_hh_wide`` every 6 h — full 50-city × 60-query sweep with deep
+  pagination. Pass ``areas=WIDE_AREAS``, ``queries=WIDE_QUERIES``,
+  ``max_pages=10``, ``global_limit=2000`` to the constructor.
 """
 
 from __future__ import annotations
 
+import logging
+import time
 from datetime import timedelta
 
 import httpx
+import structlog
 
 from app.config import settings
 from app.connectors.base import SourceConnector
 from app.services.ingestion import VacancyPayload
 from app.time_utils import now_utc
 
+log = structlog.get_logger(__name__)
+_stdlog = logging.getLogger(__name__)
 
-# Built-in roster of HH search queries — broad enough to cover every taxonomy
-# bucket the publication pipeline emits (Python, Go, Rust, frontend, mobile,
-# data, devops, qa, design, product, analyst, security, gamedev, marketing,
-# sales). The env var ``hh_search_queries`` overrides this when set.
+
+# ---------------------------------------------------------------------------
+# Search-query rosters
+# ---------------------------------------------------------------------------
+# Light sweep — keep this list lean so the every-10-min tick finishes well
+# under the worker soft timeout. Splits the most-trafficked roles into
+# their narrower variants ("backend" vs "data" Python) so HH's relevance
+# ranking surfaces results for both intents.
 DEFAULT_HH_QUERIES: tuple[str, ...] = (
     "python developer",
     "go developer",
@@ -85,12 +108,121 @@ DEFAULT_HH_QUERIES: tuple[str, ...] = (
     "1с разработчик",
 )
 
-# HH area ids we sweep by default. 113 = Russia (covers everywhere), but we
-# also probe individual metros explicitly because HH search ranks results
-# locally and small regional jobs occasionally don't surface at the country
-# level. 1 = Moscow, 2 = SPB, 3 = Ekb, 4 = Novosibirsk, 88 = Kazan, 76 = Rostov,
-# 66 = Krasnodar, 1438 = Innopolis. Override via env if you need narrower scope.
-DEFAULT_HH_AREAS: tuple[str, ...] = ("113",)
+# Wide sweep — additional queries that are too long-tail for the 10-min
+# tick but worth catching in the 6h sweep. Splits stack queries into
+# domain-specific variants (Python backend / data / ML) and adds emerging
+# / niche roles (Web3, AI engineer, robotics) plus PM/marketing/sales
+# adjacent IT roles that pay well enough to be worth aggregating.
+WIDE_HH_QUERIES: tuple[str, ...] = DEFAULT_HH_QUERIES + (
+    "python backend",
+    "python data",
+    "java backend",
+    "java spring",
+    "kotlin backend",
+    "fullstack engineer",
+    "site reliability engineer",
+    "ml ops",
+    "mlops engineer",
+    "computer vision",
+    "nlp engineer",
+    "llm engineer",
+    "ai engineer",
+    "prompt engineer",
+    "database administrator",
+    "postgres dba",
+    "android kotlin",
+    "swift developer",
+    "ios swift",
+    "embedded developer",
+    "firmware engineer",
+    "robotics engineer",
+    "hardware engineer",
+    "smart contract developer",
+    "web3 developer",
+    "linux engineer",
+    "kubernetes engineer",
+    "tech lead",
+    "team lead",
+    "scrum master",
+    "agile coach",
+    "1с программист",
+    "1с франчайзи",
+    "технический писатель",
+    "разработчик c#",
+    "frontend архитектор",
+    "тимлид разработки",
+    "руководитель разработки",
+)
+
+# ---------------------------------------------------------------------------
+# Area rosters — HH area_id integer mapping
+# ---------------------------------------------------------------------------
+# 113 = Russia (covers the whole country at HH's ranking; small regional
+# postings sometimes don't surface here so the wide sweep adds metros).
+# Light = Moscow + Russia-wide, the freshness pair.
+DEFAULT_HH_AREAS: tuple[str, ...] = ("1", "113")
+
+# 50-city wide roster: Russian Mn-pop cities + CIS hubs. IDs from HH's
+# /areas tree (https://api.hh.ru/areas). Comment beside each shows the
+# city for grep-friendliness.
+WIDE_HH_AREAS: tuple[str, ...] = (
+    "113",   # Russia (national)
+    "1",     # Москва
+    "2",     # Санкт-Петербург
+    "3",     # Екатеринбург
+    "4",     # Новосибирск
+    "1438",  # Иннополис
+    "76",    # Ростов-на-Дону
+    "78",    # Самара
+    "88",    # Казань
+    "66",    # Нижний Новгород
+    "104",   # Челябинск
+    "54",    # Краснодар
+    "1202",  # Уфа
+    "1146",  # Пермь
+    "1217",  # Воронеж
+    "39",    # Волгоград
+    "98",    # Тюмень
+    "1473",  # Тольятти
+    "1124",  # Омск
+    "68",    # Красноярск
+    "95",    # Сочи
+    "53",    # Калининград
+    "22",    # Владивосток
+    "1261",  # Хабаровск
+    "1093",  # Иркутск
+    "1078",  # Барнаул
+    "1041",  # Ярославль
+    "1106",  # Саратов
+    "1338",  # Архангельск
+    "1359",  # Брянск
+    "1366",  # Владимир
+    "1395",  # Вологда
+    "1431",  # Ижевск
+    "1454",  # Калуга
+    "1490",  # Кемерово
+    "1517",  # Киров
+    "1543",  # Кострома
+    "1577",  # Курск
+    "1620",  # Липецк
+    "1646",  # Магнитогорск
+    "1679",  # Мурманск
+    "1716",  # Набережные Челны
+    "1827",  # Оренбург
+    "1846",  # Пенза
+    "1929",  # Рязань
+    "1965",  # Смоленск
+    "1985",  # Ставрополь
+    "2030",  # Тверь
+    "2049",  # Томск
+    "2114",  # Ульяновск
+    # CIS hubs — Belarus / Kazakhstan / Armenia / Georgia (relocation-friendly)
+    "16",    # Минск
+    "40",    # Алматы
+    "159",   # Астана
+    "120",   # Ереван
+    "1051",  # Тбилиси
+)
 
 
 def _parse_csv(raw: str, fallback: tuple[str, ...]) -> tuple[str, ...]:
@@ -99,29 +231,76 @@ def _parse_csv(raw: str, fallback: tuple[str, ...]) -> tuple[str, ...]:
 
 
 class HhConnector(SourceConnector):
+    """HH.ru search connector.
+
+    All sweep dimensions (queries, areas, per-page, max-pages, global cap)
+    are constructor parameters. Defaults come from env vars and fall back
+    to the ``DEFAULT_*`` rosters above so the light-sweep cron works with
+    zero config. The wide-sweep task passes ``WIDE_*`` rosters explicitly
+    — no env-var dance required to differentiate the two cadences.
+    """
+
     source_name = "hh"
 
-    def __init__(self) -> None:
-        # Read the search roster from env once per process; tests can swap
-        # ``settings.hh_search_queries`` and rebuild the connector to scope a
-        # fixture run.
-        queries_raw = getattr(settings, "hh_search_queries", "") or ""
-        areas_raw = getattr(settings, "hh_areas", "") or ""
-        self._queries = _parse_csv(queries_raw, DEFAULT_HH_QUERIES)
-        self._areas = _parse_csv(areas_raw, DEFAULT_HH_AREAS)
+    # Inter-page delay. HH allows ~30 req/sec per IP but 429s aggressively
+    # on bursts. Half a second is conservative; the wide sweep takes
+    # ~10–15 min wall-clock at this rate, which is fine for a 6h cadence.
+    _PAGE_SLEEP_S: float = 0.5
+    # Exponential backoff cap for 429 retries. We retry the same page up
+    # to ``_MAX_RETRIES`` times with ``2 ** attempt`` seconds between,
+    # then skip the (query, area) pair entirely rather than blocking the
+    # whole sweep on one stuck combination.
+    _MAX_RETRIES: int = 3
+
+    def __init__(
+        self,
+        *,
+        queries: tuple[str, ...] | None = None,
+        areas: tuple[str, ...] | None = None,
+        per_page: int | None = None,
+        max_pages: int | None = None,
+        global_limit: int | None = None,
+    ) -> None:
+        # Caller (e.g. ``run_hh_wide`` Celery task) wins; env vars come
+        # next; built-in defaults last. ``None`` from the caller means
+        # "use whatever env/default decides".
+        if queries is not None:
+            self._queries = queries
+        else:
+            queries_raw = getattr(settings, "hh_search_queries", "") or ""
+            self._queries = _parse_csv(queries_raw, DEFAULT_HH_QUERIES)
+
+        if areas is not None:
+            self._areas = areas
+        else:
+            areas_raw = getattr(settings, "hh_areas", "") or ""
+            self._areas = _parse_csv(areas_raw, DEFAULT_HH_AREAS)
+
         # Global cap on the sweep — HH allows up to 2000 results per query
-        # but we don't need anywhere near that. With 47 queries × 1 area ×
-        # 100 per_page × 5 pages we cap at ~23k vacancies per tick; the
-        # global ceiling keeps us safe if the env is misconfigured.
-        self._global_limit = max(int(getattr(settings, "hh_live_limit", 30) or 30), 30)
-        self._per_page = min(max(int(settings.hh_per_page or 100), 10), 100)
-        self._max_pages = max(int(getattr(settings, "hh_max_pages_per_query", 3) or 3), 1)
+        # but the wide sweep at 60 queries × 50 areas would explode without
+        # a ceiling. Light sweep keeps the 30-row default for speed.
+        env_limit = int(getattr(settings, "hh_live_limit", 30) or 30)
+        self._global_limit = global_limit if global_limit is not None else env_limit
+
+        env_per_page = int(settings.hh_per_page or 100)
+        chosen_per_page = per_page if per_page is not None else env_per_page
+        self._per_page = min(max(chosen_per_page, 10), 100)
+
+        env_max_pages = int(getattr(settings, "hh_max_pages_per_query", 3) or 3)
+        chosen_max_pages = max_pages if max_pages is not None else env_max_pages
+        self._max_pages = max(chosen_max_pages, 1)
 
     # ------------------------------------------------------------------ live
 
     def _fetch_page(
         self, client: httpx.Client, query: str, area: str, page: int
     ) -> dict[str, object]:
+        """One HH /vacancies search call with retry-on-429.
+
+        Returns ``{}`` after exhausting retries; the outer loop treats an
+        empty payload as a normal end-of-pages signal and moves to the
+        next (query, area) pair.
+        """
         params: dict[str, str] = {
             "text": query,
             "area": area,
@@ -135,11 +314,62 @@ class HhConnector(SourceConnector):
             # Exclude archived (already-filled) rows.
             "archived": "false",
         }
-        response = client.get(f"{settings.hh_base_url}/vacancies", params=params)
-        response.raise_for_status()
-        data = response.json()
-        if isinstance(data, dict):
-            return data
+
+        for attempt in range(self._MAX_RETRIES + 1):
+            try:
+                response = client.get(
+                    f"{settings.hh_base_url}/vacancies", params=params
+                )
+            except httpx.HTTPError as exc:
+                # Network-level failure (DNS / timeout / connection reset).
+                # Same retry shape as 429 — the next attempt might succeed.
+                log.warning(
+                    "hh.fetch_network_error",
+                    query=query,
+                    area=area,
+                    page=page,
+                    attempt=attempt,
+                    error=str(exc),
+                )
+                if attempt >= self._MAX_RETRIES:
+                    return {}
+                time.sleep(2 ** attempt)
+                continue
+
+            if response.status_code == 429:
+                # HH's rate-limit headers don't always include
+                # ``Retry-After``; exponential backoff is the safe default.
+                log.warning(
+                    "hh.fetch_429",
+                    query=query,
+                    area=area,
+                    page=page,
+                    attempt=attempt,
+                )
+                if attempt >= self._MAX_RETRIES:
+                    return {}
+                time.sleep(2 ** attempt)
+                continue
+
+            try:
+                response.raise_for_status()
+            except httpx.HTTPStatusError as exc:
+                _stdlog.warning(
+                    "hh.fetch_http_error query=%r area=%r page=%d status=%d",
+                    query,
+                    area,
+                    page,
+                    response.status_code,
+                )
+                # Non-429 errors are usually permanent for this combo
+                # (e.g. 400 on a malformed query). Bail without retry.
+                _ = exc  # keep the local for the log message
+                return {}
+
+            data = response.json()
+            if isinstance(data, dict):
+                return data
+            return {}
         return {}
 
     def _map_item(self, item: dict[str, object]) -> VacancyPayload:
@@ -197,9 +427,10 @@ class HhConnector(SourceConnector):
             for query in self._queries:
                 for area in self._areas:
                     for page in range(self._max_pages):
-                        try:
-                            payload = self._fetch_page(client, query, area, page)
-                        except Exception:  # noqa: BLE001
+                        payload = self._fetch_page(client, query, area, page)
+                        if not payload:
+                            # Either retries exhausted (429/network) or a
+                            # 4xx — skip the rest of this (query, area).
                             break
                         items = payload.get("items") or []
                         if not isinstance(items, list) or not items:
@@ -219,6 +450,8 @@ class HhConnector(SourceConnector):
                         total_pages = payload.get("pages")
                         if isinstance(total_pages, int) and page + 1 >= total_pages:
                             break
+                        # Sleep between pages — see ``_PAGE_SLEEP_S``.
+                        time.sleep(self._PAGE_SLEEP_S)
         return mapped
 
     # --------------------------------------------------------------- public
@@ -228,8 +461,8 @@ class HhConnector(SourceConnector):
             live = self._fetch_live()
             if live:
                 return live
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001
+            log.warning("hh.fetch_failed_top_level", error=str(exc))
 
         # Offline fallback — deterministic so CI/tests keep working.
         now = now_utc()

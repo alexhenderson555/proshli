@@ -9,6 +9,9 @@
 // if the OpenAPI surface changed).
 
 export type {
+  ApplicationCountsOut,
+  ApplicationOut,
+  ApplicationStatus,
   EmployerActionLogOut,
   EmployerVacancyAnalyticsOut,
   EmployerVacancyPageOut,
@@ -19,4 +22,5 @@ export type {
   TokenResponse,
   UserOut,
   Vacancy,
+  VacancyStatsOut,
 } from "@proshli/shared-types";

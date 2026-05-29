@@ -5,17 +5,19 @@
 // bottom CTA bar so the "Apply" button is always reachable.
 
 import { useParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { Bookmark, BookmarkCheck } from "lucide-react";
 
 import { Badge, Button } from "@/components/ui";
+import { CoverLetterPanel } from "@/components/cover-letter-panel";
 import { MatchPill } from "@/components/match-pill";
 import { VacancyCard } from "@/components/vacancy-card";
 import { FadeIn } from "@proshli/ui";
 import { Link } from "@/i18n/navigation";
 import { api } from "@/lib/api";
 import { getToken } from "@/lib/session";
-import type { MatchScoreOut, Vacancy } from "@/lib/types";
+import type { ApplicationOut, MatchScoreOut, Vacancy } from "@/lib/types";
 
 export default function VacancyDetailsPage() {
   const t = useTranslations("vacancies.detail");
@@ -27,6 +29,13 @@ export default function VacancyDetailsPage() {
   const [vacancy, setVacancy] = useState<Vacancy | null>(null);
   const [related, setRelated] = useState<Vacancy[]>([]);
   const [match, setMatch] = useState<MatchScoreOut | null>(null);
+  // Application row for *this* vacancy (saved or any further lane). We
+  // keep the full row, not just a boolean, so we can flip the button
+  // optimistically and surface the lane name if the seeker has already
+  // advanced past "saved".
+  const [application, setApplication] = useState<ApplicationOut | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -84,6 +93,44 @@ export default function VacancyDetailsPage() {
       .catch(() => { /* swallow — 401/404 just means we render nothing */ });
     return () => { cancelled = true; };
   }, [vacancy]);
+
+  // Pull the current application status for this vacancy (if any) so the
+  // Save button can render as "Saved" instead of inviting a duplicate POST.
+  // We scan the seeker's full pipeline because there's no per-vacancy GET —
+  // adding one for a single button would bloat the API surface for no win.
+  useEffect(() => {
+    const token = getToken();
+    if (!token || !vacancy) return;
+    let cancelled = false;
+    api.listApplications(token)
+      .then((rows) => {
+        if (cancelled) return;
+        const mine = rows.find((row) => row.vacancy_id === vacancy.id) ?? null;
+        setApplication(mine);
+      })
+      .catch(() => { /* 403 for employers, 401 for anon — render Save */ });
+    return () => { cancelled = true; };
+  }, [vacancy]);
+
+  const handleSave = useCallback(async () => {
+    const token = getToken();
+    if (!token) {
+      setSaveError(t("saveNeedsAuth"));
+      return;
+    }
+    if (!vacancy || application) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const row = await api.createApplication(token, { vacancy_id: vacancy.id });
+      setApplication(row);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : t("saveError");
+      setSaveError(message);
+    } finally {
+      setSaving(false);
+    }
+  }, [application, t, vacancy]);
 
   const salaryLabel = useMemo(() => {
     if (!vacancy) return "—";
@@ -205,9 +252,32 @@ export default function VacancyDetailsPage() {
             ) : (
               <Button>{t("apply")}</Button>
             )}
+            <Button
+              variant="secondary"
+              onClick={handleSave}
+              disabled={saving || application !== null}
+              aria-pressed={application !== null}
+            >
+              {application ? (
+                <BookmarkCheck className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+              ) : (
+                <Bookmark className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+              )}
+              {application ? t("savedButton") : t("saveButton")}
+            </Button>
             <Link href="/vacancies">
               <Button variant="secondary">{t("backToFeed")}</Button>
             </Link>
+          </div>
+          {saveError ? (
+            <p className="mt-2 text-[12px] text-[var(--danger)]">{saveError}</p>
+          ) : null}
+
+          {/* AI cover-letter — collapsible, only renders on desktop where
+              there's space. The mobile sticky bar already covers apply, so
+              we deliberately hide this from cramped viewports. */}
+          <div className="mt-4 hidden lg:block">
+            <CoverLetterPanel vacancyId={vacancy.id} />
           </div>
         </article>
       </FadeIn>

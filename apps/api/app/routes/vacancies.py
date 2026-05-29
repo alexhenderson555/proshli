@@ -29,7 +29,9 @@ from app.deps import DbSession
 from app.models import (
     EmployerActionLog,
     EmployerVacancy,
+    MatchReasoning,
     Plan,
+    Resume,
     Subscription,
     User,
     Vacancy,
@@ -42,11 +44,13 @@ from app.schemas import (
     VacancyCreateRequest,
     VacancyOut,
     VacancyPromoteRequest,
+    VacancyStatsOut,
     VacancyUpdateRequest,
 )
 from app.services.embeddings import get_embedding_service
 from app.services.employer import log_employer_action, require_employer_ownership
 from app.services.hh_live import fetch_live_hh_vacancies
+from app.services.match_rerank import rerank_top_n
 from app.services.match_score import batch_match_scores, match_tier, user_resume_embedding
 from app.services.semantic_search import embed_vacancy, search_vacancies_semantic
 from app.time_utils import now_utc
@@ -240,6 +244,36 @@ async def list_vacancies(
     combined: list[VacancyOut] = [*db_items, *live_items]
     combined.sort(key=lambda item: (item.is_promoted, item.published_at), reverse=True)
     return await _apply_scores(combined)
+
+
+@router.get("/stats", response_model=VacancyStatsOut)
+async def vacancy_stats(db: DbSession) -> VacancyStatsOut:
+    """Anonymous-readable aggregates for the landing hero metric strip.
+
+    All counts ignore soft-deleted rows and the live-hh.ru pass-through
+    (those aren't ours to count). ``last_24h`` is bounded by published_at
+    rather than ingestion time so the number tracks what users actually
+    see on the feed.
+    """
+    base = select(func.count()).select_from(Vacancy).where(
+        Vacancy.is_deleted.is_(False),
+        Vacancy.is_active.is_(True),
+    )
+    total = await db.scalar(base) or 0
+    last_24h = (
+        await db.scalar(base.where(Vacancy.published_at >= now_utc() - timedelta(days=1)))
+        or 0
+    )
+    sources = (
+        await db.scalar(
+            select(func.count(func.distinct(Vacancy.source))).where(
+                Vacancy.is_deleted.is_(False),
+                Vacancy.is_active.is_(True),
+            )
+        )
+        or 0
+    )
+    return VacancyStatsOut(total=total, last_24h=last_24h, sources=sources)
 
 
 @router.get("/my", response_model=list[VacancyOut])
@@ -468,6 +502,109 @@ async def search_semantic(
     return [VacancyOut.model_validate(row) for row in rows]
 
 
+@router.get("/match-feed", response_model=list[VacancyOut])
+async def match_feed(
+    db: DbSession,
+    top: int = Query(default=10, ge=1, le=20),
+    pool: int = Query(default=50, ge=10, le=50),
+    current_user: User = Depends(get_current_user),
+) -> list[VacancyOut]:
+    """LLM-reranked "For me" feed.
+
+    Pipeline:
+
+    1. Resolve the caller's most recent resume + embedding.
+    2. Pull the cosine top-``pool`` vacancies (default 50) that have an
+       embedding and aren't soft-deleted / archived.
+    3. Hand them to :func:`app.services.match_rerank.rerank_top_n` —
+       cached rows are reused, the missing slice is evaluated in a single
+       Claude call.
+    4. Return the top ``top`` vacancies enriched with
+       ``match_reasoning`` + ``rerank_score``, ordered by rerank score
+       DESC. ``match_score`` / ``match_tier`` carry the cosine signal so
+       both fields render alongside each other in the UI.
+
+    Degrades gracefully:
+
+    * No resume on file → 404.
+    * Cosine candidate set is empty → returns ``[]``.
+    * Reranker returns nothing (no Anthropic key, network error) → falls
+      back to the cosine-ordered top-``top`` so the tab is never blank.
+    """
+    resume = await db.scalar(
+        select(Resume)
+        .where(Resume.user_id == current_user.id)
+        .order_by(desc(Resume.created_at))
+        .limit(1)
+    )
+    if resume is None:
+        raise HTTPException(status_code=404, detail="No resume on file")
+
+    resume_emb = await user_resume_embedding(db, current_user.id)
+    if resume_emb is None:
+        raise HTTPException(status_code=404, detail="No resume embedding available")
+
+    # Fetch the cosine top-``pool`` directly via pgvector. The dedicated
+    # ``batch_match_scores`` path takes a fixed id list — here we want
+    # the ranking too, so we run the cosine sort in SQL.
+    rows = await db.execute(
+        select(
+            Vacancy,
+            (1 - Vacancy.embedding.cosine_distance(resume_emb)).label("score"),  # type: ignore[attr-defined]
+        )
+        .where(
+            Vacancy.embedding.is_not(None),
+            Vacancy.is_deleted.is_(False),
+            Vacancy.is_active.is_(True),
+        )
+        .order_by(desc("score"))
+        .limit(pool)
+    )
+    candidates: list[tuple[Vacancy, float]] = [
+        (vac, float(score)) for vac, score in rows.all()
+    ]
+    if not candidates:
+        return []
+
+    cosine_by_vid: dict[int, float] = {v.id: s for v, s in candidates}
+    vacancy_by_vid: dict[int, Vacancy] = {v.id: v for v, _ in candidates}
+
+    reranked = await rerank_top_n(db, resume, candidates, top_n=top)
+
+    # Fallback path: reranker returned nothing — serve the cosine top-N
+    # directly so the tab still loads.
+    if not reranked:
+        cosine_top = candidates[:top]
+        return [
+            VacancyOut(
+                **{
+                    **VacancyOut.model_validate(vac).model_dump(),
+                    "match_score": score,
+                    "match_tier": match_tier(score),
+                }
+            )
+            for vac, score in cosine_top
+        ]
+
+    out: list[VacancyOut] = []
+    for reasoning in reranked:
+        vac = vacancy_by_vid.get(reasoning.vacancy_id)
+        if vac is None:
+            continue
+        cosine = cosine_by_vid.get(reasoning.vacancy_id)
+        base = VacancyOut.model_validate(vac).model_dump()
+        base.update(
+            {
+                "match_score": cosine,
+                "match_tier": match_tier(cosine) if cosine is not None else None,
+                "match_reasoning": reasoning.reasoning_ru,
+                "rerank_score": float(reasoning.rerank_score),
+            }
+        )
+        out.append(VacancyOut(**base))
+    return out
+
+
 @router.get("/{vacancy_id}/match-score", response_model=MatchScoreOut)
 async def get_match_score(
     vacancy_id: int,
@@ -479,7 +616,9 @@ async def get_match_score(
     Always-authed — anonymous callers get 401 from ``get_current_user``.
     404 when the caller has no resume on file, or the vacancy has no embedding.
     Used by the vacancy detail page to load the score after page render without
-    re-fetching the full vacancy list.
+    re-fetching the full vacancy list. Surfaces cached ``match_reasonings``
+    (Match-score 2.0) when one is on file so the FE can render a "Why this
+    fits?" blurb without re-running the reranker.
     """
     resume_emb = await user_resume_embedding(db, current_user.id)
     if resume_emb is None:
@@ -488,7 +627,30 @@ async def get_match_score(
     score = scores.get(vacancy_id)
     if score is None:
         raise HTTPException(status_code=404, detail="Vacancy not embedded")
-    return MatchScoreOut(score=score, tier=match_tier(score))
+
+    # Best-effort cached reasoning lookup. We always have a resume here
+    # (otherwise ``user_resume_embedding`` would have returned None and we'd
+    # have 404'd already), so a small extra SELECT is cheap.
+    resume = await db.scalar(
+        select(Resume)
+        .where(Resume.user_id == current_user.id)
+        .order_by(desc(Resume.created_at))
+        .limit(1)
+    )
+    reasoning_row: MatchReasoning | None = None
+    if resume is not None:
+        reasoning_row = await db.scalar(
+            select(MatchReasoning).where(
+                MatchReasoning.resume_id == resume.id,
+                MatchReasoning.vacancy_id == vacancy_id,
+            )
+        )
+    return MatchScoreOut(
+        score=score,
+        tier=match_tier(score),
+        reasoning=reasoning_row.reasoning_ru if reasoning_row else None,
+        rerank_score=float(reasoning_row.rerank_score) if reasoning_row else None,
+    )
 
 
 @router.get("/{vacancy_id}", response_model=VacancyOut)

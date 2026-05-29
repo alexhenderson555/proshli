@@ -6,12 +6,12 @@ import json
 
 import structlog
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
-from sqlalchemy import desc, select
+from sqlalchemy import delete, desc, select
 
 from app.auth import get_current_user
 from app.deps import DbSession
 from app.middleware.rate_limit import RateLimit
-from app.models import Resume, ResumeVersion, User
+from app.models import MatchReasoning, Resume, ResumeVersion, User
 from app.schemas import (
     ResumeImproveRequest,
     ResumeImproveResponse,
@@ -75,6 +75,25 @@ async def upload_resume(
     db.add(resume)
     await db.commit()
     await db.refresh(resume)
+
+    # Match-score 2.0 cache invalidation. A new resume invalidates every
+    # cached (resume_id, vacancy_id) reasoning row for that user — the
+    # rerank prompt embeds the resume blob, so stale rows would surface
+    # explanations grounded in the old skills/experience. We scope the
+    # delete to the user's *previous* resumes (everything except the row
+    # we just inserted) — keeps it cheap and avoids racing with concurrent
+    # match-feed requests that may have just landed for the new resume.
+    await db.execute(
+        delete(MatchReasoning).where(
+            MatchReasoning.resume_id.in_(
+                select(Resume.id).where(
+                    Resume.user_id == current_user.id,
+                    Resume.id != resume.id,
+                )
+            )
+        )
+    )
+    await db.commit()
     return resume
 
 

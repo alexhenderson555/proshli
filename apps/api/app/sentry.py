@@ -29,11 +29,24 @@ def init_sentry() -> bool:
         from sentry_sdk.integrations.asyncio import AsyncioIntegration
         from sentry_sdk.integrations.fastapi import FastApiIntegration
 
+        # Celery integration is conditional — the API process doesn't ship
+        # the celery library on the import path, so importing it
+        # unconditionally would break the FastAPI startup. Workers DO have
+        # celery, so the import succeeds there and CeleryIntegration kicks
+        # in to capture task failures, retries, and beat misses.
+        integrations: list = [FastApiIntegration(), AsyncioIntegration()]
+        try:
+            from sentry_sdk.integrations.celery import CeleryIntegration
+
+            integrations.append(CeleryIntegration())
+        except ImportError:
+            pass
+
         sentry_sdk.init(
             dsn=settings.sentry_dsn,
             environment=settings.app_env,
             traces_sample_rate=settings.sentry_traces_sample_rate,
-            integrations=[FastApiIntegration(), AsyncioIntegration()],
+            integrations=integrations,
             send_default_pii=False,
         )
         log.info("sentry.initialized", env=settings.app_env)

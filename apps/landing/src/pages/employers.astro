@@ -1,54 +1,162 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
+import Reveal from "../components/Reveal.tsx";
+import AnimatedCounter from "../components/AnimatedCounter.tsx";
 ---
 
 <BaseLayout title="Для работодателей — Proshli" description="AI-скрининг кандидатов. Видишь только тех, кто реально подходит — без ручной разборки сотен резюме.">
-  <section class="py-32 px-6">
-    <div class="mx-auto max-w-6xl">
-      <h1 class="text-32 md:text-48 font-extrabold tracking-tight mb-3">Для работодателей</h1>
-      <p class="text-18 text-landing-text-muted mb-16 max-w-2xl">
-        AI делает first-pass за HR. Ты видишь только тех, кто реально подходит.
-      </p>
-
-      <!-- Асимметричный layout: большой блок + два маленьких -->
-      <div class="grid md:grid-cols-[1.5fr_1fr] gap-5 mb-12">
-        <div class="rounded-xl border border-white/8 bg-white/[0.02] p-8">
-          <span class="text-11 font-mono text-landing-text-muted tracking-wider">Главное</span>
-          <h3 class="text-20 font-semibold mt-2 mb-3">Кандидаты с match-score</h3>
-          <p class="text-14 text-landing-text-muted leading-loose">
-            Видишь сразу процент совпадения между требованиями вакансии и резюме кандидата.
-            AI считает cosine similarity между embedding-ами — это точнее ключевых слов.
-            Порог 80%+ — high match, 60-80% — relevant. Ниже не показываем.
+  <!-- Hero -->
+  <section class="relative py-32 px-6 overflow-hidden">
+    <div class="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_70%_20%,rgba(59,130,246,0.1)_0%,transparent_70%)] pointer-events-none"></div>
+    <div class="mx-auto max-w-6xl relative">
+      <Reveal client:visible>
+        <div class="max-w-2xl mb-16">
+          <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-blue-500/20 bg-blue-500/5 mb-6">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-blue-400"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+            <span class="text-12 text-blue-300/80">Employer-тариф</span>
+          </div>
+          <h1 class="text-32 md:text-48 font-extrabold tracking-tight mb-4">
+            AI делает first-pass<br />
+            <span class="bg-clip-text text-transparent bg-gradient-to-r from-blue-300 to-cyan-300">за вашего HR</span>
+          </h1>
+          <p class="text-18 text-landing-text-muted max-w-xl">
+            Ты видишь только тех, кто реально подходит. Без ручной разборки сотен резюме.
           </p>
         </div>
-        <div class="space-y-5">
-          <div class="rounded-xl border border-white/8 bg-white/[0.02] p-6">
-            <span class="text-11 font-mono text-landing-text-muted tracking-wider">Скорость</span>
-            <h3 class="text-16 font-semibold mt-2 mb-2">Скрининг за минуту</h3>
-            <p class="text-13 text-landing-text-muted leading-loose">
-              AI отсеивает явно нерелевантных, оставляет топ-5. Ты смотришь только их.
-            </p>
+      </Reveal>
+
+      <!-- Stats -->
+      <div class="grid grid-cols-3 gap-6 mb-20">
+        <Reveal client:visible delay={0}>
+          <div class="rounded-xl border border-white/8 bg-white/[0.02] p-6 text-center">
+            <div class="text-32 font-bold font-mono text-blue-400">
+              <AnimatedCounter client:visible target={85} suffix="%" />
+            </div>
+            <div class="text-13 text-landing-text-muted mt-1">точность скрининга</div>
           </div>
-          <div class="rounded-xl border border-white/8 bg-white/[0.02] p-6">
-            <span class="text-11 font-mono text-landing-text-muted tracking-wider">Команда</span>
-            <h3 class="text-16 font-semibold mt-2 mb-2">До 5 человек</h3>
-            <p class="text-13 text-landing-text-muted leading-loose">
-              Включено в тариф Employer. Дополнительные места — ₽490 за каждого.
-            </p>
+        </Reveal>
+        <Reveal client:visible delay={0.1}>
+          <div class="rounded-xl border border-white/8 bg-white/[0.02] p-6 text-center">
+            <div class="text-32 font-bold font-mono text-blue-400">
+              <AnimatedCounter client:visible target={12} suffix="x" />
+            </div>
+            <div class="text-13 text-landing-text-muted mt-1">быстрее ручного отбора</div>
           </div>
+        </Reveal>
+        <Reveal client:visible delay={0.2}>
+          <div class="rounded-xl border border-white/8 bg-white/[0.02] p-6 text-center">
+            <div class="text-32 font-bold font-mono text-blue-400">
+              <AnimatedCounter client:visible target={2400} suffix="+" separator=" " />
+            </div>
+            <div class="text-13 text-landing-text-muted mt-1">кандидатов в базе</div>
+          </div>
+        </Reveal>
+      </div>
+
+      <!-- Features grid -->
+      <div class="grid md:grid-cols-[1.5fr_1fr] gap-6 mb-12">
+        <Reveal client:visible delay={0.1}>
+          <div class="rounded-2xl border border-white/8 bg-white/[0.02] p-8 hover:border-blue-500/20 transition-colors h-full">
+            <div class="flex items-start gap-4">
+              <div class="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-blue-400">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+              </div>
+              <div>
+                <h3 class="text-20 font-semibold mb-3">Кандидаты с match-score</h3>
+                <p class="text-14 text-landing-text-muted leading-relaxed">
+                  Видишь сразу процент совпадения между требованиями вакансии и резюме кандидата.
+                  AI считает cosine similarity между embedding-ами — это точнее ключевых слов.
+                  Порог 80%+ — high match, 60-80% — relevant. Ниже не показываем.
+                </p>
+              </div>
+            </div>
+          </div>
+        </Reveal>
+        <div class="flex flex-col gap-6">
+          <Reveal client:visible delay={0.2}>
+            <div class="rounded-2xl border border-white/8 bg-white/[0.02] p-6 hover:border-blue-500/20 transition-colors">
+              <div class="flex items-start gap-3">
+                <div class="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-emerald-400"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
+                </div>
+                <div>
+                  <h3 class="text-16 font-semibold mb-1">Скрининг за минуту</h3>
+                  <p class="text-13 text-landing-text-muted leading-relaxed">
+                    AI отсеивает явно нерелевантных, оставляет топ-5. Ты смотришь только их.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </Reveal>
+          <Reveal client:visible delay={0.3}>
+            <div class="rounded-2xl border border-white/8 bg-white/[0.02] p-6 hover:border-blue-500/20 transition-colors">
+              <div class="flex items-start gap-3">
+                <div class="w-10 h-10 rounded-lg bg-violet-500/10 flex items-center justify-center shrink-0">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-violet-400"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+                </div>
+                <div>
+                  <h3 class="text-16 font-semibold mb-1">Команда до 5 человек</h3>
+                  <p class="text-13 text-landing-text-muted leading-relaxed">
+                    Включено в тариф. Дополнительные места — ₽490 за каждого.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </Reveal>
         </div>
       </div>
 
-      <div class="rounded-xl bg-gradient-to-br from-landing-accent-start/12 to-landing-accent-end/5 border border-landing-accent-start/40 p-10 shadow-glow">
-        <h2 class="text-24 font-bold mb-3">₽4 900 / месяц</h2>
-        <p class="text-14 text-landing-text-muted mb-6">14 дней бесплатно. Без карты на старте. Отмена в один клик.</p>
-        <a
-          href="https://app.proshli.ru/employer/onboarding"
-          class="inline-flex items-center h-10 px-6 rounded-lg bg-gradient-to-r from-landing-accent-start to-landing-accent-end text-14 font-medium text-white"
-        >
-          Начать триал
-        </a>
-      </div>
+      <!-- How it works for employers -->
+      <Reveal client:visible>
+        <div class="rounded-2xl border border-white/8 bg-white/[0.02] p-8 mb-16">
+          <h2 class="text-20 font-semibold mb-6">Как это работает</h2>
+          <div class="grid md:grid-cols-3 gap-8">
+            <div class="flex gap-3">
+              <div class="text-24 font-bold font-mono text-white/10">1</div>
+              <div>
+                <h3 class="text-14 font-semibold mb-1">Опубликуй вакансию</h3>
+                <p class="text-13 text-landing-text-muted leading-relaxed">Заполни форму или импортируй с hh.ru. AI создаст embedding требований.</p>
+              </div>
+            </div>
+            <div class="flex gap-3">
+              <div class="text-24 font-bold font-mono text-white/10">2</div>
+              <div>
+                <h3 class="text-14 font-semibold mb-1">AI ищет кандидатов</h3>
+                <p class="text-13 text-landing-text-muted leading-relaxed">Сравниваем с резюме в базе. Ранжируем по match-score, фильтруем шум.</p>
+              </div>
+            </div>
+            <div class="flex gap-3">
+              <div class="text-24 font-bold font-mono text-white/10">3</div>
+              <div>
+                <h3 class="text-14 font-semibold mb-1">Получи топ-кандидатов</h3>
+                <p class="text-13 text-landing-text-muted leading-relaxed">Дашборд с профилями, match-score и контактами. Пиши напрямую.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Reveal>
+
+      <!-- CTA -->
+      <Reveal client:visible>
+        <div class="rounded-2xl bg-gradient-to-br from-blue-500/12 to-cyan-500/5 border border-blue-500/30 p-10 md:p-14 relative overflow-hidden">
+          <div class="absolute inset-0 bg-[radial-gradient(ellipse_50%_50%_at_80%_20%,rgba(59,130,246,0.1)_0%,transparent_70%)] pointer-events-none"></div>
+          <div class="relative flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+            <div>
+              <h2 class="text-28 font-bold mb-2">₽4 900 / месяц</h2>
+              <p class="text-14 text-landing-text-muted">14 дней бесплатно. Без карты на старте. Отмена в один клик.</p>
+            </div>
+            <a
+              href="https://app.proshli.ru/employer/onboarding"
+              class="inline-flex items-center h-12 px-8 rounded-lg bg-gradient-to-r from-blue-500 to-cyan-500 text-15 font-medium text-white hover:scale-[1.02] transition-transform shrink-0 shadow-lg shadow-blue-500/20"
+            >
+              Начать триал
+              <svg class="ml-2 w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+            </a>
+          </div>
+        </div>
+      </Reveal>
     </div>
   </section>
 </BaseLayout>

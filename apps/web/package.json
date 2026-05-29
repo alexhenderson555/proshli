@@ -14,9 +14,11 @@
   "dependencies": {
     "@proshli/shared-types": "workspace:*",
     "@proshli/ui": "workspace:*",
+    "@proshli/ui-v2": "workspace:*",
     "@t3-oss/env-nextjs": "^0.13.11",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "cmdk": "^1.0.0",
     "lucide-react": "^0.460.0",
     "next": "16.2.1",
     "next-intl": "^4.12.0",
