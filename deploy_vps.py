@@ -116,9 +116,28 @@ def deploy():
         run_ssh_command(ssh, "mkdir -p /var/www/proshli")
         run_ssh_command(ssh, "tar -xzf /tmp/proshli.tar.gz -C /var/www/proshli")
         
-        # 6. Generate secure tokens for production
-        pg_password = secrets.token_urlsafe(16)
-        jwt_secret = secrets.token_urlsafe(32)
+        # 6. Generate secure tokens for production (or reuse existing ones from env)
+        pg_password = None
+        jwt_secret = None
+        try:
+            print("Checking for existing deploy/.env.prod on VPS to preserve secrets...")
+            existing_env = run_ssh_command(ssh, "cat /var/www/proshli/deploy/.env.prod || echo ''")
+            for line in existing_env.splitlines():
+                if line.startswith("POSTGRES_PASSWORD="):
+                    pg_password = line.split("=", 1)[1].strip()
+                elif line.startswith("JWT_SECRET="):
+                    jwt_secret = line.split("=", 1)[1].strip()
+            if pg_password:
+                print("Found existing POSTGRES_PASSWORD. Reusing it.")
+            if jwt_secret:
+                print("Found existing JWT_SECRET. Reusing it.")
+        except Exception as e:
+            print(f"Could not read existing env (non-fatal): {e}")
+
+        if not pg_password:
+            pg_password = secrets.token_urlsafe(16)
+        if not jwt_secret:
+            jwt_secret = secrets.token_urlsafe(32)
         
         # Values from local environment
         telegram_token = "8538018548:AAGq0hB1iRDFPWIkIWX5ino4M1ahFk0u2NE"
