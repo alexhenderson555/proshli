@@ -9,127 +9,132 @@ import { tiers } from "../lib/tiers";
 <BaseLayout title="Тарифы — Proshli" description="Простые тарифы. Free навсегда, Pro за ₽490/мес, Employer за ₽4 900/мес. Без скрытых платежей.">
   <!-- Hero -->
   <section class="relative py-32 px-6 overflow-hidden">
-    <div class="absolute inset-0 bg-[radial-gradient(ellipse_50%_40%_at_50%_0%,rgba(124,58,237,0.12)_0%,transparent_70%)] pointer-events-none"></div>
-    <div class="mx-auto max-w-6xl relative">
-      <Reveal client:visible>
-        <div class="text-center max-w-2xl mx-auto mb-16">
-          <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10 bg-white/[0.03] mb-6">
-            <span class="text-12 text-landing-text-muted">14 дней бесплатно на Pro</span>
-          </div>
-          <h1 class="text-32 md:text-48 font-extrabold tracking-tight mb-4">
-            Простые тарифы,<br />
-            <span class="bg-clip-text text-transparent bg-gradient-to-r from-white via-purple-200 to-purple-400">без сюрпризов</span>
-          </h1>
-          <p class="text-16 text-landing-text-muted max-w-xl mx-auto">Оплата через ЮKassa — карты, СБП, ЮMoney. Отмена в один клик, возврат за 14 дней.</p>
+    {/* Dynamic Background Glow */}
+    <div class="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_50%_0%,rgba(124,58,237,0.15)_0%,transparent_70%)] pointer-events-none"></div>
+    
+    <div class="mx-auto max-w-6xl relative z-10">
+      
+      <div class="text-center max-w-2xl mx-auto mb-20">
+        <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-landing-accent-start/20 bg-landing-accent-start/5 mb-6">
+          <span class="text-11 font-mono uppercase tracking-wider text-landing-accent-start">14 дней бесплатно на Pro</span>
         </div>
-      </Reveal>
+        <h1 class="text-36 md:text-56 font-bold tracking-tight text-white mb-4">
+          Простые тарифы,<br />
+          <span class="bg-clip-text text-transparent bg-gradient-to-r from-white via-purple-200 to-purple-400">без лишних сюрпризов</span>
+        </h1>
+        <p class="text-15 text-landing-text-muted max-w-xl mx-auto">
+          Оплата через ЮKassa — карты РФ, СБП, ЮMoney. Отмена в один клик в любой момент в личном кабинете.
+        </p>
+      </div>
 
-      <!-- Toggle (future: monthly/yearly) -->
-      <div class="grid md:grid-cols-3 gap-6 mb-24">
+      <!-- Pricing cards grid -->
+      <div class="grid md:grid-cols-3 gap-6 mb-28">
         {tiers.map((t, i) => (
-          <Reveal client:visible delay={i * 0.1}>
-            <PricingCard {...t} />
-          </Reveal>
+          <PricingCard {...t} />
         ))}
       </div>
 
       <!-- Comparison table -->
-      <Reveal client:visible>
-        <div class="rounded-2xl border border-white/8 bg-white/[0.02] overflow-hidden mb-24">
-          <div class="px-6 py-5 border-b border-white/5">
-            <h2 class="text-18 font-semibold">Сравнение тарифов</h2>
-          </div>
-          <div class="overflow-x-auto">
-            <table class="w-full text-14">
-              <thead>
-                <tr class="border-b border-white/5">
-                  <th class="text-left px-6 py-3 text-landing-text-muted font-normal">Функция</th>
-                  <th class="px-6 py-3 text-center font-medium">Free</th>
-                  <th class="px-6 py-3 text-center font-medium text-landing-accent-start">Pro</th>
-                  <th class="px-6 py-3 text-center font-medium">Employer</th>
-                </tr>
-              </thead>
-              <tbody class="text-13 text-landing-text-muted">
-                <tr class="border-b border-white/5">
-                  <td class="px-6 py-3">AI-запросы</td>
-                  <td class="px-6 py-3 text-center">3 / день</td>
-                  <td class="px-6 py-3 text-center text-white font-medium">Безлимит</td>
-                  <td class="px-6 py-3 text-center text-white font-medium">Безлимит</td>
-                </tr>
-                <tr class="border-b border-white/5">
-                  <td class="px-6 py-3">Дайджест</td>
-                  <td class="px-6 py-3 text-center">Раз в неделю</td>
-                  <td class="px-6 py-3 text-center text-white font-medium">Каждый день</td>
-                  <td class="px-6 py-3 text-center text-white font-medium">Каждый день</td>
-                </tr>
-                <tr class="border-b border-white/5">
-                  <td class="px-6 py-3">Match-score</td>
-                  <td class="px-6 py-3 text-center">Базовый</td>
-                  <td class="px-6 py-3 text-center text-white font-medium">С обоснованием</td>
-                  <td class="px-6 py-3 text-center text-white font-medium">С обоснованием</td>
-                </tr>
-                <tr class="border-b border-white/5">
-                  <td class="px-6 py-3">AI-улучшение резюме</td>
-                  <td class="px-6 py-3 text-center">
-                    <svg class="w-4 h-4 mx-auto text-white/20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
-                  </td>
-                  <td class="px-6 py-3 text-center">
-                    <svg class="w-4 h-4 mx-auto text-landing-accent-start" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12" /></svg>
-                  </td>
-                  <td class="px-6 py-3 text-center">
-                    <svg class="w-4 h-4 mx-auto text-landing-accent-start" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12" /></svg>
-                  </td>
-                </tr>
-                <tr class="border-b border-white/5">
-                  <td class="px-6 py-3">Публикация вакансий</td>
-                  <td class="px-6 py-3 text-center">
-                    <svg class="w-4 h-4 mx-auto text-white/20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
-                  </td>
-                  <td class="px-6 py-3 text-center">
-                    <svg class="w-4 h-4 mx-auto text-white/20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
-                  </td>
-                  <td class="px-6 py-3 text-center">
-                    <svg class="w-4 h-4 mx-auto text-landing-accent-start" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12" /></svg>
-                  </td>
-                </tr>
-                <tr>
-                  <td class="px-6 py-3">Команда</td>
-                  <td class="px-6 py-3 text-center">1</td>
-                  <td class="px-6 py-3 text-center">1</td>
-                  <td class="px-6 py-3 text-center text-white font-medium">До 5</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+      <div class="rounded-3xl border border-white/[0.06] bg-gradient-to-b from-white/[0.02] to-transparent overflow-hidden mb-28 shadow-xl">
+        <div class="px-8 py-6 border-b border-white/[0.06] bg-white/[0.01]">
+          <h2 class="text-20 font-bold text-white tracking-tight">Сравнение возможностей</h2>
         </div>
-      </Reveal>
-
-      <!-- FAQ -->
-      <Reveal client:visible>
-        <h2 class="text-24 font-bold mb-8">Часто задают про оплату</h2>
-      </Reveal>
-      <div class="space-y-3 max-w-3xl">
-        <Reveal client:visible delay={0.05}>
-          <FaqItem question="Что входит в Free?">
-            3 AI-запроса в день, еженедельный дайджест, базовый match-score. Без ограничения по времени.
-          </FaqItem>
-        </Reveal>
-        <Reveal client:visible delay={0.1}>
-          <FaqItem question="Как работает биллинг?">
-            Через ЮKassa. Принимаем карты, СБП, ЮMoney. Чек на email автоматически.
-          </FaqItem>
-        </Reveal>
-        <Reveal client:visible delay={0.15}>
-          <FaqItem question="Возврат?">
-            В течение 14 дней — полный возврат. После — пропорционально оставшимся дням.
-          </FaqItem>
-        </Reveal>
-        <Reveal client:visible delay={0.2}>
-          <FaqItem question="Есть триал для Pro?">
-            Пока нет отдельного триала — Free-тариф и есть триал. Попробуй, и если 3 запросов мало — переходи на Pro.
-          </FaqItem>
-        </Reveal>
+        
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="border-b border-white/[0.06] text-11 font-mono uppercase text-white/40 tracking-wider">
+                <th class="px-8 py-4 font-normal">Функционал</th>
+                <th class="px-6 py-4 text-center font-normal">Free</th>
+                <th class="px-6 py-4 text-center font-normal text-landing-accent-start">Pro</th>
+                <th class="px-6 py-4 text-center font-normal">Employer</th>
+              </tr>
+            </thead>
+            <tbody class="text-13 text-landing-text-muted divide-y divide-white/[0.04]">
+              <tr class="hover:bg-white/[0.01] transition-colors">
+                <td class="px-8 py-4 font-medium text-white">AI-запросы поиска</td>
+                <td class="px-6 py-4 text-center">3 / день</td>
+                <td class="px-6 py-4 text-center text-white font-semibold">Безлимит</td>
+                <td class="px-6 py-4 text-center text-white font-semibold">Безлимит</td>
+              </tr>
+              <tr class="hover:bg-white/[0.01] transition-colors">
+                <td class="px-8 py-4 font-medium text-white">Частота рассылки дайджеста</td>
+                <td class="px-6 py-4 text-center">Раз в неделю</td>
+                <td class="px-6 py-4 text-center text-white font-semibold">Каждый день</td>
+                <td class="px-6 py-4 text-center text-white font-semibold">Каждый день</td>
+              </tr>
+              <tr class="hover:bg-white/[0.01] transition-colors">
+                <td class="px-8 py-4 font-medium text-white">Расчет Match-score</td>
+                <td class="px-6 py-4 text-center">Базовый</td>
+                <td class="px-6 py-4 text-center text-white font-semibold">С AI-обоснованием</td>
+                <td class="px-6 py-4 text-center text-white font-semibold">С AI-обоснованием</td>
+              </tr>
+              <tr class="hover:bg-white/[0.01] transition-colors">
+                <td class="px-8 py-4 font-medium text-white">AI-сопроводительные письма (Cover letters)</td>
+                <td class="px-6 py-4 text-center">
+                  <svg class="w-4 h-4 mx-auto text-white/20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </td>
+                <td class="px-6 py-4 text-center">
+                  <svg class="w-4 h-4 mx-auto text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </td>
+                <td class="px-6 py-4 text-center">
+                  <svg class="w-4 h-4 mx-auto text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </td>
+              </tr>
+              <tr class="hover:bg-white/[0.01] transition-colors">
+                <td class="px-8 py-4 font-medium text-white">AI-улучшение резюме</td>
+                <td class="px-6 py-4 text-center">
+                  <svg class="w-4 h-4 mx-auto text-white/20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </td>
+                <td class="px-6 py-4 text-center">
+                  <svg class="w-4 h-4 mx-auto text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </td>
+                <td class="px-6 py-4 text-center">
+                  <svg class="w-4 h-4 mx-auto text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </td>
+              </tr>
+              <tr class="hover:bg-white/[0.01] transition-colors">
+                <td class="px-8 py-4 font-medium text-white">Доступ к базе кандидатов со скринингом</td>
+                <td class="px-6 py-4 text-center">
+                  <svg class="w-4 h-4 mx-auto text-white/20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </td>
+                <td class="px-6 py-4 text-center">
+                  <svg class="w-4 h-4 mx-auto text-white/20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </td>
+                <td class="px-6 py-4 text-center">
+                  <svg class="w-4 h-4 mx-auto text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </td>
+              </tr>
+              <tr class="hover:bg-white/[0.01] transition-colors">
+                <td class="px-8 py-4 font-medium text-white">Количество участников в команде</td>
+                <td class="px-6 py-4 text-center">1 человек</td>
+                <td class="px-6 py-4 text-center">1 человек</td>
+                <td class="px-6 py-4 text-center text-white font-semibold">До 5 человек</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
+
+      <!-- FAQ Accordion -->
+      <div class="max-w-3xl mx-auto">
+        <h2 class="text-24 font-bold text-white mb-8 tracking-tight">Часто задаваемые вопросы про оплату</h2>
+        <div class="space-y-4">
+          <FaqItem question="Что входит в бесплатный тариф Free?">
+            Вы получаете 3 AI-запроса поиска вакансий в день, еженедельную рассылку дайджеста и базовый расчет Match-score на основе ваших ключевых слов. Это полностью бесплатно и не ограничено по времени.
+          </FaqItem>
+          <FaqItem question="Как списываются средства на тарифах Pro и Employer?">
+            Оплата происходит по модели подписки через систему ЮKassa. Средства списываются раз в месяц с выбранной карты автоматически. Вы можете отключить автопродление в один клик в личном кабинете.
+          </FaqItem>
+          <FaqItem question="Могу ли я вернуть деньги, если мне не понравилось?">
+            Да. Мы гарантируем полный возврат средств в течение первых 14 дней использования любого платного тарифа, если сервис не оправдал ваших ожиданий. Просто напишите в поддержку.
+          </FaqItem>
+          <FaqItem question="Можно ли получить корпоративные закрывающие документы?">
+            Да, для тарифа Employer при оплате по счету мы предоставляем полный комплект закрывающих документов через ЭДО (Диадок) или на почту РФ. Для этого свяжитесь с поддержкой.
+          </FaqItem>
+        </div>
+      </div>
+
     </div>
   </section>
 </BaseLayout>

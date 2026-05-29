@@ -1,94 +1,137 @@
 ---
 /**
  * Telegram-style chat mockup showing the daily digest.
- * Pure CSS/HTML — no images, no external deps.
+ * Glassmorphic phone mockup using pure Tailwind/CSS.
  */
 ---
 
-<div class="w-full max-w-sm mx-auto">
-  <!-- Phone frame -->
-  <div class="rounded-2xl border border-white/10 bg-[#0e1621] overflow-hidden shadow-2xl shadow-black/40">
-    <!-- Telegram header -->
-    <div class="flex items-center gap-3 px-4 py-3 bg-[#17212b] border-b border-white/5">
-      <div class="w-8 h-8 rounded-full bg-gradient-to-br from-landing-accent-start to-landing-accent-end flex items-center justify-center text-11 font-bold text-white">P</div>
-      <div>
-        <div class="text-13 font-semibold text-white">Proshli Bot</div>
-        <div class="text-11 text-[#6c7883]">online</div>
-      </div>
+<div class="w-full max-w-sm mx-auto relative group">
+  <!-- Glowing backlight behind the phone -->
+  <div class="absolute -inset-4 rounded-[40px] bg-gradient-to-tr from-landing-accent-start/20 to-indigo-500/10 blur-xl opacity-80 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
+
+  <!-- Phone frame container -->
+  <div class="relative rounded-[36px] border border-white/10 bg-[#07090e]/90 backdrop-blur-xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] transition-all duration-500 hover:border-white/15">
+    
+    <!-- Top speaker / camera notch notch -->
+    <div class="absolute top-2 left-1/2 -translate-x-1/2 w-32 h-4 rounded-full bg-black/60 flex items-center justify-center gap-1.5 z-20">
+      <div class="w-1.5 h-1.5 rounded-full bg-white/10"></div>
+      <div class="w-8 h-1 rounded-full bg-white/10"></div>
     </div>
 
-    <!-- Chat messages -->
-    <div class="px-3 py-4 space-y-3 min-h-[280px]">
-      <!-- Bot message: digest -->
-      <div class="max-w-[85%]">
-        <div class="rounded-xl rounded-tl-sm bg-[#182533] px-3.5 py-2.5 text-13 text-[#e1e3e6] leading-relaxed">
-          <div class="text-landing-accent-start font-semibold mb-1.5">Утренний дайджест</div>
-          Нашёл <span class="text-white font-semibold">7 новых вакансий</span> за ночь. Топ-3 по match-score:
-        </div>
-        <div class="text-11 text-[#6c7883] mt-1 ml-1">09:00</div>
-      </div>
-
-      <!-- Vacancy card 1 -->
-      <div class="max-w-[85%]">
-        <div class="rounded-xl rounded-tl-sm bg-[#182533] px-3.5 py-2.5 text-13 text-[#e1e3e6]">
-          <div class="flex items-center justify-between mb-1">
-            <span class="font-semibold text-white">Senior Backend</span>
-            <span class="text-landing-accent-start font-mono text-12 font-bold">94%</span>
+    <!-- Phone screen container -->
+    <div class="pt-8 pb-4">
+      
+      <!-- Telegram bot header (glassmorphic) -->
+      <div class="flex items-center justify-between px-4 py-3 bg-white/[0.02] border-b border-white/[0.06] backdrop-blur-md">
+        <div class="flex items-center gap-3">
+          <div class="relative">
+            <div class="w-9 h-9 rounded-full bg-gradient-to-br from-landing-accent-start to-landing-accent-end flex items-center justify-center text-12 font-bold text-white shadow-md shadow-landing-accent-start/20">
+              P
+            </div>
+            <!-- Online indicator dot -->
+            <span class="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-green-500 border-2 border-[#07090e]"></span>
           </div>
-          <div class="text-12 text-[#6c7883]">Yandex · ₽550K · Remote</div>
-          <div class="flex gap-1.5 mt-2">
-            <span class="text-11 px-1.5 py-0.5 rounded bg-white/5 text-[#8b98a5]">Go</span>
-            <span class="text-11 px-1.5 py-0.5 rounded bg-white/5 text-[#8b98a5]">Kafka</span>
-            <span class="text-11 px-1.5 py-0.5 rounded bg-white/5 text-[#8b98a5]">gRPC</span>
+          <div>
+            <div class="text-13 font-semibold text-white tracking-tight">Proshli Bot</div>
+            <div class="text-10 text-green-400 font-medium">bot • online</div>
           </div>
         </div>
-      </div>
 
-      <!-- Vacancy card 2 -->
-      <div class="max-w-[85%]">
-        <div class="rounded-xl rounded-tl-sm bg-[#182533] px-3.5 py-2.5 text-13 text-[#e1e3e6]">
-          <div class="flex items-center justify-between mb-1">
-            <span class="font-semibold text-white">Backend Lead</span>
-            <span class="text-landing-accent-start font-mono text-12 font-bold">89%</span>
-          </div>
-          <div class="text-12 text-[#6c7883]">Tinkoff · ₽600K · Hybrid</div>
-          <div class="flex gap-1.5 mt-2">
-            <span class="text-11 px-1.5 py-0.5 rounded bg-white/5 text-[#8b98a5]">Go</span>
-            <span class="text-11 px-1.5 py-0.5 rounded bg-white/5 text-[#8b98a5]">Postgres</span>
-            <span class="text-11 px-1.5 py-0.5 rounded bg-white/5 text-[#8b98a5]">K8s</span>
-          </div>
+        <div class="flex items-center gap-2">
+          <!-- Mini buttons in telegram header -->
+          <button class="p-1 rounded hover:bg-white/5 transition-colors text-white/40 hover:text-white">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+          </button>
         </div>
       </div>
 
-      <!-- User reply -->
-      <div class="flex justify-end">
-        <div>
-          <div class="rounded-xl rounded-tr-sm bg-[#2b5278] px-3.5 py-2.5 text-13 text-white">
-            Откликнись на первую
+      <!-- Chat messages pane -->
+      <div class="px-4 py-5 space-y-4 min-h-[360px] bg-gradient-to-b from-[#0a0f18] to-[#070a0f] overflow-y-auto">
+        
+        <!-- Bot message: Digest Welcome -->
+        <div class="flex items-start gap-2 max-w-[85%] animate-[fadeIn_0.5s_ease-out]">
+          <div class="rounded-2xl rounded-tl-sm bg-[#121c2c] border border-white/[0.03] p-3 text-13 text-white/90 leading-relaxed shadow-sm">
+            <div class="text-landing-accent-start font-bold text-11 uppercase tracking-wider mb-1">Утренний дайджест</div>
+            <span>Привет! Нашёл <strong class="text-white font-semibold">7 новых вакансий</strong> по твоему профилю за ночь. Вот топ-3:</span>
+            <div class="text-[9px] text-white/30 text-right mt-1.5">09:00</div>
           </div>
-          <div class="text-11 text-[#6c7883] mt-1 text-right mr-1">09:01</div>
+        </div>
+
+        <!-- Vacancy Card 1 -->
+        <div class="flex items-start gap-2 max-w-[90%] animate-[fadeIn_0.6s_ease-out]">
+          <div class="rounded-2xl rounded-tl-sm bg-[#121c2c] border border-white/[0.04] p-3 text-13 text-white/90 shadow-md">
+            <div class="flex items-start justify-between gap-3 mb-1">
+              <span class="font-semibold text-white">Senior Go Developer</span>
+              <span class="text-emerald-400 font-mono text-12 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">94%</span>
+            </div>
+            <div class="text-12 text-white/50">Yandex • Remote • от 550,000 ₽</div>
+            
+            <div class="mt-2.5 flex items-center gap-1.5 flex-wrap">
+              <span class="text-10 font-mono px-2 py-0.5 rounded bg-white/[0.03] border border-white/[0.06] text-white/60">Go</span>
+              <span class="text-10 font-mono px-2 py-0.5 rounded bg-white/[0.03] border border-white/[0.06] text-white/60">Kafka</span>
+              <span class="text-10 font-mono px-2 py-0.5 rounded bg-white/[0.03] border border-white/[0.06] text-white/60">gRPC</span>
+            </div>
+
+            <!-- Quick Action Button simulation inside Telegram -->
+            <button class="mt-3 w-full py-1.5 rounded-lg bg-landing-accent-start/15 hover:bg-landing-accent-start/25 border border-landing-accent-start/30 text-11 font-medium text-landing-accent-start transition-colors">
+              Откликнуться в один клик
+            </button>
+            <div class="text-[9px] text-white/30 text-right mt-1.5">09:00</div>
+          </div>
+        </div>
+
+        <!-- User reply -->
+        <div class="flex justify-end animate-[fadeIn_0.8s_ease-out]">
+          <div class="max-w-[75%]">
+            <div class="rounded-2xl rounded-tr-sm bg-gradient-to-r from-landing-accent-start to-landing-accent-end p-3 text-13 text-white shadow-md">
+              Откликнись на Senior Go Developer
+            </div>
+            <div class="text-[9px] text-white/40 text-right mt-1.5 mr-1 flex items-center justify-end gap-1">
+              <span>09:01</span>
+              <!-- Telegram Double Tick Checkmarks SVG -->
+              <svg class="w-3.5 h-3.5 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M2 12l5.25 5 11.25-11M8 12l5.25 5L22 8" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bot reply -->
+        <div class="flex items-start gap-2 max-w-[85%] animate-[fadeIn_1s_ease-out]">
+          <div class="rounded-2xl rounded-tl-sm bg-[#121c2c] border border-white/[0.03] p-3 text-13 text-white/90 leading-relaxed shadow-sm">
+            <div class="flex items-center gap-1.5 text-green-400 font-semibold text-11 uppercase tracking-wider mb-1.5">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5" /></svg>
+              Отклик отправлен
+            </div>
+            <span>Готово! Сгенерировал cover letter с учётом твоего опыта в Kafka, обновил сопроводительное и отправил отклик. Ждём фидбек!</span>
+            <div class="text-[9px] text-white/30 text-right mt-1.5">09:01</div>
+          </div>
         </div>
       </div>
 
-      <!-- Bot reply -->
-      <div class="max-w-[85%]">
-        <div class="rounded-xl rounded-tl-sm bg-[#182533] px-3.5 py-2.5 text-13 text-[#e1e3e6]">
-          Готово. Сгенерировал cover letter и отправил отклик на hh.ru
+      <!-- Telegram message input bar -->
+      <div class="flex items-center gap-2.5 px-4 py-3 bg-white/[0.02] border-t border-white/[0.06] backdrop-blur-md">
+        <div class="flex-1 h-9 rounded-full bg-[#111622] border border-white/[0.08] px-4 flex items-center justify-between text-12 text-white/30">
+          <span>Сообщение...</span>
+          <!-- Attachment paperclip icon -->
+          <svg class="w-4 h-4 text-white/30 hover:text-white/60 cursor-pointer" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+          </svg>
         </div>
-        <div class="text-11 text-[#6c7883] mt-1 ml-1">09:01</div>
+        <div class="w-9 h-9 rounded-full bg-landing-accent-start hover:opacity-90 flex items-center justify-center cursor-pointer shadow-md shadow-landing-accent-start/20 transition-all active:scale-95">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-white transform translate-x-[1px] -translate-y-[1px]">
+            <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+          </svg>
+        </div>
       </div>
-    </div>
 
-    <!-- Input bar -->
-    <div class="flex items-center gap-2 px-3 py-2.5 bg-[#17212b] border-t border-white/5">
-      <div class="flex-1 h-8 rounded-lg bg-[#242f3d] px-3 flex items-center text-13 text-[#6c7883]">
-        Сообщение...
-      </div>
-      <div class="w-8 h-8 rounded-full bg-landing-accent-start/20 flex items-center justify-center">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-landing-accent-start">
-          <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
-        </svg>
-      </div>
     </div>
   </div>
 </div>
+
+<style>
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
